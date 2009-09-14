@@ -293,7 +293,7 @@ void free_f3tensor(float ***t, long nrl, long nrh, long ncl, long nch,
 	long ndl, long ndh)
 /* free a float f3tensor allocated by f3tensor() */
 {
-	free((FREE_ARG) (t[nrl][ncl]+ndl-NR_END));
+  free((FREE_ARG) (t[nrl][ncl]+ndl-NR_END));
 	free((FREE_ARG) (t[nrl]+ncl-NR_END));
 	free((FREE_ARG) (t+nrl-NR_END));
 }

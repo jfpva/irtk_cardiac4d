@@ -20,7 +20,7 @@ void rlft3(float ***data, float **speq, unsigned long nn1, unsigned long nn2,
 	nn[1]=nn1;
 	nn[2]=nn2;
 	nn[3]=nn3 >> 1;
-	if (isign == 1) {
+        if (isign == 1) {
 		fourn(&data[1][1][1]-1,nn,3,isign);
 		for (i1=1;i1<=nn1;i1++)
 			for (i2=1,j2=0;i2<=nn2;i2++) {
@@ -28,7 +28,7 @@ void rlft3(float ***data, float **speq, unsigned long nn1, unsigned long nn2,
 				speq[i1][++j2]=data[i1][i2][2];
 			}
 	}
-	for (i1=1;i1<=nn1;i1++) {
+        for (i1=1;i1<=nn1;i1++) {
 		j1=(i1 != 1 ? nn1-i1+2 : 1);
 		wr=1.0;
 		wi=0.0;
