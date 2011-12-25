@@ -149,6 +149,7 @@ void eclass(int nf[], int n, int lista[], int listb[], int m);
 void eclazz(int nf[], int n, int (*equiv)(int, int));
 float ei(float x);
 void eigsrt(float d[], float **v, int n);
+void eigsrtd(float *d, float **v, int n);
 float elle(float phi, float ak);
 float ellf(float phi, float ak);
 float ellpi(float phi, float en, float ak);
