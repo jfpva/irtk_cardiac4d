@@ -778,8 +778,8 @@ void Reconstruction::UpdateReconstructed(const uint3 vsize, double* data)
 
 
 
-__global__ void GaussianConvolutionKernel(int numSlices, int* d_sliceSicesX, int* d_sliceSicesY, 
-	double* input, Volume<double> output,
+__global__ void GaussianConvolutionKernel(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
+	double* __restrict input, Volume<double> output,
 	int kernel_size, double sigma, bool horizontal)
 {
 	const uint3 pos = make_uint3(__umul24(blockIdx.x, blockDim.x) + threadIdx.x,
@@ -855,7 +855,7 @@ __global__ void GaussianConvolutionKernel(int numSlices, int* d_sliceSicesX, int
 
 
 
-__global__ void GaussianConvolutionKernel3D(double* input, Volume<double> output, int kernel_size, double sigma, short dir)
+__global__ void GaussianConvolutionKernel3D(double* __restrict input, Volume<double> output, int kernel_size, double sigma, short dir)
 {
 	const uint3 pos = make_uint3(__umul24(blockIdx.x, blockDim.x) + threadIdx.x,
 		__umul24(blockIdx.y, blockDim.y) + threadIdx.y,
@@ -947,9 +947,9 @@ __global__ void GaussianConvolutionKernel3D(double* input, Volume<double> output
 
 }
 
-__global__ void calculateResidual3D_adv(int numSlices, int* d_sliceSicesX, int* d_sliceSicesY, 
-	double* slices, double* bias, double* weights, double* simweights, 
-	double* simslices, Volume<double> wb_, Volume<double> wr_, double* scales)
+__global__ void calculateResidual3D_adv(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
+	double* __restrict slices, double* __restrict bias, double* __restrict weights, double* __restrict simweights, 
+	double* __restrict simslices, Volume<double> wb_, Volume<double> wr_, double* scales)
 {
 	const uint3 pos = make_uint3(__umul24(blockIdx.x, blockDim.x) + threadIdx.x,
 		__umul24(blockIdx.y, blockDim.y) + threadIdx.y,
@@ -992,8 +992,8 @@ __global__ void calculateResidual3D_adv(int numSlices, int* d_sliceSicesX, int* 
 }
 
 
-__global__ void updateBiasField3D_adv(int numSlices, int* d_sliceSicesX, int* d_sliceSicesY, 
-	double* slices, Volume<double> bias, double* wb_, double* wr_) 
+__global__ void updateBiasField3D_adv(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
+	double* __restrict slices, Volume<double> bias, double* __restrict wb_, double* __restrict wr_) 
 {
 	const uint3 pos = make_uint3(__umul24(blockIdx.x, blockDim.x) + threadIdx.x,
 		__umul24(blockIdx.y, blockDim.y) + threadIdx.y,
@@ -1325,9 +1325,9 @@ __global__ void AdaptiveRegularizationKernel(Volume<double> reconstructed, Volum
 
 }
 
-__global__ void SuperresolutionKernel3D_adv2(int numSlices, int* d_sliceSicesX, int* d_sliceSicesY, 
+__global__ void SuperresolutionKernel3D_adv2(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
 	Volume<double> slices, Volume<double> bias, Volume<double> weights, Volume<double> simslices, 
-	double* slice_weights, double* scales,
+	double* __restrict slice_weights, double* __restrict scales,
 	Volume<int> ofssliceX, Volume<int> ofssliceY,
 	Volume<double> addon, Volume<double> confidence_map, POINT3D* volcoeffsarray_)
 {
@@ -1485,35 +1485,6 @@ void Reconstruction::Superresolution(int iter, std::vector<double> _slice_weight
 }
 
 
-__global__ void initSSRS(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
-	double** slices, double** __restrict simslices, double** __restrict simweights, char** __restrict siminside)
-{
-	const uint3 pos = make_uint3(blockIdx.x * blockDim.x + threadIdx.x,
-		blockIdx.y * blockDim.y + threadIdx.y,
-		blockIdx.z * blockDim.z + threadIdx.z);
-
-	//z is slice index
-	if(pos.z >= numSlices || pos.z < 0)
-		return;
-
-	int ssizeX = d_sliceSicesX[pos.z];
-	int ssizeY = d_sliceSicesY[pos.z];
-	const uint2 pos2 = make_uint2(pos.x, pos.y);
-	int idx2 = pos.x + pos.y*ssizeX;
-
-	double* s = slices[pos.z];
-	char* si = siminside[pos.z];
-	double* sw = simweights[pos.z];
-
-	if(pos2.x >= ssizeX || pos2.y >= ssizeY || pos2.x < 0 || pos2.y < 0 || (s[idx2] == -1) || (si[idx2] != 1) || (sw[idx2] <= 0.99))
-		return;
-
-	double* ss = simslices[pos.z];
-
-	s[idx2] -= ss[idx2];
-}
-
-
 struct transformRS
 {
 	transformRS(){}
@@ -1567,12 +1538,6 @@ void Reconstruction::InitializeRobustStatistics(double& _sigma)
 
 	_sigma = get<0>(out)/(double)get<1>(out);
 #else
-	//dim3 blockSize3D = dim3(8,8,8);
-	//dim3 gridSize3D = divup(dim3(maxSliceDimension.x, maxSliceDimension.y, num_slices_), blockSize3D);
-
-	//initSSRS<<<gridSize3D, blockSize3D>>>(num_slices_, d_slice_sicesX, d_slice_sicesY, d_slices, 
-	//	d_simulated_slices, d_simulated_weights, d_simulated_inside);
-	//CHECK_ERROR(initSSRS);
 
 	//TODO arrange slices in Volume and store offset pointer
 	double sig = 0;
@@ -1784,8 +1749,8 @@ void Reconstruction::GaussianReconstruction(std::vector<int>& voxel_num)
 }
 
 
-__global__ void normalizeBiasKernel3D_adv(int numSlices, int* d_sliceSicesX, int* d_sliceSicesY, 
-	Volume<double> slices, Volume<double> bias2D, double* scales,
+__global__ void normalizeBiasKernel3D_adv(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
+	Volume<double> slices, Volume<double> bias2D, double* __restrict scales,
 	Volume<int> ofssliceX, Volume<int> ofssliceY,
 	POINT3D* volcoeffsarray_, Volume<double> bias)
 {
@@ -1961,7 +1926,7 @@ void Reconstruction::NormaliseBias(int iter, double sigma_bias)
 
 }
 
-__global__ void simulateSlicesKernel3D_adv(int numSlices, int* d_sliceSicesX, int* d_sliceSicesY, 
+__global__ void simulateSlicesKernel3D_adv(int numSlices, int* __restrict d_sliceSicesX, int* __restrict d_sliceSicesY, 
 	Volume<double> slices,  Volume<double> simslices, Volume<double> simweights, Volume<char> siminside,
 	Volume<double> reconstructed, Volume<double> mask,
 	Volume<int> ofssliceX, Volume<int> ofssliceY, POINT3D* volcoeffsarray_)
