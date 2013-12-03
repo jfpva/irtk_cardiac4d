@@ -21,31 +21,6 @@
 
 using namespace std;
 
-//2762_1_reconstruction_testGPU.nii 2 2762_1.nii 2762_2.nii id id -mask 2762_1_mask.nii -resolution 0.75
-//2762_1_reconstruction_testGPU.nii 4 2762_1.nii 2762_2.nii 2762_3.nii 2762_4.nii id id id id -mask 2762_1_mask.nii -resolution 0.75
-//2762_1_reconstruction_testGPU.nii 4 2762_1_d4.nii 2762_2_d4.nii 2762_3_d4.nii 2762_4_d4.nii id id id id -mask 2762_1_mask_d4.nii -resolution 0.75
-//2762_1_reconstruction_testGPU.nii 8 2762_1.nii 2762_2.nii 2762_3.nii 2762_4.nii 2762_1.nii 2762_2.nii 2762_3.nii 2762_4.nii id id id id id id id id -mask 2762_1_mask.nii -resolution 0.75
-//3115_nomasking.nii 8 3115_1.nii 3115_7.nii 3115_4.nii 3115_3.nii 3115_2.nii  3115_5.nii 3115_8.nii 3115_6.nii id id id id id id id id -mask manual_mask_3115_1.nii -log_prefix 3115_nomasking -smooth_mask 4 -resolution 0.75
-//-thickness 1.26 1.26 1.26 1.26 1.26 1.26 1.26 1.26
-//D:\Work\mysvn\FAUST\code\reconstruction\data\3115_test
-
-//to be beaten full resolution
-// inner loop
-// full loop
-//reconstruction loop:    5982.76 ms      (max = 36011 ms)
-//overall:                659556 ms       (max = 659556 ms)
-// overall time: 659.556000 s
-
-//now
-//reconstruction loop iter:7554.37 ms     (max = 71572 ms)
-//overall:                831113 ms       (max = 831113 ms)
-//overall time: 831.113000 s
-// reconstruction loop iter:7013.08 ms     (max = 72476 ms)
-// overall:                771544 ms       (max = 771544 ms)
-// overall time: 771.544000 s
-
-
-//Application to perform reconstruction of volumetric MRI from thick slices.
 
 void usage()
 {
@@ -123,7 +98,7 @@ int main(int argc, char **argv)
 	//utility variables
 	int i, ok;
 	char buffer[256];
-	irtkRealImage stack; 
+	irtkRealImage stack;
 
 	//declare variables for input
 	/// Name for output volume
@@ -193,7 +168,7 @@ int main(int argc, char **argv)
 	argv++;
 	cout<<"Number 0f stacks ... "<<nStacks<<endl;
 
-	// Read stacks 
+	// Read stacks
 	for (i=0;i<nStacks;i++)
 	{
 		//if ( i == 0 )
@@ -205,7 +180,7 @@ int main(int argc, char **argv)
 		/*stack.GetImageToWorldMatrix().Print();
 		std::cout << stack.GetOrigin() << std::endl;*/
 		cout<<"Reading stack ... "<<argv[1]<<endl;
-		
+
 		/*irtkImageAttributes attr = stack.GetImageAttributes();
 		for (int j = 0; j < attr._z; j++) {
 			//create slice by selecting the appropreate region of the stack
@@ -419,7 +394,7 @@ int main(int argc, char **argv)
 			argv++;
 			no_log=true;
 			ok = true;
-		}    
+		}
 
 		//Read transformations from this folder
 		if ((ok == false) && (strcmp(argv[1], "-transformations") == 0)){
@@ -486,7 +461,7 @@ int main(int argc, char **argv)
 
 	//Set debug mode
 	if (debug) reconstruction.DebugOn();
-	else reconstruction.DebugOff(); 
+	else reconstruction.DebugOff();
 
 	//Set force excluded slices
 	reconstruction.SetForceExcludedSlices(force_excluded);
@@ -500,7 +475,7 @@ int main(int argc, char **argv)
 	{
 		cerr<<"Please identify the template by assigning id transformation."<<endl;
 		exit(1);
-	}  
+	}
 	//If no mask was given and flag "remove_black_background" is false, try to create mask from the template image in case it was padded
 	if ((mask==NULL)&&(!remove_black_background))
 	{
@@ -519,18 +494,18 @@ int main(int argc, char **argv)
 		reconstruction.CropImage(stacks[templateNumber],m);
 		if (debug)
 		{
-			m.Write("maskTemplate.nii.gz"); 
+			m.Write("maskTemplate.nii.gz");
 			stacks[templateNumber].Write("croppedTemplate.nii.gz");
 		}
 	}
 
-	//Create template volume with isotropic resolution 
+	//Create template volume with isotropic resolution
 	//if resolution==0 it will be determined from in-plane resolution of the image
 	resolution = reconstruction.CreateTemplate(stacks[templateNumber],resolution);
 	//->GPU
 
-	//Set mask to reconstruction object. 
-	reconstruction.SetMask(mask,smooth_mask);   
+	//Set mask to reconstruction object.
+	reconstruction.SetMask(mask,smooth_mask);
 
 	//to redirect output from screen to text files
 
@@ -591,7 +566,7 @@ int main(int argc, char **argv)
 		if (debug)
 		{
 			sprintf(buffer,"mask%i.nii",i);
-			m.Write(buffer); 
+			m.Write(buffer);
 			sprintf(buffer,"cropped%i.nii",i);
 			stacks[i].Write(buffer);
 		}
@@ -642,7 +617,7 @@ int main(int argc, char **argv)
 	//Set global bias correction flag
 	if (global_bias_correction)
 		reconstruction.GlobalBiasCorrectionOn();
-	else 
+	else
 		reconstruction.GlobalBiasCorrectionOff();
 
 	//if given read slice-to-volume registrations
@@ -659,28 +634,9 @@ int main(int argc, char **argv)
 	istats.start();
 	double start = gstats.get_time();
 
-	//ideally sync only slices and necessaries 
+	//ideally sync only slices and necessaries
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-	//Crop and transform mask makes things wrong
-	//need workaround for corrupted stack idxs -- guys, please use iterators
-	std::vector<irtkRealImage> correctStacks;
-	for(int i = 0; i < stacks.size(); i++)
-	{
-		//you crazy IRTK guys. look what I have to do because of your crazy iterator less memory alignment
-		irtkRealImage tmp(stacks[i].GetX(), stacks[i].GetY(), stacks[i].GetZ());
-		for(int z = 0; z < stacks[i].GetZ(); z++)
-		{
-			for(int y = 0; y < stacks[i].GetY(); y++)
-			{
-				for(int x = 0; x < stacks[i].GetX(); x++)
-				{
-					tmp(x,y,z) = stacks[i](x,y,z);
-				}
-			}
-		}
-		correctStacks.push_back(tmp);
-	}
 
 	//final sync
 	//TODO when CoeffInit done, then only this for slices and transforms w/o CoeffInit sync
@@ -694,7 +650,7 @@ int main(int argc, char **argv)
 			cout.rdbuf (strm_buffer);
 		}
 		cout<<"Iteration "<<iter<<". "<<endl;
-		//perform slice-to-volume registrations - skip the first iteration 
+		//perform slice-to-volume registrations - skip the first iteration
 	#if 1
 		if (iter>0)
 		{
@@ -741,7 +697,7 @@ int main(int argc, char **argv)
 		}
 		cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
 
-		//Set smoothing parameters 
+		//Set smoothing parameters
 		//amount of smoothing (given by lambda) is decreased with improving alignment
 		//delta (to determine edges) stays constant throughout
 		if(iter==(iterations-1))
@@ -760,7 +716,7 @@ int main(int argc, char **argv)
 		//Use faster reconstruction during iterations and slower for final reconstruction
 		if ( iter<(iterations-1) )
 			reconstruction.SpeedupOn();
-		else 
+		else
 			reconstruction.SpeedupOff();
 
 		//ideally sync only parameters used in CoeffINit from registration
@@ -796,11 +752,11 @@ int main(int argc, char **argv)
 		reconstruction.EStep();
 
 		//number of reconstruction iterations
-		if ( iter==(iterations-1) ) 
+		if ( iter==(iterations-1) )
 		{
-			rec_iterations = 30;      
+			rec_iterations = 30;
 		}
-		else 
+		else
 			rec_iterations = 10;
 
 		//reconstruction iterations
@@ -905,7 +861,7 @@ int main(int argc, char **argv)
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
 	reconstructed=reconstruction.GetReconstructed();
-	reconstructed.Write(output_name); 
+	reconstructed.Write(output_name);
 
 	reconstruction.SlicesInfo( "SlicesInfo.tsv", stack_files );
 
@@ -928,10 +884,10 @@ int main(int argc, char **argv)
 	istats.sample("overall");
 	gstats.print();
 	istats.print();
-	
+
 	printf("\n\noverall time: %f s\n\n", end-start);
 
 	cudaDeviceReset();
 
 	//The end of main()
-}  
+}
