@@ -9,6 +9,7 @@ SET(SEGMENTATION_INCLUDES
 ../include/irtkEMClassificationMultiComp.h
 ../include/irtkGaussian.h
 ../include/irtkIntensityMatching.h
+../include/irtkLaplacianSmoothing.h
 ../include/irtkMultiChannelImage.h
 ../include/irtkMultiImageGraphCut.h
 ../include/irtkMeanShift.h
@@ -18,6 +19,7 @@ SET(SEGMENTATION_INCLUDES
 ../include/irtkMAPatchMatchSegmentation.h
 ../include/irtkMAPatchMatchSuperResolution.h
 ../include/irtkReconstruction.h
+../include/irtkReconstructionb0.h
 ../include/irtkRician.h
 ../include/irtkSubcorticalSegmentation_4D.h
 ../../../external/gco-v3.0/block.h
@@ -46,6 +48,7 @@ irtkEMClassificationMultiComp.cc
 irtkGaussian.cc
 irtkIntensityMatching.cc
 irtkMultiChannelImage.cc
+irtkLaplacianSmoothing.cc
 irtkMeanShift.cc
 irtkProbabilisticAtlas.cc
 irtkPatchMatch.cc
@@ -54,6 +57,7 @@ irtkMAPatchMatchSegmentation.cc
 irtkMAPatchMatchSuperResolution.cc
 irtkRician.cc
 irtkReconstruction.cc
+irtkReconstructionb0.cc
 irtkSubcorticalSegmentation_4D.cc
 irtkCRF.cc
 ../../../external/gco-v3.0/graph.cpp
