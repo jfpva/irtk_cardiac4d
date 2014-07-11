@@ -128,7 +128,7 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameter()
   }
 }
 
-void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double resolution, double CPS, double penalty)
+void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double resolution, double CPS, int levels, double step, double penalty)
 {
   int i;
   double xsize, ysize, zsize, spacing;
@@ -139,7 +139,7 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
   }
 
   // Default parameters for registration
-  _NumberOfLevels     = 1;
+  _NumberOfLevels     = levels;
   _NumberOfBins       = 64;
 
   // Default parameters for optimization
@@ -169,10 +169,20 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
   _TargetResolution[0][2] = zsize;
 
   for (i = 1; i < _NumberOfLevels; i++) {
-    _TargetBlurring[i]      = _TargetBlurring[i-1] * 2;
-    _TargetResolution[i][0] = _TargetResolution[i-1][0] * 2;
-    _TargetResolution[i][1] = _TargetResolution[i-1][1] * 2;
-    _TargetResolution[i][2] = _TargetResolution[i-1][2] * 2;
+    if(i<(_NumberOfLevels-1))
+    {
+      _TargetBlurring[i]      = _TargetBlurring[i-1] * 2;
+      _TargetResolution[i][0] = _TargetResolution[i-1][0] * 2;
+      _TargetResolution[i][1] = _TargetResolution[i-1][1] * 2;
+    }
+    else
+    {
+      _TargetBlurring[i]      = _TargetBlurring[i-1];
+      _TargetResolution[i][0] = _TargetResolution[i-1][0];
+      _TargetResolution[i][1] = _TargetResolution[i-1][1];
+    }
+	
+    _TargetResolution[i][2] = _TargetResolution[i-1][2];
   }
 
   // Read source pixel size
@@ -193,10 +203,19 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
   _SourceResolution[0][2] = zsize;
 
   for (i = 1; i < _NumberOfLevels; i++) {
-    _SourceBlurring[i]      = _SourceBlurring[i-1] * 2;
-    _SourceResolution[i][0] = _SourceResolution[i-1][0] * 2;
-    _SourceResolution[i][1] = _SourceResolution[i-1][1] * 2;
-    _SourceResolution[i][2] = _SourceResolution[i-1][2] * 2;
+    if(i<(_NumberOfLevels-1))
+    {
+      _SourceBlurring[i]      = _SourceBlurring[i-1] * 2;
+      _SourceResolution[i][0] = _SourceResolution[i-1][0] * 2;
+      _SourceResolution[i][1] = _SourceResolution[i-1][1] * 2;
+    }
+    else
+    {
+      _SourceBlurring[i]      = _SourceBlurring[i-1];
+      _SourceResolution[i][0] = _SourceResolution[i-1][0];
+      _SourceResolution[i][1] = _SourceResolution[i-1][1];      
+    }
+    _SourceResolution[i][2] = _SourceResolution[i-1][2];
   }
 
   // Default parameters for non-rigid registration
@@ -221,7 +240,12 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
   for (i = 0; i < _NumberOfLevels; i++) {
     _NumberOfIterations[i] = 10;
     _NumberOfSteps[i]      = 4;
-    _LengthOfSteps[i]      = _DX / 8.0 * pow(2.0, i);
+    if(i<(_NumberOfLevels-1))
+    {
+      _LengthOfSteps[i]      = step * pow(2.0, i);
+    }
+    else
+      _LengthOfSteps[i]      = step * pow(2.0, i-1);
   }
 
   // Try to guess padding by looking at voxel values in all eight corners of the volume:
@@ -237,7 +261,6 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
     _TargetPadding = _target->Get(0, 0, 0);
   }
 }
-
 
 void irtkImageFreeFormRegistrationWithPadding::Initialize()
 {

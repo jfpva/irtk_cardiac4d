@@ -465,13 +465,16 @@ int main(int argc, char **argv)
   }
   
   //If transformations were not defined by user, set them to identity
-  for (i=0;i<nStacks;i++)
+  if(!have_stack_transformations)
   {
-    irtkRigidTransformation *rigidTransf = new irtkRigidTransformation;
-    stack_transformations.push_back(*rigidTransf);
-    delete rigidTransf;
+    for (i=0;i<nStacks;i++)
+    {
+      irtkRigidTransformation *rigidTransf = new irtkRigidTransformation;
+      stack_transformations.push_back(*rigidTransf);
+      delete rigidTransf;
+    }
+    templateNumber = 0;  
   }
-  templateNumber = 0;  
 
   //Initialise 2*slice thickness if not given by user
   if (thickness.size()==0)
