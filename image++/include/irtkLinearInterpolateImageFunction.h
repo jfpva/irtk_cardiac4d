@@ -55,6 +55,9 @@ public:
 
   /// Evaluate
   virtual double Evaluate(double, double, double, double = 0);
+  
+  /// Use padding value when evaluating
+  double EvaluateWithPadding(double x, double y, double z, double time, double padding);
 
   /** Evaluate the filter at an arbitrary image location (in pixels) without
    *  handling boundary conditions. This version is faster than the method
