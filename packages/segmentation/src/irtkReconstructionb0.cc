@@ -1199,3 +1199,44 @@ void irtkReconstructionb0::CorrectStacksSmoothFieldmap(vector<irtkRealImage> &st
     }//ind
   }//index
 }//function
+
+
+void irtkReconstructionb0::BSplineReconstructionGroup(int g)
+{
+  vector<irtkRealImage> slices;
+  vector<irtkRigidTransformation> transformations;
+  
+  irtkRealImage slice,b;
+  int i,j;
+  
+  double scale;
+  
+  int inputIndex;
+  for (inputIndex = 0; inputIndex < _slices.size(); ++inputIndex)
+  {
+    //correct and exclude slices  
+    if ((_slice_weight[inputIndex]>=0.5)&&(_stack_group[_stack_index[inputIndex]]==g))
+    {
+      cout<<inputIndex<<" ";
+      // read the current slice
+      slice=_slices[inputIndex];
+      //read the current bias image
+      b=_bias[inputIndex];
+      //identify scale factor
+        scale = _scale[inputIndex];
+    
+      //correct the slice      
+      for (i=0;i<slice.GetX();i++)
+        for (j=0;j<slice.GetY();j++)
+          if (slice(i,j,0)!=-1)
+	    slice(i,j,0)*=exp(-b(i,j,0))*scale;
+       //prepare slices for BSpline reconstruction
+       slices.push_back(slice);
+       transformations.push_back(_transformations[inputIndex]);
+    }
+  }
+
+  _bSplineReconstruction.Reconstruct(6,1,_reconstructed,slices,transformations);
+  _reconstructed.Write("reconBSpline.nii.gz");
+}
+
