@@ -1240,3 +1240,4 @@ void irtkReconstructionb0::BSplineReconstructionGroup(int g)
   _reconstructed.Write("reconBSpline.nii.gz");
 }
 
+

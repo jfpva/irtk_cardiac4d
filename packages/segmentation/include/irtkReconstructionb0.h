@@ -67,9 +67,7 @@ public:
   void SmoothFieldmap(int iter);
   void CreateLargerMask(irtkRealImage mask);
   void CreateStackMask(vector<irtkRealImage> &simulated);
-  
   void BSplineReconstructionGroup(int g);
-
 
   inline void SetGroups(vector<int>& stack_group, vector<int>& groups, vector<bool>& swap); 
   inline void SetReconstructed(irtkRealImage image);
