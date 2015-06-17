@@ -38,7 +38,8 @@ void usage()
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
   cerr << "\t-thickness [th_1] .. [th_N] Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
-  cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
+  cerr << "\t-mask [mask]              Binary mask to define the region of interest. [Default: whole image]"<<endl;
+  cerr << "\t-second_mask [mask]       Binary mask to define the region of interest for second group. [Default: whole image]"<<endl;
   cerr << "\t-packages [num_1] .. [num_N] Give number of packages used during acquisition for each stack."<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
@@ -98,7 +99,8 @@ int main(int argc, char **argv)
     
   // Default values.
   int templateNumber=-1;
-  irtkRealImage *mask=NULL;
+  irtkRealImage *mask = NULL;
+  irtkRealImage *mask2 = NULL;
   irtkRealImage b0_mask,T2_mask;
   int iterations = 9;
   bool debug = false;
@@ -239,6 +241,16 @@ int main(int argc, char **argv)
       argc--;
       argv++;
       mask= new irtkRealImage(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    }
+    
+    //Read binary mask for final volume
+    if ((ok == false) && (strcmp(argv[1], "-second_mask") == 0)){
+      argc--;
+      argv++;
+      mask2= new irtkRealImage(argv[1]);
       ok = true;
       argc--;
       argv++;
@@ -613,56 +625,111 @@ int main(int argc, char **argv)
   //set precision
   cout<<setprecision(3);
   cerr<<setprecision(3);
+  
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////Algorithm starts here///////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  //Split stacks into two groups
+  /// Slice stacks
+  vector<irtkRealImage> stacks1, stacks2;
+  /// Stack transformation
+  vector<irtkRigidTransformation> stack_transformations1,stack_transformations2;
+  ///Group index
+  vector<int> group_index;
+  for(uint ind=0;ind<stacks.size();ind++)
+  {
+    if(stack_group[ind]==groups[0])
+    {
+      stacks1.push_back(stacks[ind]);
+      stack_transformations1.push_back(stack_transformations[ind]);
+      group_index.push_back(stacks1.size()-1);
+    }
+    else
+    {
+      stacks2.push_back(stacks[ind]);
+      stack_transformations2.push_back(stack_transformations[ind]);
+      group_index.push_back(stacks2.size()-1);
+    }
+  }
+    
 
-  //perform volumetric registration of the stacks
+  //perform volumetric registration of the stack groups
   //redirect output to files
   cerr.rdbuf(file_e.rdbuf());
   cout.rdbuf (file.rdbuf());
+  
+  ////group1
+  
   //volumetric registration
-  reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
-
-  //if remove_black_background flag is set, create mask from black background of the stacks
-  if (remove_black_background)
-    reconstruction.CreateMaskFromBlackBackground(stacks,stack_transformations, smooth_mask);
-  
-  cout<<endl;
-  cout.flush();
-  //redirect output back to screen
-  cout.rdbuf (strm_buffer);
-  cerr.rdbuf (strm_buffer_e);
-  
-  //Volumetric registrations are stack-to-template while slice-to-volume 
-  //registrations are actually performed as volume-to-slice (reasons: technicalities of implementation)
-  //Need to invert stack transformations now.  
-  //reconstruction.InvertStackTransformations(stack_transformations);
-  average = reconstruction.CreateAverage(stacks,stack_transformations);
+  reconstruction.SetMask(mask,smooth_mask);
+  reconstruction.irtkReconstruction::StackRegistrations(stacks1,stack_transformations1,0);
+  average = reconstruction.CreateAverage(stacks1,stack_transformations1);
   if (debug)
     average.Write("average1.nii.gz");
-
-  //Mask is transformed to the all other stacks and they are cropped
-  for (i=0; i<nStacks; i++)
+  for (i=0; i<stacks1.size(); i++)
   {
-    //template stack has been cropped already
-    if ((i==templateNumber)&&(!remove_black_background)) continue;
     //transform the mask
-    irtkRealImage m=reconstruction.GetMask();
-    reconstruction.TransformMask(stacks[i],m,stack_transformations[i]);
+    irtkRealImage m= *mask;
+    m.Write("mask1.nii.gz");
+    reconstruction.TransformMask(stacks1[i],m,stack_transformations1[i]);
     //Crop template stack
-    reconstruction.CropImage(stacks[i],m);
+    reconstruction.CropImage(stacks1[i],m);
     if (debug)
     {
-      sprintf(buffer,"mask%i.nii.gz",i);
+      sprintf(buffer,"mask1-%i.nii.gz",i);
       m.Write(buffer); 
-      sprintf(buffer,"cropped%i.nii.gz",i);
-      stacks[i].Write(buffer);
+      sprintf(buffer,"cropped1-%i.nii.gz",i);
+      stacks1[i].Write(buffer);
+    }
+  }
+ 
+
+  reconstruction.SetMask(mask2,smooth_mask);
+  reconstruction.irtkReconstruction::StackRegistrations(stacks2,stack_transformations2,0);
+  average = reconstruction.CreateAverage(stacks2,stack_transformations2);
+  if (debug)
+    average.Write("average2.nii.gz");
+  for (i=0; i<stacks2.size(); i++)
+  {
+    //transform the mask
+    irtkRealImage m= *mask2;
+    m.Write("mask2.nii.gz");
+    reconstruction.TransformMask(stacks2[i],m,stack_transformations2[i]);
+    //Crop template stack
+    reconstruction.CropImage(stacks2[i],m);
+    if (debug)
+    {
+      sprintf(buffer,"mask2-%i.nii.gz",i);
+      m.Write(buffer); 
+      sprintf(buffer,"cropped2-%i.nii.gz",i);
+      stacks2[i].Write(buffer);
     }
   }
   
+  //put registered and cropped stacks into main vector
+  
+  stacks.clear();
+  stack_transformations.clear();
+  for(i=0;i<nStacks;i++)
+  {
+    if(stack_group[i]==groups[0])
+    {
+      stacks.push_back(stacks1[group_index[i]]);
+      stack_transformations.push_back(stack_transformations1[group_index[i]]);
+    }
+    else
+    {
+      stacks.push_back(stacks2[group_index[i]]);
+      stack_transformations.push_back(stack_transformations2[group_index[i]]);      
+    }
+  }
+ 
+
+  
   //Repeat volumetric registrations with cropped stacks
-  //reconstruction.InvertStackTransformations(stack_transformations);
-  //redirect output to files
-  cerr.rdbuf(file_e.rdbuf());
-  cout.rdbuf (file.rdbuf());
+
   //volumetric registration
   reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
   cout<<endl;
@@ -671,6 +738,7 @@ int main(int argc, char **argv)
   cout.rdbuf (strm_buffer);
   cerr.rdbuf (strm_buffer_e);
   //reconstruction.InvertStackTransformations(stack_transformations);
+  
   
   //Rescale intensities of the stacks to have the same average
   if (intensity_matching)
@@ -679,7 +747,7 @@ int main(int argc, char **argv)
     reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue,true);
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
-    average.Write("average2.nii.gz");
+    average.Write("average-all.nii.gz");
   reconstruction.SetReconstructed(average);
   //exit(1);
 
@@ -722,8 +790,9 @@ int main(int argc, char **argv)
   ////TEST
   //Select stacks
   int current_group = -1;
-  if(iterations>1)
-    iterations = 7;
+  double step = 2.5;
+  //if(iterations>1)
+    //iterations = 7;
   //registration iterations
   for (iter=0;iter<(iterations);iter++)
   {
@@ -735,8 +804,64 @@ int main(int argc, char **argv)
     if(corrected_stacks.size()==0)
     for(i=0;i<stacks.size();i++)
       corrected_stacks.push_back(stacks[i]);
-
     
+    
+    
+    //distortion correction
+      
+    if(iter>0)
+    {
+      //redirect output to files
+      cerr.rdbuf(filed_e.rdbuf());
+      cout.rdbuf (filed.rdbuf());
+      
+    //if(current_group==0)
+    //  reconstruction.SetMask(mask2,smooth_mask);
+    //else
+    //  reconstruction.SetMask(mask,smooth_mask);
+
+      
+      reconstruction.CoeffInitBSpline();
+
+      //reconstruction.Shim(corrected_stacks,iter);
+      if(iter>0)
+      {
+        reconstruction.FieldMapGroup(corrected_stacks,1-current_group,step,iter);
+	step/=2;
+	reconstruction.SaveDistortionTransformations();
+      }
+        //change 2: Fieldmap is calculated even for affine only
+	reconstruction.SmoothFieldmapGroup(1-current_group,iter);
+
+	corrected_stacks.clear();
+        for(i=0;i<stacks.size();i++)
+          corrected_stacks.push_back(stacks[i]);
+        reconstruction.CorrectStacksSmoothFieldmap(corrected_stacks);
+
+      //set corrected slices
+      reconstruction.UpdateSlices(corrected_stacks,thickness);
+      cout<<"PutMask b0"<<endl;
+      cout.flush();
+      reconstruction.PutMask(b0_mask);
+      b0_mask.Write("b0mask.nii.gz");
+      cout<<"Mask slices"<<endl;
+      cout.flush();
+      reconstruction.MaskSlices();
+      cout<<" done."<<endl;
+      cout.flush();
+      
+
+      //redirect output back to screen
+      cout.rdbuf (strm_buffer);
+      cerr.rdbuf (strm_buffer_e);
+
+    }
+      
+
+    //end distortion correction
+      
+      
+      
     //perform slice-to-volume registrations - skip the first iteration 
     if (iter>0)
     {
@@ -785,7 +910,15 @@ int main(int argc, char **argv)
     }
       
     cout<<endl<<"Current_group = "<<current_group<<endl;
+    //if(current_group==0)
+    //  reconstruction.SetMask(mask,smooth_mask);
+    //else
+    //  reconstruction.SetMask(mask2,smooth_mask);
+    
     reconstruction.BSplineReconstructionGroup(groups[current_group]);
+    //reconstruction.MaskVolume();
+    
+    
     if (debug)
     {
       reconstructed=reconstruction.GetReconstructed();

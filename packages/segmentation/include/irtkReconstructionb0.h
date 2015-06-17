@@ -41,6 +41,7 @@ protected:
   vector<irtkAffineTransformation> _shim;
   irtkMultiLevelFreeFormTransformation _fieldMap;
   vector<irtkRealImage> _smoothFieldMap;
+  irtkRealImage _distortion;
   irtkRealImage _larger_mask;
   bool _have_larger_mask;
   double _fieldMapSpacing;
@@ -57,6 +58,7 @@ public:
   void Shim(vector<irtkRealImage> &stacks, int iter = 0);
   void FieldMapDistortion(irtkRealImage &acquired, irtkRealImage &simulated, irtkMultiLevelFreeFormTransformation &dist, bool swap, double step, int iter);
   void FieldMap(vector<irtkRealImage> &stacks, double step, int iter = 0);
+  void FieldMapGroup(vector<irtkRealImage> &stacks, int group, double step, int iter = 0);
   irtkRealImage Create4DImage(vector<irtkRealImage> &stacks);
   irtkRealImage AlignT2Template(irtkRealImage T2, double sigma=0);
   void CreateSimulated(vector<irtkRealImage> &stacks);
@@ -65,6 +67,7 @@ public:
   void CorrectStacks(vector<irtkRealImage> &stacks);
   void CorrectStacksSmoothFieldmap(vector<irtkRealImage> &stacks);
   void SmoothFieldmap(int iter);
+  void SmoothFieldmapGroup(int group, int iter);
   void CreateLargerMask(irtkRealImage mask);
   void CreateStackMask(vector<irtkRealImage> &simulated);
   void BSplineReconstructionGroup(int g);

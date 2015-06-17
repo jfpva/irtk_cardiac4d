@@ -684,6 +684,192 @@ void irtkReconstructionb0::FieldMap(vector<irtkRealImage> &stacks, double step, 
   delete interpolatorLin;
 }
 
+void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, int group, double step, int iter)
+{
+  cout<<"Field map correction."<<endl;
+  cout<<"FieldMap correction: Warning: only implemented for stacks of same geometry at present!."<<endl;
+  cout.flush();
+  if(stacks.size()==0)
+  {
+    cerr<<"irtkReconstructionb0: Please set the stacks!"<<endl;
+    exit(1);
+  }
+  vector<irtkRealImage> simulated;
+  vector<irtkRealImage> simulatedgroup;
+  vector<irtkRealImage> stacksgroup;
+  vector<irtkRealImage> stacks2;
+  
+  unsigned int ind;
+  int i,j,k;
+  char buffer[256];
+  irtkRealImage image;
+  double valst,valsim;
+  
+  //simulate stacks
+  for(ind = 0; ind<stacks.size();ind++)
+  {
+    simulated.push_back(stacks[ind]);
+    stacks2.push_back(stacks[ind]);
+  }
+  SimulateStacks(simulated);
+  
+  cout<<"group: "<<group<<" _groups[group]"<<_groups[group]<<endl;
+  cout<<"_stack_group: ";
+  //choose stacks for current group 
+  for(ind = 0; ind<stacks.size();ind++)
+  {
+    if(_stack_group[ind]==_groups[group])
+    {
+      cout<<ind<<":"<<_stack_group[ind]<<" ";
+      simulatedgroup.push_back(simulated[ind]);
+      stacksgroup.push_back(stacks[ind]);
+    }
+  }
+  
+  if(_debug)
+  {
+    for(ind = 0; ind<stacksgroup.size();ind++)
+    {
+      sprintf(buffer,"st%i.nii.gz",ind);
+      stacksgroup[ind].Write(buffer);
+      sprintf(buffer,"sim%i.nii.gz",ind);
+      simulatedgroup[ind].Write(buffer);
+    }
+  }
+  
+  //Resample stacks and simulated to the same geometry and create 4D nifti
+  irtkImageTransformation *imagetransformation = new irtkImageTransformation;
+  irtkImageFunction *interpolator = new irtkNearestNeighborInterpolateImageFunction;
+  irtkImageFunction *interpolatorLin = new irtkLinearInterpolateImageFunction;
+  imagetransformation->PutInterpolator(interpolator);
+  //target probably has padding 0, need padding -1
+  imagetransformation->PutTargetPaddingValue(-1);
+  //need to fill voxels in target where there is no info from source with zeroes
+  imagetransformation->PutSourcePaddingValue(0);
+
+
+  irtkRealImage templateStack = stacksgroup[0];
+  irtkImageAttributes attr = templateStack.GetImageAttributes();
+  attr._t = stacksgroup.size();
+  cout<<endl<<"We have "<<attr._t<<" images "<<endl;
+  irtkRealImage stack(attr), simul(attr);
+  
+  irtkRigidTransformation id;
+    
+  irtkRealImage st(templateStack),sim(templateStack);
+  //resample all on the same grid
+  for(ind=0; ind<stacksgroup.size(); ind++)
+  {
+    imagetransformation->SetInput(&stacksgroup[ind], &id);
+    imagetransformation->SetOutput(&st);
+    imagetransformation->Run();
+    
+    imagetransformation->SetInput(&simulatedgroup[ind], &id);
+    imagetransformation->SetOutput(&sim);
+    imagetransformation->Run();
+    
+    for(i=0;i<templateStack.GetX();i++)
+      for(j=0;j<templateStack.GetY();j++)
+        for(k=0;k<templateStack.GetZ();k++)
+	{
+	  valst = st(i,j,k);
+	  valsim = sim(i,j,k);
+	  if(valst>0.01)
+	    stack(i,j,k,ind)=valst;
+	  else
+	    stack(i,j,k,ind)=0;
+	  if(valsim>0.01)
+	    simul(i,j,k,ind)=valsim; 
+	  else
+	    simul(i,j,k,ind)=0;
+	}
+  }
+  
+  if (_debug)
+  {
+    sprintf(buffer,"fmstacks%i.nii.gz",iter);
+    stack.Write(buffer);
+    sprintf(buffer,"fmsims%i.nii.gz",iter);
+    simul.Write(buffer);
+  }
+    
+  //calculate b0 field distortiom
+  //irtkMultiLevelFreeFormTransformation dist;
+  //FieldMapDistortion(stack,simul,dist,_swap[0]);
+  
+  //clear fieldmap
+  if(_fieldMap.NumberOfLevels()>0)
+  {
+    irtkFreeFormTransformation *tr = _fieldMap.PopLocalTransformation();
+    delete tr;
+  }
+  _fieldMap.irtkTransformation::Write("fieldMap_clean.dof");
+  FieldMapDistortion(stack,simul,_fieldMap,_swap[group],step,iter);
+  
+  if(_debug)
+  {
+    sprintf(buffer,"fmdist%i.dof",iter);
+    _fieldMap.irtkTransformation::Write(buffer);
+  }
+    
+  //Corect the stacks
+  imagetransformation->PutInterpolator(interpolatorLin); 
+  for(ind=0; ind<stacks.size(); ind++)
+  {
+    cout<<"Correcting stack "<<ind<<endl;
+    imagetransformation->SetInput(&stacks2[ind], &_fieldMap);//&dist);
+    imagetransformation->SetOutput(&stacks[ind]);
+    imagetransformation->Run();
+  }
+  
+  //resample distortion on a template
+  irtkRealImage tempDist = templateStack;
+  _distortion = _reconstructed;
+  _distortion=0;
+  tempDist = 0;
+  irtkMultiLevelFreeFormTransformation dist(_fieldMap);
+  irtkMatrix m;
+  double x,y,z,xx,yy,zz;
+  attr = tempDist.GetImageAttributes();
+
+  //TODO: add shim
+  //Calculate distortion displacements from the transformation
+ // m = _shim[group].GetMatrix();
+  //dist.PutMatrix(m);
+
+  tempDist=0;
+  for(int k=0; k<_distortion.GetZ();k++)
+  for(int j=0; j<_distortion.GetY();j++)
+  for(int i=0; i<_distortion.GetX();i++)
+  {
+    //transforming to the coordinates of the stack group
+    //to get displacement in PE direction
+    
+    //origin
+    xx=i;yy=j;zz=k;
+    _distortion.ImageToWorld(xx,yy,zz);
+    tempDist.WorldToImage(xx,yy,zz);
+
+    //transformed
+    x=i;y=j;z=k;
+    _distortion.ImageToWorld(x,y,z);
+    dist.Transform(x,y,z);
+    tempDist.WorldToImage(x,y,z);
+    
+    if (_swap[group])
+      _distortion(i,j,k)=(y-yy)*attr._dy;
+    else
+      _distortion(i,j,k)=(x-xx)*attr._dx;
+   }
+
+    _distortion.Write("_dist.nii.gz");
+  
+  delete imagetransformation;
+  delete interpolator;
+  delete interpolatorLin;
+}
+
+
 void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImage &simul, irtkMultiLevelFreeFormTransformation &distortion, bool swap, double step, int iter)
 {
   //Adjust orientation
@@ -712,6 +898,8 @@ void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImag
   registration.SetOutput(&distortion);
   int levels;
   double res;
+  
+  /*
   if(iter<=4)
   {
     levels=3;
@@ -722,12 +910,17 @@ void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImag
     levels=4;
     res = 0.75;
   }
+  */
+  levels=1;
+  irtkImageAttributes attrt = t.GetImageAttributes();
+  res = attrt._dx;
   
-  registration.GuessParameterDistortion(res,_fieldMapSpacing*8,levels,step,_smoothnessPenalty);
+  //registration.GuessParameterDistortion(res,_fieldMapSpacing*8,levels,step,_smoothnessPenalty);
+  registration.GuessParameterDistortion(res,_fieldMapSpacing*2,levels,step*4,_smoothnessPenalty);
   if(_debug)
   {
     char buffer[256];
-    sprintf(buffer,"par-dist-%f.nreg",step);
+    sprintf(buffer,"par-dist-%f.nreg",step*4);
     registration.irtkImageRegistration::Write(buffer);
   }
   registration.SetTargetPadding(0);
@@ -1024,6 +1217,51 @@ void irtkReconstructionb0::SmoothFieldmap(int iter)
   
   
 }
+
+
+void irtkReconstructionb0::SmoothFieldmapGroup(int group, int iter)
+{
+  
+  char buffer[256];
+
+  irtkRealImage fieldmap = _distortion;
+  
+  if (_smoothFieldMap.size()==0)
+  {
+      fieldmap=0;
+      for(unsigned int ind=0;ind<_groups.size();ind++)
+	_smoothFieldMap.push_back(fieldmap);
+  }
+  
+  //Smooth the distortion displacements
+  irtkLaplacianSmoothing smoothing;
+  smoothing.SetInput(_distortion);
+  smoothing.SetMask(_larger_mask);
+  fieldmap = smoothing.Run();
+  _distortion.Write("d.nii.gz");
+  fieldmap.Write("f.nii.gz");
+    
+  //change 4: add new only at first iter otherwise add to existing
+   _smoothFieldMap[group]+=fieldmap;
+    
+     
+    if(_groups.size()>1)
+    {
+      sprintf(buffer,"fieldmap%i-%i.nii.gz",iter,group);
+      fieldmap.Write(buffer);
+    }
+    else
+    {
+      sprintf(buffer,"incr-fieldmap%i.nii.gz",iter);
+      fieldmap.Write(buffer);
+      sprintf(buffer,"fieldmap%i.nii.gz",iter);
+      _smoothFieldMap[0].Write(buffer);
+      sprintf(buffer,"distortion%i.nii.gz",iter);
+      _distortion.Write(buffer);
+    }
+    
+}
+
 
 void irtkReconstructionb0::CorrectStacks(vector<irtkRealImage> &stacks)
 {

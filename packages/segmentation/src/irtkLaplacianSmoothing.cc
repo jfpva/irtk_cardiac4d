@@ -586,9 +586,9 @@ void irtkLaplacianSmoothing::Smooth(irtkRealImage& im, irtkRealImage m)
       multipliers = multipliers + laplacian*alpha;
       multipliers.Write("multipliers.nii.gz");
       
-      //UpdateFieldmap(fieldmap, image, multipliers, mask, weights, alpha);
+      UpdateFieldmap(fieldmap, image, multipliers, mask, weights, alpha);
       //UpdateFieldmapWithThreshold(fieldmap, image, multipliers, mask, weights, alpha,0.28);
-      UpdateFieldmapHuber(fieldmap, image, multipliers, mask, weights, alpha);
+      //UpdateFieldmapHuber(fieldmap, image, multipliers, mask, weights, alpha);
 
       fieldmap.Write("fieldmap.nii.gz");
       
