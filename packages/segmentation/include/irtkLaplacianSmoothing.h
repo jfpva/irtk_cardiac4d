@@ -43,6 +43,8 @@ protected:
   
   void Blur(irtkRealImage& image, double sigma, double padding);
   void Resample(irtkRealImage& image, double step, double padding);
+  void ResampleOnGrid(irtkRealImage& image, irtkRealImage templ);
+
   void EnlargeImage(irtkRealImage &image);
   void ReduceImage(irtkRealImage &image);
   
@@ -50,8 +52,10 @@ protected:
   void CalculateBoundaryWeights(irtkRealImage& w, irtkRealImage m);
   double LaplacianImage(irtkRealImage image, irtkRealImage m, irtkRealImage& laplacian);
   double LaplacianBoundary(irtkRealImage image, irtkRealImage m, irtkRealImage& laplacian);
+  void LLaplacian(irtkRealImage& llaplacian, irtkRealImage laplacian, irtkRealImage mask, irtkRealImage weights);
   void UpdateFieldmap(irtkRealImage& fieldmap, irtkRealImage image, irtkRealImage multipliers, 
 		    irtkRealImage mask, irtkRealImage weights, double alpha);
+  void UpdateFieldmapGD(irtkRealImage& fieldmap, irtkRealImage image, irtkRealImage laplacian, irtkRealImage mask, irtkRealImage weights, double alpha, double lambda1, double lambda2);
   
   void UpdateFieldmapWithThreshold(irtkRealImage& fieldmap, irtkRealImage image, irtkRealImage multipliers, 
 		    irtkRealImage mask, irtkRealImage weights, double alpha, double threshold);
@@ -59,8 +63,8 @@ protected:
 		    irtkRealImage mask, irtkRealImage weights, double alpha);
   
   void Smooth(irtkRealImage& im, irtkRealImage m);
+  void SmoothGD(irtkRealImage& im, irtkRealImage m);
   void UpsampleFieldmap(irtkRealImage& target, irtkRealImage mask, irtkRealImage newmask);
-
   
 public:
   
@@ -70,6 +74,7 @@ public:
   void SetMask(irtkRealImage mask);
   
   irtkRealImage Run();
+  irtkRealImage RunGD();
   irtkRealImage Run3levels();
   irtkRealImage Run1level();
 

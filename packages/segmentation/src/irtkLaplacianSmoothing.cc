@@ -86,6 +86,21 @@ void irtkLaplacianSmoothing::Resample(irtkRealImage& image, double step, double 
   res.Run();
 }
 
+void irtkLaplacianSmoothing::ResampleOnGrid(irtkRealImage& image, irtkRealImage templ)
+{
+  irtkImageTransformation *imagetransformation = new irtkImageTransformation;
+  irtkImageFunction *interpolator = new irtkNearestNeighborInterpolateImageFunction;
+  imagetransformation->PutInterpolator(interpolator);
+  //imagetransformation->PutTargetPaddingValue(-1);
+  //imagetransformation->PutSourcePaddingValue(-1);
+  irtkRigidTransformation id;
+  templ=0;
+  imagetransformation->SetInput(&image, &id);
+  imagetransformation->SetOutput(&templ);
+  imagetransformation->Run();
+  image = templ;
+}
+
 void irtkLaplacianSmoothing::EnlargeImage(irtkRealImage &image)
 {
   int i,j,k,l;
@@ -247,7 +262,7 @@ double irtkLaplacianSmoothing::LaplacianImage(irtkRealImage image, irtkRealImage
             {
 	      diff = original(x,y,z)-val;
 	      laplacian(x,y,z)=diff;
-	      laplacian_value+=fabs(diff);
+	      laplacian_value+=0.5*diff*diff;
 	      count++;
 	    }
 	    else
@@ -308,7 +323,7 @@ double irtkLaplacianSmoothing::LaplacianBoundary(irtkRealImage image, irtkRealIm
 	      val/=sum;
 	      diff = original(x,y,z)-val;
 	      laplacian(x,y,z)=diff;
-	      laplacian_value+=fabs(diff);
+	      laplacian_value+=0.5*diff*diff;
 	      count++;
 	    }
 	    else
@@ -320,9 +335,123 @@ double irtkLaplacianSmoothing::LaplacianBoundary(irtkRealImage image, irtkRealIm
     return laplacian_value/count;
 }
 
+void irtkLaplacianSmoothing::UpdateFieldmapGD(irtkRealImage& fieldmap, irtkRealImage image, irtkRealImage laplacian, irtkRealImage mask, irtkRealImage weights, double alpha, double lambda1, double lambda2)
+{
+    
+  irtkRealImage original = fieldmap;
+  fieldmap = 0;
 
-void irtkLaplacianSmoothing::UpdateFieldmap(irtkRealImage& fieldmap, irtkRealImage image, irtkRealImage multipliers, 
-		    irtkRealImage mask, irtkRealImage weights, double alpha)
+  int dx = image.GetX();
+  int dy = image.GetY();
+  int dz = image.GetZ();
+
+  int x, y, z, xx, yy, zz,i;
+  double sum;
+   
+  for (x = 0; x < dx; x++)
+    for (y = 0; y < dy; y++)
+      for (z = 0; z < dz; z++) 
+	if(mask(x,y,z)>0)
+	{
+          sum = 0;
+          for (i = 0; i < 13; i++) {
+            xx = x + _directions[i][0];
+            yy = y + _directions[i][1];
+            zz = z + _directions[i][2];
+            if ((xx >= 0) && (xx < dx) && (yy >= 0) && (yy < dy) && (zz >= 0) && (zz < dz)) 
+	    {
+	      if (mask(xx,yy,zz)==1)
+	      {
+	        sum += lambda1*_factor[i]*laplacian(xx,yy,zz);
+              }
+	      if ((mask(xx,yy,zz)==2)&&(mask(x,y,z)==2))
+	      {
+	        sum += lambda2*_factor[i]*laplacian(xx,yy,zz)/weights(x,y,z);
+              }
+	    }
+          }
+          for (i = 0; i < 13; i++) {
+            xx = x - _directions[i][0];
+            yy = y - _directions[i][1];
+            zz = z - _directions[i][2];
+            if ((xx >= 0) && (xx < dx) && (yy >= 0) && (yy < dy) && (zz >= 0) && (zz < dz)) 
+	    {
+	      if (mask(xx,yy,zz)==1)
+	      {
+	        sum += lambda1*_factor[i]*laplacian(xx,yy,zz);
+              }
+	      if ((mask(xx,yy,zz)==2)&&(mask(x,y,z)==2))
+	      {
+	        sum += lambda2*_factor[i]*laplacian(xx,yy,zz)/weights(x,y,z);
+              }
+	    }
+          }
+          
+          if(mask(x,y,z)==1)
+	    fieldmap(x,y,z)=(1-alpha)*original(x,y,z)+alpha*image(x,y,z)-alpha*lambda1*laplacian(x,y,z)+alpha*sum;
+	  if(mask(x,y,z)==2)
+            fieldmap(x,y,z)=original(x,y,z)-alpha*lambda2*laplacian(x,y,z)+alpha*sum;  
+	}    
+}
+
+
+void irtkLaplacianSmoothing::LLaplacian(irtkRealImage& llaplacian, irtkRealImage laplacian, irtkRealImage mask, irtkRealImage weights)
+{
+    
+  llaplacian = 0;
+
+  int dx = llaplacian.GetX();
+  int dy = llaplacian.GetY();
+  int dz = llaplacian.GetZ();
+
+  int x, y, z, xx, yy, zz,i;
+  double sum;
+   
+  for (x = 0; x < dx; x++)
+    for (y = 0; y < dy; y++)
+      for (z = 0; z < dz; z++) 
+	if(mask(x,y,z)>0)
+	{
+          sum = 0;
+          for (i = 0; i < 13; i++) {
+            xx = x + _directions[i][0];
+            yy = y + _directions[i][1];
+            zz = z + _directions[i][2];
+            if ((xx >= 0) && (xx < dx) && (yy >= 0) && (yy < dy) && (zz >= 0) && (zz < dz)) 
+	    {
+	      if (mask(xx,yy,zz)==1)
+	      {
+	        sum += _factor[i]*laplacian(xx,yy,zz);
+              }
+	      if ((mask(xx,yy,zz)==2)&&(mask(x,y,z)==2))
+	      {
+	        sum += _factor[i]*laplacian(xx,yy,zz)/weights(x,y,z);
+              }
+	    }
+          }
+          for (i = 0; i < 13; i++) {
+            xx = x - _directions[i][0];
+            yy = y - _directions[i][1];
+            zz = z - _directions[i][2];
+            if ((xx >= 0) && (xx < dx) && (yy >= 0) && (yy < dy) && (zz >= 0) && (zz < dz)) 
+	    {
+	      if (mask(xx,yy,zz)==1)
+	      {
+	        sum += _factor[i]*laplacian(xx,yy,zz);
+              }
+	      if ((mask(xx,yy,zz)==2)&&(mask(x,y,z)==2))
+	      {
+	        sum += _factor[i]*laplacian(xx,yy,zz)/weights(x,y,z);
+              }
+	    }
+          }
+          
+	    llaplacian(x,y,z)=laplacian(x,y,z)-sum;
+	}    
+}
+
+
+void irtkLaplacianSmoothing::UpdateFieldmap(irtkRealImage& fieldmap, irtkRealImage image, irtkRealImage multipliers, irtkRealImage mask, irtkRealImage weights, double alpha)
 {
     
   irtkRealImage original = fieldmap;
@@ -554,12 +683,21 @@ void irtkLaplacianSmoothing::UpdateFieldmapHuber(irtkRealImage& fieldmap, irtkRe
 void irtkLaplacianSmoothing::Smooth(irtkRealImage& im, irtkRealImage m)
 {
   double prev_lap, lap;
+  char buffer[255];
+  
+  im.Write("im.nii.gz");
+  m.Write("m.nii.gz");
+  
   irtkRealImage image(im);
   EnlargeImage(image);
   
   irtkRealImage mask(m);
   EnlargeImage(mask);
   CalculateBoundary(mask);
+
+  image.Write("image.nii.gz");
+  m.Write("mask.nii.gz");
+
   
   irtkRealImage weights(mask);
   weights=0;
@@ -572,9 +710,11 @@ void irtkLaplacianSmoothing::Smooth(irtkRealImage& im, irtkRealImage m)
   laplacian=0;
   llaplacian=0;
   multipliers=0;
-  
+  image.Write("smooth-image.nii.gz");
+  mask.Write("smooth-mask.nii.gz");
 
-  double alpha = 1;
+  double alpha = 0.5;
+  double rel_diff;
   
   for (int iter = 1; iter<1000; iter++)
     {	
@@ -583,18 +723,24 @@ void irtkLaplacianSmoothing::Smooth(irtkRealImage& im, irtkRealImage m)
       laplacian.Write("laplacian.nii.gz");
       LaplacianBoundary(fieldmap, mask,laplacian);
       laplacian.Write("laplacian-with-boundary.nii.gz");
+      //LLaplacian(llaplacian,laplacian,mask,weights);
+      //llaplacian.Write("llaplacian.nii.gz");
+      //exit(1);
       multipliers = multipliers + laplacian*alpha;
       multipliers.Write("multipliers.nii.gz");
       
-      UpdateFieldmap(fieldmap, image, multipliers, mask, weights, alpha);
+      //UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,1,1);
+      UpdateFieldmap(fieldmap, image, laplacian, mask, weights, alpha);
       //UpdateFieldmapWithThreshold(fieldmap, image, multipliers, mask, weights, alpha,0.28);
       //UpdateFieldmapHuber(fieldmap, image, multipliers, mask, weights, alpha);
 
+      //sprintf(buffer,"fieldmap%i.nii.gz",iter);
+      //fieldmap.Write(buffer);
       fieldmap.Write("fieldmap.nii.gz");
       
-    
-      cout<<"Iter "<<iter<<" alpha "<<alpha<<" prev_lap "<<prev_lap<<" lap "<<lap<<" reldiff "<<(prev_lap-lap)/prev_lap<<endl;
-      
+      rel_diff = (prev_lap-lap)/prev_lap;
+      cout<<"Iter "<<iter<<" alpha "<<alpha<<" prev_lap "<<prev_lap<<" lap "<<lap<<" reldiff "<<rel_diff<<endl;
+      if((iter>1)&&(rel_diff<0.0001)) break;
     }
     //reduce fieldmap to original size
     ReduceImage(fieldmap);
@@ -602,6 +748,73 @@ void irtkLaplacianSmoothing::Smooth(irtkRealImage& im, irtkRealImage m)
     im = fieldmap*m;
     
 }
+
+void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
+{
+  double prev_lap, lap;
+  char buffer[255];
+  
+  im.Write("im.nii.gz");
+  m.Write("m.nii.gz");
+  
+  irtkRealImage image(im);
+  EnlargeImage(image);
+  
+  irtkRealImage mask(m);
+  EnlargeImage(mask);
+  CalculateBoundary(mask);
+
+  image.Write("image.nii.gz");
+  m.Write("mask.nii.gz");
+
+  
+  irtkRealImage weights(mask);
+  weights=0;
+  CalculateBoundaryWeights(weights,mask);
+  
+  irtkRealImage fieldmap(image);
+  irtkRealImage laplacian(image);
+  irtkRealImage llaplacian(image);
+  irtkRealImage multipliers(image);
+  laplacian=0;
+  llaplacian=0;
+  multipliers=0;
+  image.Write("smooth-image.nii.gz");
+  mask.Write("smooth-mask.nii.gz");
+
+  double alpha = 0.5;
+  double rel_diff;
+    alpha = 5;
+    for(int aiter = 1; aiter<5; aiter++)
+    {
+      alpha/=10;
+      for (int iter = 1; iter<10000; iter++)
+      {	
+        prev_lap=lap;
+        lap = LaplacianImage(fieldmap, mask,laplacian);
+        //laplacian.Write("laplacian.nii.gz");
+        LaplacianBoundary(fieldmap, mask,laplacian);
+        //laplacian.Write("laplacian-with-boundary.nii.gz");
+        UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,1);
+
+        //sprintf(buffer,"fieldmap%f-%i.nii.gz",alpha,iter);
+        //fieldmap.Write(buffer);
+      
+        rel_diff = (prev_lap-lap)/prev_lap;
+        cout<<"Iter "<<iter<<" alpha "<<alpha<<" prev_lap "<<prev_lap<<" lap "<<lap<<" reldiff "<<rel_diff<<endl;
+        if((iter>1)&&((lap<0.0001)||(rel_diff<0.0001))) break;
+      }
+      //sprintf(buffer,"final-fieldmap%f.nii.gz",alpha);
+      //fieldmap.Write(buffer);
+    }
+    
+    //reduce fieldmap to original size
+    ReduceImage(fieldmap);
+    //mask out all the boundary voxels
+    im = fieldmap*m;
+    
+}
+
 
 void irtkLaplacianSmoothing::UpsampleFieldmap(irtkRealImage& target, irtkRealImage mask, irtkRealImage newmask)
 {
@@ -624,6 +837,8 @@ void irtkLaplacianSmoothing::UpsampleFieldmap(irtkRealImage& target, irtkRealIma
     pm++;
     pf++;
   }
+  
+  f.Write("f.nii.gz");
   
   irtkLinearInterpolateImageFunction interpolator;
   interpolator.SetInput(&f);
@@ -683,35 +898,95 @@ irtkRealImage irtkLaplacianSmoothing::Run()
     irtkRealImage image(_image), mask(_mask);
     //step = attr._dz*8;
     step=6;
+    image.Write("image-before.nii.gz");
     Blur(image,step/2,-1000);
+    image.Write("image-blurred.nii.gz");
     Resample(image,step,-1000);
-    Resample(mask,step,0);
+    image.Write("image-res.nii.gz");
+    mask.Write("mask-before.nii.gz");
+    ResampleOnGrid(mask,image);
+    image.Write("image-after.nii.gz");
+    mask.Write("mask-after.nii.gz");
+
+
     
+   
     Smooth(image,mask);
+    
+    image.Write("fieldmap-lr.nii.gz");
+    
     _fieldmap=image;
     _m=mask;
-    
     
     image = _image;
     mask=_mask;
     //step = attr._dz*4;
     step=3;
+    image.Write("image-before-2.nii.gz");
     Blur(image,step/2,-1000);
+    image.Write("image-blurred-2.nii.gz");
     Resample(image,step,-1000);
-    Resample(mask,step,0);
+    image.Write("image-res-2.nii.gz");
+    mask.Write("mask-before-2.nii.gz");
+    ResampleOnGrid(mask,image);
+    image.Write("image-after-2.nii.gz");
+    mask.Write("mask-after-2.nii.gz");
 
     
     UpsampleFieldmap(image,_m,mask);
+    _fieldmap.Write("upsampled.nii.gz");
     image*=mask;
     image-=_fieldmap;
     
     Smooth(image,mask);
+     image.Write("fieldmap-hr.nii.gz");
     _fieldmap += image;
     _m=mask;
-    
+    _fieldmap.Write("fieldmap-added.nii.gz");
+    _image.Write("_image.nii.gz");
+    _m.Write("_m.nii.gz");
+    _mask.Write("_mask.nii.gz");
     UpsampleFieldmap(_image,_m,_mask);
+    image.Write("upsampled-2.nii.gz");
     return _fieldmap;
 }
+
+irtkRealImage irtkLaplacianSmoothing::RunGD()
+{
+     InitializeFactors();
+    
+    double step;
+    irtkImageAttributes attr = _image.GetImageAttributes();
+    irtkRealImage image(_image), mask(_mask);
+    //step = attr._dz*8;
+    step=3;
+    image.Write("image-before.nii.gz");
+    Blur(image,step/2,-1000);
+    image.Write("image-blurred.nii.gz");
+    Resample(image,step,-1000);
+    image.Write("image-res.nii.gz");
+    mask.Write("mask-before.nii.gz");
+    ResampleOnGrid(mask,image);
+    image.Write("image-after.nii.gz");
+    mask.Write("mask-after.nii.gz");
+
+
+    
+   
+    SmoothGD(image,mask);
+
+     image.Write("fieldmap-hr.nii.gz");
+    _fieldmap = image;
+    _m=mask;
+    _fieldmap.Write("fieldmap-added.nii.gz");
+    _image.Write("_image.nii.gz");
+    _m.Write("_m.nii.gz");
+    _mask.Write("_mask.nii.gz");
+    UpsampleFieldmap(_image,_m,_mask);
+    image.Write("upsampled-2.nii.gz");
+    return _fieldmap;
+}
+
 
 irtkRealImage irtkLaplacianSmoothing::Run1level()
 {

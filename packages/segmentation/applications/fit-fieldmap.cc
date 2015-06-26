@@ -65,9 +65,10 @@ int main(int argc, char **argv)
    
   irtkLaplacianSmoothing smoothing;
   smoothing.SetInput(_image);
-  smoothing.SetMask(_mask);
+  smoothing.SetMask(_mask);  
+  _fieldmap = smoothing.RunGD();
   //_fieldmap = smoothing.Run();
-  _fieldmap = smoothing.Run1level();
+  //_fieldmap = smoothing.Run1level();
   _fieldmap.Write(output_name);
 
 }

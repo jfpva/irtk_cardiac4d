@@ -684,7 +684,78 @@ void irtkReconstructionb0::FieldMap(vector<irtkRealImage> &stacks, double step, 
   delete interpolatorLin;
 }
 
-void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, int group, double step, int iter)
+void irtkReconstructionb0::SimulateStacksWithMask(vector<irtkRealImage>& stacks, irtkRealImage mask)
+{
+    if (_debug)
+        cout<<"Simulating stacks."<<endl;
+  
+    unsigned int inputIndex;
+    int i, j, k, n;
+    irtkRealImage sim;
+    POINT3D p;
+    double weight;
+    double xx,yy,zz;
+  
+    int z, current_stack;
+    z=-1;//this is the z coordinate of the stack
+    current_stack=-1; //we need to know when to start a new stack
+
+
+    for (inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+      
+	
+        // read the current slice
+        irtkRealImage& slice = _slices[inputIndex];
+
+        //Calculate simulated slice
+        sim.Initialize( slice.GetImageAttributes() );
+        sim = 0;
+
+	//do not simulate excluded slice
+        if(_slice_weight[inputIndex]>0.5)
+	{
+          for (i = 0; i < slice.GetX(); i++)
+            for (j = 0; j < slice.GetY(); j++)
+	    {
+	      //check whether the slice voxel is in ROI defined by mask
+	      xx=i;yy=j;zz=0;
+	      slice.ImageToWorld(xx,yy,zz);
+	      mask.WorldToImage(xx,yy,zz);
+	      xx=round(xx);yy=round(yy);zz=round(zz);
+	      if((xx>=0)&&(xx<mask.GetX())&&(yy>=0)&&(yy<mask.GetY())&&(zz>=0)&&(zz<mask.GetZ()))
+		if(mask(xx,yy,zz)>0)
+		{   
+		  weight=0;
+                  n = _volcoeffs[inputIndex][i][j].size();
+                  for (k = 0; k < n; k++) {
+                    p = _volcoeffs[inputIndex][i][j][k];
+                    sim(i, j, 0) += p.value * _reconstructed(p.x, p.y, p.z);
+                    weight += p.value;
+                  }
+                  if(weight>0.99)
+                    sim(i,j,0)/=weight;
+		   else
+		     sim(i,j,0)=0;
+		}
+	    }
+	}
+
+        if (_stack_index[inputIndex]==current_stack)
+            z++;
+        else {
+            current_stack=_stack_index[inputIndex];
+            z=0;
+        }
+        
+        for(i=0;i<sim.GetX();i++)
+            for(j=0;j<sim.GetY();j++) {
+                stacks[_stack_index[inputIndex]](i,j,z)=sim(i,j,0);
+            }
+        //end of loop for a slice inputIndex
+    }   
+}
+
+void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, irtkRealImage stackMask, int group, double step, int iter)
 {
   cout<<"Field map correction."<<endl;
   cout<<"FieldMap correction: Warning: only implemented for stacks of same geometry at present!."<<endl;
@@ -711,7 +782,12 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, int grou
     simulated.push_back(stacks[ind]);
     stacks2.push_back(stacks[ind]);
   }
-  SimulateStacks(simulated);
+  
+  cout<<"Group = "<<group<<endl;
+  //if(group==0)
+    SimulateStacksWithMask(simulated,stackMask);
+  //else
+    //SimulateStacksWithMask(simulated,_mask);
   
   cout<<"group: "<<group<<" _groups[group]"<<_groups[group]<<endl;
   cout<<"_stack_group: ";
@@ -862,7 +938,8 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, int grou
       _distortion(i,j,k)=(x-xx)*attr._dx;
    }
 
-    _distortion.Write("_dist.nii.gz");
+    sprintf(buffer,"fmdist%i.nii.gz",iter);
+    _distortion.Write(buffer);
   
   delete imagetransformation;
   delete interpolator;
@@ -1219,11 +1296,14 @@ void irtkReconstructionb0::SmoothFieldmap(int iter)
 }
 
 
-void irtkReconstructionb0::SmoothFieldmapGroup(int group, int iter)
+void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, int iter)
 {
   
   char buffer[256];
 
+  cout<<"SmoothFieldmapGroup"<<endl;
+  cout.flush();
+  
   irtkRealImage fieldmap = _distortion;
   
   if (_smoothFieldMap.size()==0)
@@ -1234,10 +1314,13 @@ void irtkReconstructionb0::SmoothFieldmapGroup(int group, int iter)
   }
   
   //Smooth the distortion displacements
+  cout<<"test"<<endl;
+  cout.flush();
   irtkLaplacianSmoothing smoothing;
   smoothing.SetInput(_distortion);
-  smoothing.SetMask(_larger_mask);
-  fieldmap = smoothing.Run();
+  smoothing.SetMask(mask);
+  _larger_mask = _mask;
+  fieldmap = smoothing.RunGD();
   _distortion.Write("d.nii.gz");
   fieldmap.Write("f.nii.gz");
     
@@ -1249,6 +1332,8 @@ void irtkReconstructionb0::SmoothFieldmapGroup(int group, int iter)
     {
       sprintf(buffer,"fieldmap%i-%i.nii.gz",iter,group);
       fieldmap.Write(buffer);
+      sprintf(buffer,"addedfieldmap%i-%i.nii.gz",iter,group);
+      _smoothFieldMap[group].Write(buffer);
     }
     else
     {
@@ -1437,6 +1522,237 @@ void irtkReconstructionb0::CorrectStacksSmoothFieldmap(vector<irtkRealImage> &st
     }//ind
   }//index
 }//function
+
+void irtkReconstructionb0::CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealImage> &stacks, irtkRealImage fieldmapMask1, irtkRealImage fieldmapMask2)
+{
+  char buffer[256];
+  irtkMatrix m;
+  unsigned int index, ind;
+  int i,j,k,t;
+  irtkRealImage fieldmap, fieldmap2, image;
+  int padding;
+  
+  
+  fieldmapMask1.Write("fieldmapMask1.nii.gz");
+  fieldmapMask2.Write("fieldmapMask2.nii.gz");
+  
+  for(index=0;index<_smoothFieldMap.size();index++)
+  {
+    cout<<"Index = "<<index<<endl;
+    //padding for fieldmap - careful vector = only copies reference
+    fieldmap2 = _smoothFieldMap[index];
+    fieldmap = fieldmap2;
+    irtkRealPixel mn,mx;
+    fieldmap.GetMinMax(&mn,&mx);
+    padding = round(mn-2);
+    cout<<"padding = "<<padding<<endl;
+    irtkRealPixel *pf = fieldmap.GetPointerToVoxels();
+    irtkRealPixel *pm;
+    if(index==1)
+      pm = fieldmapMask1.GetPointerToVoxels();
+    else
+      pm = fieldmapMask2.GetPointerToVoxels();
+
+    for (j=0; j<fieldmap.GetNumberOfVoxels();j++)
+    {
+      if(*pm!=1)
+        *pf = padding;
+      pm++;
+      pf++;
+    }
+
+    if(index==0)
+      fieldmap.Write("orig-f-pad-1.nii.gz");
+    else
+      fieldmap.Write("orig-f-pad-2.nii.gz");
+    
+    //prepare fieldmap for interpolation with padding
+    irtkLinearInterpolateImageFunction interpolatorFieldmap;
+    interpolatorFieldmap.SetInput(&fieldmap);
+    interpolatorFieldmap.Initialize();
+
+
+    //irtkImageFunction *interpolatorSinc = new irtkSincInterpolateImageFunction;
+    
+    //undistort stack using fieldmap
+    double f,x,y,z;
+    for(ind = 0; ind<stacks.size();ind++)
+    {
+      cout<<"ind = "<<ind<<endl;
+      cout<<"_stack_group[ind] = "<<_stack_group[ind]<<endl;
+      cout<<"_groups[index] = "<<_groups[index]<<endl;
+      
+      if(_stack_group[ind]==_groups[index])
+      {
+	cout<<"I am inside!"<<endl;
+	image = stacks[ind];
+        //irtkLinearInterpolateImageFunction interpolator;
+	irtkSincInterpolateImageFunction interpolator;
+        interpolator.SetInput(&image);
+        interpolator.Initialize();
+        
+	cout<<"Correcting stack "<<ind<<endl;
+	irtkImageAttributes attr = image.GetImageAttributes();
+        for (t = 0; t < image.GetT(); t++) {
+          for (k = 0; k < image.GetZ(); k++) {
+            for (j = 0; j < image.GetY(); j++) {
+              for (i = 0; i < image.GetX(); i++) {
+		//find fieldmap value f
+                x = i;
+                y = j;
+                z = k;
+		image.ImageToWorld(x,y,z);
+		fieldmap.WorldToImage(x,y,z);
+		if ((x > -0.5) && (x < fieldmap.GetX()-0.5) && 
+	            (y > -0.5) && (y < fieldmap.GetY()-0.5) &&
+                    (z > -0.5) && (z < fieldmap.GetZ()-0.5) )
+	        {
+	         f = interpolatorFieldmap.EvaluateWithPadding(x,y,z,t,padding);
+	        }
+	        else
+		  f=padding;
+		
+		//find displacement
+		if (f>padding)  
+		{
+		  x = i;
+		  y = j;
+		  z = k;
+
+		  if(_swap[index])
+	            y+=f/attr._dy;
+	          else
+	            x+=f/attr._dx;
+		 
+		 if ((x > -0.5) && (x < image.GetX()-0.5) && 
+	             (y > -0.5) && (y < image.GetY()-0.5) &&
+                     (z > -0.5) && (z < image.GetZ()-0.5))
+		 {
+	             stacks[ind](i,j,k,t) = interpolator.Evaluate(x,y,z,t);
+		 }
+	         else
+		   stacks[ind](i,j,k)=0;
+		}
+		else
+		  stacks[ind](i,j,k)=0;
+	      }//i
+	    }//j
+	  }//k
+	}//t
+
+	
+        if (_debug)
+        {
+          sprintf(buffer,"cor%i.nii.gz",ind);
+	  stacks[ind].Write(buffer);
+        }
+      }//if   
+    }//ind
+  }//index
+}//function
+
+
+void irtkReconstructionb0::CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRealImage fieldmapMask, int group )
+{
+  char buffer[256];
+  //irtkMatrix m;
+  unsigned int index, ind;
+  int i,j,k,t;
+  irtkRealImage fieldmap, fieldmap2, image;
+  int padding;
+  
+  cout<<"Group = "<<group<<endl;
+  //padding for fieldmap - careful vector = only copies reference
+  fieldmap2 = _smoothFieldMap[group];
+  fieldmap = fieldmap2;
+  irtkRealPixel mn,mx;
+  fieldmap.GetMinMax(&mn,&mx);
+  padding = round(mn-2);
+  cout<<"padding = "<<padding<<endl;
+  irtkRealPixel *pf = fieldmap.GetPointerToVoxels();
+  irtkRealPixel *pm = fieldmapMask.GetPointerToVoxels();
+  for (j=0; j<fieldmap.GetNumberOfVoxels();j++)
+  {
+    if(*pm!=1)
+      *pf = padding;
+    pm++;
+    pf++;
+  }
+
+  fieldmap.Write("orig-f-pad-mask.nii.gz");
+    
+  //prepare fieldmap for interpolation with padding
+  irtkLinearInterpolateImageFunction interpolatorFieldmap;
+  interpolatorFieldmap.SetInput(&fieldmap);
+  interpolatorFieldmap.Initialize();
+
+
+  //irtkImageFunction *interpolatorSinc = new irtkSincInterpolateImageFunction;
+  //undistort stack using fieldmap
+  double f,x,y,z;
+  irtkLinearInterpolateImageFunction interpolator;
+  //irtkSincInterpolateImageFunction interpolator;
+  interpolator.SetInput(&mask);
+  interpolator.Initialize();
+        
+   cout<<"Correcting mask. "<<endl;
+   image = mask;
+   irtkImageAttributes attr = image.GetImageAttributes();
+     for (t = 0; t < image.GetT(); t++) {
+       for (k = 0; k < image.GetZ(); k++) {
+         for (j = 0; j < image.GetY(); j++) {
+           for (i = 0; i < image.GetX(); i++) {
+	    //find fieldmap value f
+            x = i;
+            y = j;
+            z = k;
+            image.ImageToWorld(x,y,z);
+	    fieldmap.WorldToImage(x,y,z);
+	    if ((x > -0.5) && (x < fieldmap.GetX()-0.5) && 
+	        (y > -0.5) && (y < fieldmap.GetY()-0.5) &&
+                (z > -0.5) && (z < fieldmap.GetZ()-0.5) )
+	     {
+	       f = interpolatorFieldmap.EvaluateWithPadding(x,y,z,t,padding);
+	     }
+	     else
+		f=padding;
+		
+	     //find displacement
+	     if (f>padding)  
+	     {
+		x = i;
+		y = j;
+		z = k;
+
+		if(_swap[group])
+	          y+=f/attr._dy;
+	        else
+	          x+=f/attr._dx;
+		 
+	      if ((x > -0.5) && (x < image.GetX()-0.5) && 
+	          (y > -0.5) && (y < image.GetY()-0.5) &&
+                  (z > -0.5) && (z < image.GetZ()-0.5))
+	      {
+	          image(i,j,k,t) = interpolator.Evaluate(x,y,z,t);
+	      }
+	      else
+		 image(i,j,k)=0;
+	      }
+	      else
+		image(i,j,k)=0;
+	      }//i
+	    }//j
+	  }//k
+	}//t
+
+	mask=image;
+        if (_debug)
+        {
+          sprintf(buffer,"mask%i-cor.nii.gz",group+1);
+	  mask.Write(buffer);
+        }
+}//function
+
 
 
 void irtkReconstructionb0::BSplineReconstructionGroup(int g)

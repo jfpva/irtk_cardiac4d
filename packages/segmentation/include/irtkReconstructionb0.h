@@ -43,6 +43,7 @@ protected:
   vector<irtkRealImage> _smoothFieldMap;
   irtkRealImage _distortion;
   irtkRealImage _larger_mask;
+  irtkRealImage _mask2;
   bool _have_larger_mask;
   double _fieldMapSpacing;
   double _smoothnessPenalty;
@@ -58,7 +59,7 @@ public:
   void Shim(vector<irtkRealImage> &stacks, int iter = 0);
   void FieldMapDistortion(irtkRealImage &acquired, irtkRealImage &simulated, irtkMultiLevelFreeFormTransformation &dist, bool swap, double step, int iter);
   void FieldMap(vector<irtkRealImage> &stacks, double step, int iter = 0);
-  void FieldMapGroup(vector<irtkRealImage> &stacks, int group, double step, int iter = 0);
+  void FieldMapGroup(vector<irtkRealImage> &stacks, irtkRealImage stackMask, int group, double step, int iter = 0);
   irtkRealImage Create4DImage(vector<irtkRealImage> &stacks);
   irtkRealImage AlignT2Template(irtkRealImage T2, double sigma=0);
   void CreateSimulated(vector<irtkRealImage> &stacks);
@@ -67,21 +68,30 @@ public:
   void CorrectStacks(vector<irtkRealImage> &stacks);
   void CorrectStacksSmoothFieldmap(vector<irtkRealImage> &stacks);
   void SmoothFieldmap(int iter);
-  void SmoothFieldmapGroup(int group, int iter);
+  void SmoothFieldmapGroup(irtkRealImage mask, int group, int iter);
   void CreateLargerMask(irtkRealImage mask);
   void CreateStackMask(vector<irtkRealImage> &simulated);
   void BSplineReconstructionGroup(int g);
+  void SimulateStacksWithMask(vector<irtkRealImage>& stacks, irtkRealImage mask);
+  void CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRealImage fieldmapMask, int group );
+  void CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealImage> &stacks, irtkRealImage fieldmapMask1, irtkRealImage fieldmapMask2);
 
   inline void SetGroups(vector<int>& stack_group, vector<int>& groups, vector<bool>& swap); 
   inline void SetReconstructed(irtkRealImage image);
   inline void SetFieldMapSpacing(double spacing);
   inline void SetSmoothnessPenalty(double penalty);
+  inline void SetMask2(irtkRealImage *mask);
 
 };
 
 inline void irtkReconstructionb0::SetReconstructed(irtkRealImage image)
 {
   _reconstructed = image;    
+}
+
+inline void irtkReconstructionb0::SetMask2(irtkRealImage *mask)
+{
+  _mask2 = *mask;    
 }
 
 inline void irtkReconstructionb0::SetGroups(vector<int>& stack_group,vector<int>& groups, vector<bool>& swap)
