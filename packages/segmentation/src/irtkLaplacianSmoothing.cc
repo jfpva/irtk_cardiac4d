@@ -44,7 +44,9 @@ irtkLaplacianSmoothing::irtkLaplacianSmoothing()
     }
   }
     
-    
+  _lap_threshold=0.000001;
+  _rel_diff_threshold=0.0001;
+  _relax_iter=5;
 }
 
 void irtkLaplacianSmoothing::InitializeFactors()
@@ -785,7 +787,7 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
   double alpha = 0.5;
   double rel_diff;
     alpha = 5;
-    for(int aiter = 1; aiter<5; aiter++)
+    for(int aiter = 1; aiter<_relax_iter; aiter++)
     {
       alpha/=10;
       for (int iter = 1; iter<10000; iter++)
@@ -802,7 +804,7 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
       
         rel_diff = (prev_lap-lap)/prev_lap;
         cout<<"Iter "<<iter<<" alpha "<<alpha<<" prev_lap "<<prev_lap<<" lap "<<lap<<" reldiff "<<rel_diff<<endl;
-        if((iter>1)&&((lap<0.0001)||(rel_diff<0.0001))) break;
+        if((iter>1)&&((lap<_lap_threshold)||(rel_diff<_rel_diff_threshold))) break;
       }
       //sprintf(buffer,"final-fieldmap%f.nii.gz",alpha);
       //fieldmap.Write(buffer);

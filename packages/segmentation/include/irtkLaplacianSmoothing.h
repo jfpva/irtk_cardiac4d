@@ -37,6 +37,10 @@ protected:
   int _directions[13][3]; 
 
   vector<double> _factor;//(13,0);
+  
+  double _lap_threshold;
+  double _rel_diff_threshold;
+  double _relax_iter;
 
   
   void InitializeFactors();
@@ -72,6 +76,7 @@ public:
   
   void SetInput(irtkRealImage image);
   void SetMask(irtkRealImage mask);
+  void SetParam(double lap_threshold, double rel_diff_threshold, double relax_iter);
   
   irtkRealImage Run();
   irtkRealImage RunGD();
@@ -90,6 +95,13 @@ inline void irtkLaplacianSmoothing::SetInput(irtkRealImage image)
 inline void irtkLaplacianSmoothing::SetMask(irtkRealImage mask)
 {
   _mask = mask;
+}
+
+inline void irtkLaplacianSmoothing::SetParam(double lap_threshold, double rel_diff_threshold, double relax_iter)
+{
+  _lap_threshold = lap_threshold;
+  _rel_diff_threshold = rel_diff_threshold;
+  _relax_iter = relax_iter;
 }
 
 #endif

@@ -993,7 +993,7 @@ void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImag
   res = attrt._dx;
   
   //registration.GuessParameterDistortion(res,_fieldMapSpacing*8,levels,step,_smoothnessPenalty);
-  registration.GuessParameterDistortion(res,_fieldMapSpacing*2,levels,step*4,_smoothnessPenalty);
+  registration.GuessParameterDistortion(res,_fieldMapSpacing*2,levels,step,_smoothnessPenalty);
   if(_debug)
   {
     char buffer[256];

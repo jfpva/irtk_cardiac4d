@@ -49,7 +49,8 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(reconstructionConsistency reconstructionConsistency.cc)
     ADD_EXECUTABLE(reconstructionMasking reconstructionMasking.cc)
     ADD_EXECUTABLE(emSeg2ndOrderMRF emSeg2ndOrderMRF.cc)
-
+    
+    ADD_EXECUTABLE(combinefieldmaps combinefieldmaps.cc)
   ENDIF (BUILD_MPI_EXE)
 
 INSTALL_TARGETS(/bin emSeg2ndOrderMRF atrophy_graphcut4D biasfield biascorrect createsamples detect ems emsbc emsmc graphcut multiimage_graphcut patchBasedSegmentation patchBasedSegmentation_native patchmatch mapm mapmSuperResolution mapmSegmentation seg_uncertainty)
