@@ -1,5 +1,5 @@
 #include <irtkImage.h>
-
+#include <irtkTransformation.h>
 
 
 bool ok;
@@ -11,7 +11,38 @@ void usage()
   exit(1);
 }
 
-irtkRealImage TransformFieldmap(irtkRealImage fieldmap, irtkRealImage image, double c)
+double CalculatePadding(irtkRealImage &f1, irtkRealImage &f2)
+{
+  irtkRealPixel min,max;
+  double padding;
+  f1.GetMinMax(&min,&max);
+  padding = min;
+  f2.GetMinMax(&min,&max);
+  if(min<padding)
+    padding = min;
+  cout<<"Min = "<<padding<<endl;
+  padding = floor(padding)-1;
+  cout<<"padding = "<<padding<<endl;
+  
+  irtkRealPixel *p1 = f1.GetPointerToVoxels();
+  irtkRealPixel *p2 = f2.GetPointerToVoxels();
+  
+  for(int i=0; i<f1.GetNumberOfVoxels();i++)
+  {
+    if(*p1==0)
+      *p1=padding;
+    if(*p2==0)
+      *p2=padding;
+    p1++;
+    p2++;
+  }
+  
+  f1.Write("f1-padding.nii.gz");
+  f2.Write("f2-padding.nii.gz");
+  return padding;
+}
+
+irtkRealImage TransformFieldmap(irtkRealImage fieldmap, irtkRealImage image, double c, double padding)
 {
   irtkRealImage f(fieldmap);
   f=0;
@@ -46,22 +77,37 @@ irtkRealImage TransformFieldmap(irtkRealImage fieldmap, irtkRealImage image, dou
   norm = sqrt(dx*dx+dy*dy+dz*dz);
   //cout<< "norm = "<<norm<<endl;
   
-  int i,j,k,ii,jj,kk;
+  irtkLinearInterpolateImageFunction interpolator;
+  interpolator.SetInput(&fieldmap);
+  interpolator.Initialize();
+  
+  int i,j,k;
+  double x,y,z;
   for(i=0;i<f.GetX();i++)
     for(j=0;j<f.GetY();j++)
       for(k=0;k<f.GetZ();k++)
       {
-	ii=round(i-dx*c);
-	jj=round(j-dy*c);
-	kk=round(k-dz*c);
-	if((ii>=0)&&(ii<f.GetX())&&(jj>=0)&&(jj<f.GetY())&&(kk>=0)&&(kk<f.GetZ()))
-	  if(fieldmap(ii,jj,kk)!=0)
-	    f(i,j,k)=fieldmap(ii,jj,kk)-c;
+	x=i-dx*c;
+	y=j-dy*c;
+	z=k-dz*c;
+	if((x>=0)&&(x<f.GetX())&&(y>=0)&&(y<f.GetY())&&(z>=0)&&(z<f.GetZ()))
+	{
+	  double ff=interpolator.EvaluateWithPadding(x,y,z,0,padding);
+	  //double ff=interpolator.Evaluate(x,y,z,0);
+	  if(ff!=padding)
+	    f(i,j,k)=ff-c;
+	  else
+	    f(i,j,k)=padding;
+	}
+	else
+	  f(i,j,k)=padding;
+	  //if(fieldmap(ii,jj,kk)!=0)
+	    //f(i,j,k)=fieldmap(ii,jj,kk)-c;
       }
   return f;
 }
 
-double Similarity(irtkRealImage f1, irtkRealImage f2)
+double Similarity(irtkRealImage f1, irtkRealImage f2, double padding)
 {
   irtkRealPixel *p1 = f1.GetPointerToVoxels();
   irtkRealPixel *p2 = f2.GetPointerToVoxels();
@@ -76,7 +122,7 @@ double Similarity(irtkRealImage f1, irtkRealImage f2)
   int n=0;
   for(int i=0; i<f1.GetNumberOfVoxels();i++)
   {
-    if((*p1!=0)&&(*p2!=0))
+    if((*p1!=padding)&&(*p2!=padding))
     {
       ssd += (*p1-*p2)*(*p1-*p2);
       n++;
@@ -188,32 +234,37 @@ int main(int argc, char **argv)
   //sprintf(buffer,"fieldmap2%f.nii.gz",c);    
   //f.Write(buffer);
   
-  cout<<"SSD of fieldmaps is "<<Similarity(_fieldmap1,_fieldmap2)<<endl;
+  double _padding = CalculatePadding(_fieldmap1,_fieldmap2);
+  
+  cout<<"SSD of fieldmaps is "<<Similarity(_fieldmap1,_fieldmap2,_padding)<<endl;
   
   irtkRealImage sim(11,11,1);
+  sim.PutPixelSize(10,10,10);
   irtkRealImage f1,f2;
   double scale = 1;
   
   double min_sim = 10;
-  int minc1,minc2;
+  double minc1,minc2;
   
   //for (double c1=-5;c1<=5;c1++)
     //for (double c2=-5;c2<=5;c2++)
-  for (double c1=-5;c1<=5;c1++)
-    for (double c2=-5;c2<=5;c2++)
+  for (int i =-5;i<=5;i++)
+    for (int j=-5;j<=5;j++)
     {
       //double c1=c2;
+      double c1=i*scale;
+      double c2=j*scale;
       char buff[255];
-      f1=TransformFieldmap(_fieldmap1,_image1,c1);
+      f1=TransformFieldmap(_fieldmap1,_image1,c1,_padding);
       sprintf(buff,"t1-%f.nii.gz",c1);
-      //f1.Write(buff);
-      f2=TransformFieldmap(_fieldmap2,_image2,c2);
+      f1.Write(buff);
+      f2=TransformFieldmap(_fieldmap2,_image2,c2,_padding);
       sprintf(buff,"t2-%f.nii.gz",c2);
-      //f2.Write(buff);
+      f2.Write(buff);
       
       //sim(c1+5,c2+5,0)=sqrt(Similarity(f1,f2));
-      double s = sqrt(Similarity(f1,f2));
-      sim(c1+5,c2+5,0)=s;
+      double s = Similarity(f1,f2,_padding);
+      sim(c1+5,c2+5,0)=s*10;
       if (s<min_sim)
       {
 	min_sim=s;
@@ -225,12 +276,16 @@ int main(int argc, char **argv)
       
     }
       
-  //sim.Write("sim.nii.gz");
+  sim.Write("sim.nii.gz");
   
   irtkRealImage diff = Subtract(_fieldmap1,_fieldmap2);
   //diff.Write("diff.nii.gz");
   
   cout<<"Minimum at "<<minc1<<" "<<minc2<<endl;
+  f1=TransformFieldmap(_fieldmap1,_image1,minc1,_padding);
+  f1.Write("transformedFieldmap1.nii.gz");
+  f2=TransformFieldmap(_fieldmap2,_image2,minc2,_padding);
+  f2.Write("transformedFieldmap2.nii.gz");
   
 
   

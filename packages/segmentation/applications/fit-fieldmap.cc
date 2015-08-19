@@ -3,10 +3,13 @@
 
 irtkRealImage _image, _fieldmap, _mask, _target,_image_mask;
 bool ok, have_target=false;
+double relax_iter=5;
+double lap_threshold=0.0001;
+double rel_diff_threshold=0.0001;
 
 void usage()
 {
-  cerr<<"fit-fieldmap [image] [output] <-mask mask> <-target target>"<<endl;
+  cerr<<"fit-fieldmap [image] [output] <-mask mask> <-relax_iter iter> <-lap_threshold threshold> <-rel_diff rel_diff>"<<endl;
   exit(1);
 }
 
@@ -47,11 +50,28 @@ int main(int argc, char **argv)
       ok = true;
     }
 
-      if ((ok == false) && (strcmp(argv[1], "-target") == 0)){
+      if ((ok == false) && (strcmp(argv[1], "-relax_iter") == 0)){
       argc--;
       argv++;
-      _target.Read(argv[1]);
-      have_target=true;
+      relax_iter =  atof(argv[1]);     
+      argc--;
+      argv++;
+      ok = true;
+    }
+
+      if ((ok == false) && (strcmp(argv[1], "-lap_threshold") == 0)){
+      argc--;
+      argv++;
+      lap_threshold = atof(argv[1]);
+      argc--;
+      argv++;
+      ok = true;
+    }
+
+      if ((ok == false) && (strcmp(argv[1], "-rel_diff") == 0)){
+      argc--;
+      argv++;
+      rel_diff_threshold = atof(argv[1]);
       argc--;
       argv++;
       ok = true;
@@ -66,6 +86,7 @@ int main(int argc, char **argv)
   irtkLaplacianSmoothing smoothing;
   smoothing.SetInput(_image);
   smoothing.SetMask(_mask);  
+  smoothing.SetParam(lap_threshold,rel_diff_threshold,relax_iter);
   _fieldmap = smoothing.RunGD();
   //_fieldmap = smoothing.Run();
   //_fieldmap = smoothing.Run1level();

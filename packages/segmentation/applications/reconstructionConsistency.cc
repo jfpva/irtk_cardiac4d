@@ -895,7 +895,7 @@ int main(int argc, char **argv)
       if(iter>0)
       {
         //reconstruction.FieldMapGroup(corrected_stacks,1-current_group,step,iter);
-        if((iter>2)&&(iter%2 == 1))
+        if((iter>2)&&(iter%8 == 1))
 	  step/=2;
 	cout<<"step="<<step<<endl;
 	//reconstruction.SaveDistortionTransformations();
