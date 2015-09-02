@@ -55,6 +55,7 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(fieldmapcorrect fieldmapcorrect.cc)
     ADD_EXECUTABLE(reconstructionb0T2 reconstructionb0T2.cc)
     ADD_EXECUTABLE(simulateStacks simulateStacks.cc)
+    ADD_EXECUTABLE(invertfieldmap invertfieldmap.cc)
   ENDIF (BUILD_MPI_EXE)
 
 INSTALL_TARGETS(/bin emSeg2ndOrderMRF atrophy_graphcut4D biasfield biascorrect createsamples detect ems emsbc emsmc graphcut multiimage_graphcut patchBasedSegmentation patchBasedSegmentation_native patchmatch mapm mapmSuperResolution mapmSegmentation seg_uncertainty)
