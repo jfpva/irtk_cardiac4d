@@ -29,6 +29,7 @@ irtkReconstructionb0::irtkReconstructionb0()
 void irtkReconstructionb0::StackRegistrations(vector<irtkRealImage>& stacks,
 		vector<irtkRigidTransformation>& stack_transformations)
 {
+      InvertStackTransformations(stack_transformations);
 	//rigid registration object
 	irtkImageRigidRegistrationWithPadding registration;
 	//buffer to create the name
@@ -109,6 +110,8 @@ void irtkReconstructionb0::StackRegistrations(vector<irtkRealImage>& stacks,
 			stacks[i].Write(buffer);
 		}
 	}
+
+      InvertStackTransformations(stack_transformations);
 }
 
 void irtkReconstructionb0::SetT2Template(irtkRealImage T2)
@@ -129,7 +132,7 @@ void irtkReconstructionb0::SetT2Template(irtkRealImage T2)
   imagetransformation->Run();
   
   _reconstructed = t2template;
-  //_reconstructed.Write("t2template.nii.gz");
+  _reconstructed.Write("t2template.nii.gz");
 
 }
 

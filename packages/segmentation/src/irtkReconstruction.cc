@@ -1393,10 +1393,10 @@ void irtkReconstruction::SimulateStacks(vector<irtkRealImage>& stacks)
     z=-1;//this is the z coordinate of the stack
     current_stack=-1; //we need to know when to start a new stack
 
-
+_reconstructed.Write("reconstructed.nii.gz");
     for (inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
       
-	
+	cout<<inputIndex<<" ";
         // read the current slice
         irtkRealImage& slice = _slices[inputIndex];
 
@@ -2562,7 +2562,11 @@ void irtkReconstruction::InitializeEMValues()
 
         //Initialise scaling factors for intensity matching
         _scale[i] = 1;
-    }        
+    }  
+    
+        //Force exclusion of slices predefined by user
+    for (unsigned int i = 0; i < _force_excluded.size(); i++)
+        _slice_weight[_force_excluded[i]] = 0;
 }
 
 void irtkReconstruction::InitializeRobustStatistics()
@@ -3939,7 +3943,8 @@ void irtkReconstruction::SlicesInfo( const char* filename,
     info.open( filename );
 
     // header
-    info << "stack_index" << "\t"
+    info << "slice_index" << "\t"
+         << "stack_index" << "\t"
          << "stack_name" << "\t"
          << "included" << "\t" // Included slices
          << "excluded" << "\t"  // Excluded slices
@@ -3957,6 +3962,7 @@ void irtkReconstruction::SlicesInfo( const char* filename,
     for (int i = 0; i < _slices.size(); i++) {
         irtkRigidTransformation& t = _transformations[i];
         info << _stack_index[i] << "\t"
+	     << i << "\t"
              << stack_files[_stack_index[i]] << "\t"
              << (((_slice_weight[i] >= 0.5) && (_slice_inside[i]))?1:0) << "\t" // Included slices
              << (((_slice_weight[i] < 0.5) && (_slice_inside[i]))?1:0) << "\t"  // Excluded slices
