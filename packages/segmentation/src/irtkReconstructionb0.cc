@@ -664,7 +664,10 @@ void irtkReconstructionb0::FieldMap(vector<irtkRealImage> &stacks, double step, 
     delete tr;
   }
   _fieldMap.irtkTransformation::Write("fieldMap_clean.dof");
-  FieldMapDistortion(stack,simul,_fieldMap,_swap[0],step,iter);
+  cout<<"entering FieldMapDistortion."<<endl;
+  cout<<_swap.size()<<endl;
+  cout.flush();
+  FieldMapDistortion(stack,simul,_fieldMap,_swap[0],step,0,3);
   
   if(_debug)
   {
@@ -950,8 +953,10 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, irtkReal
 }
 
 
-void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImage &simul, irtkMultiLevelFreeFormTransformation &distortion, bool swap, double step, int iter)
+void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImage &simul, irtkMultiLevelFreeFormTransformation &distortion, bool swap, double step, int iter, int levels)
 {
+  cout<<"Entered FieldMapDistortion."<<endl;
+  cout.flush();
   //Adjust orientation
   irtkRealImage st,sm;
   sm = AdjustOrientation(simul,false);
@@ -976,7 +981,7 @@ void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImag
   s=st;
   registration.SetInput(&t,&s);
   registration.SetOutput(&distortion);
-  int levels;
+  //int levels;
   double res;
   
   /*
@@ -991,12 +996,13 @@ void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImag
     res = 0.75;
   }
   */
-  levels=1;
+  //levels=1;
   irtkImageAttributes attrt = t.GetImageAttributes();
   res = attrt._dx;
   
   //registration.GuessParameterDistortion(res,_fieldMapSpacing*8,levels,step,_smoothnessPenalty);
-  registration.GuessParameterDistortion(res,_fieldMapSpacing*2,levels,step,_smoothnessPenalty);
+  //registration.GuessParameterDistortion(res,_fieldMapSpacing*2,levels,step,_smoothnessPenalty);
+  registration.GuessParameterDistortion(res,_fieldMapSpacing*8,levels,step*2,_smoothnessPenalty);
   if(_debug)
   {
     char buffer[256];
@@ -1268,7 +1274,7 @@ void irtkReconstructionb0::SmoothFieldmap(int iter)
     irtkLaplacianSmoothing smoothing;
     smoothing.SetInput(distortion);
     smoothing.SetMask(_larger_mask);
-    irtkRealImage fieldmap = smoothing.Run();
+    irtkRealImage fieldmap = smoothing.RunGD();
     distortion.Write("d.nii.gz");
     fieldmap.Write("f.nii.gz");
     

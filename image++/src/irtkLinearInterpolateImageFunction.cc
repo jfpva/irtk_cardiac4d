@@ -221,3 +221,63 @@ double irtkLinearInterpolateImageFunction::EvaluateWithPadding(double x, double 
   }
   return val;
 }
+
+double irtkLinearInterpolateImageFunction::EvaluateWithPadding2(double x, double y, double z, double time, double padding)
+{
+  double val, temp, sum, weight;
+  int i, j, k, l, m, n, t;
+  bool out = false;
+  i = (int)floor(x);
+  j = (int)floor(y);
+  k = (int)floor(z);
+  t = round(time);
+
+  val = 0;
+  sum = 0;
+  for (l = i; l <= i+1; l++) {
+    if ((l >= 0) && (l < this->_x)) {
+      for (m = j; m <= j+1; m++) {
+        if ((m >= 0) && (m < this->_y)) {
+          for (n = k; n <= k+1; n++) {
+            if ((n >= 0) && (n < this->_z)) {
+	      temp = this->_input->GetAsDouble(l, m, n, t);
+	      if(temp>padding)
+	      {
+		weight = (1 - fabs(l - x))*(1 - fabs(m - y))*(1 - fabs(n - z));
+                val += weight*temp;
+		sum += weight;
+	      }
+	      else
+	      {
+		out=true;
+	      }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  if (out)
+    val = padding;
+  else
+  {
+    if(sum>0)
+      val/=sum;
+    else
+      val=padding;
+  }
+  
+  switch (this->_input->GetScalarType()) {
+	  case IRTK_VOXEL_UNSIGNED_SHORT: {
+		  val = round(val);
+		  break;
+									  }
+	  case IRTK_VOXEL_SHORT: {
+		  val = round(val);
+		  break;
+							 }
+	  default: break;
+  }
+  return val;
+}

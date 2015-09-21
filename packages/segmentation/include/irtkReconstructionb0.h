@@ -57,7 +57,7 @@ public:
   irtkAffineTransformation AdjustOrientationTransformation(irtkRealImage &image, bool swap);
   void ShimDistortion(irtkRealImage &acquired, irtkRealImage &simulated, irtkAffineTransformation &shim, bool swap);
   void Shim(vector<irtkRealImage> &stacks, int iter = 0);
-  void FieldMapDistortion(irtkRealImage &acquired, irtkRealImage &simulated, irtkMultiLevelFreeFormTransformation &dist, bool swap, double step, int iter);
+  void FieldMapDistortion(irtkRealImage &acquired, irtkRealImage &simulated, irtkMultiLevelFreeFormTransformation &dist, bool swap, double step, int iter, int levels = 4);
   void FieldMap(vector<irtkRealImage> &stacks, double step, int iter = 0);
   void FieldMapGroup(vector<irtkRealImage> &stacks, irtkRealImage stackMask, int group, double step, int iter = 0);
   irtkRealImage Create4DImage(vector<irtkRealImage> &stacks);

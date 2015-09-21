@@ -548,10 +548,11 @@ int main(int argc, char **argv)
     //delete rigidTransf;
   }
   //Create slices and slice-dependent transformations
-  reconstruction.CreateSlicesAndTransformations(stacks,stack_transformations,thickness);
-  
+  reconstruction.CreateSlicesAndTransformations(stacks,stack_transformations,thickness); 
   if (folder!=NULL)
     reconstruction.ReadTransformation(folder);
+  reconstruction.MaskSlices();
+  
   reconstruction.InitializeEM();
   reconstruction.InitializeEMValues();
   reconstruction.CoeffInit();

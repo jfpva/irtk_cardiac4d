@@ -68,7 +68,7 @@ protected:
   
   void Smooth(irtkRealImage& im, irtkRealImage m);
   void SmoothGD(irtkRealImage& im, irtkRealImage m);
-  void UpsampleFieldmap(irtkRealImage& target, irtkRealImage mask, irtkRealImage newmask);
+  void UpsampleFieldmap(irtkRealImage& target, irtkRealImage mask, irtkRealImage &newmask);
   
 public:
   
@@ -90,11 +90,6 @@ inline void irtkLaplacianSmoothing::SetInput(irtkRealImage image)
   _image = image;
   _mask = _image;
   _mask=1;
-}
-
-inline void irtkLaplacianSmoothing::SetMask(irtkRealImage mask)
-{
-  _mask = mask;
 }
 
 inline void irtkLaplacianSmoothing::SetParam(double lap_threshold, double rel_diff_threshold, double relax_iter)

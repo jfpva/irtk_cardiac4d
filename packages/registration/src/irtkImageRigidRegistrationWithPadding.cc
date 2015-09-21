@@ -374,7 +374,7 @@ void irtkImageRigidRegistrationWithPadding::GuessParameterDistortion(double res)
   // Remaining parameters
   for (i = 0; i < _NumberOfLevels; i++) {
     _NumberOfIterations[i] = 20;
-    _NumberOfSteps[i]      = 4;
+    _NumberOfSteps[i]      = 6;
     _LengthOfSteps[i]      = 2 * pow(2.0, i);
   }
 

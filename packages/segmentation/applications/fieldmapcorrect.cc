@@ -26,6 +26,7 @@ void usage()
   cerr << "Options:\n" << endl;
   cerr << "<-x>        phase encoding direction is x [default: y]" << endl;
   cerr << "<-y>        phase encoding direction is y [default: y]" << endl;
+  cerr << "<-minus>    change sign of phase encoding direction [default: plus]" << endl;
   cerr << "<-sinc>     Use sinc interpolation [default: linear]" << endl;
   cerr << endl;
 
@@ -43,6 +44,8 @@ int main(int argc, char **argv)
   char * output_name = NULL;
   //phase encode is y
   bool swap = true;
+  //sign of phase encoding direction
+  bool minus = false;
   //use sinc interpolation
   bool sinc = false;
   
@@ -96,6 +99,15 @@ int main(int argc, char **argv)
       ok = true;
     }
 
+    if ((ok == false) && (strcmp(argv[1], "-minus") == 0)){
+      argc--;
+      argv++;
+      minus=true;
+      cout<< "Sign of phase endoding direction is minus."<<endl;
+      cout.flush();
+      ok = true;
+    }
+    
     if ((ok == false) && (strcmp(argv[1], "-sinc") == 0)){
       argc--;
       argv++;
@@ -163,9 +175,19 @@ int main(int argc, char **argv)
           z = k;
 	  //move it by fieldmap converted to voxels (reconstructed reslution)
 	  if(swap)
-	    y+=resfieldmap(i,j,k)/attr._dy;
+	  {
+	    if (minus)
+	      y-=resfieldmap(i,j,k)/attr._dy;
+	    else
+	      y+=resfieldmap(i,j,k)/attr._dy;
+	  }
 	  else
-	    x+=resfieldmap(i,j,k)/attr._dx;
+	  {
+	    if(minus)
+	      x-=resfieldmap(i,j,k)/attr._dx;
+	    else
+	      x+=resfieldmap(i,j,k)/attr._dx;
+	  }
 	  
 	  if ((x > -0.5) && (x < image.GetX()-0.5) && 
 	      (y > -0.5) && (y < image.GetY()-0.5) &&

@@ -103,6 +103,13 @@ void irtkLaplacianSmoothing::ResampleOnGrid(irtkRealImage& image, irtkRealImage 
   image = templ;
 }
 
+void irtkLaplacianSmoothing::SetMask(irtkRealImage mask)
+{
+  ResampleOnGrid(mask,_image);
+  _mask = mask;
+  _mask.Write("_mask_LaplacianSmoothing.nii.gz");
+}
+
 void irtkLaplacianSmoothing::EnlargeImage(irtkRealImage &image)
 {
   int i,j,k,l;
@@ -818,7 +825,7 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
 }
 
 
-void irtkLaplacianSmoothing::UpsampleFieldmap(irtkRealImage& target, irtkRealImage mask, irtkRealImage newmask)
+void irtkLaplacianSmoothing::UpsampleFieldmap(irtkRealImage& target, irtkRealImage mask, irtkRealImage &newmask)
 {
   irtkRealImage f = _fieldmap;
   _fieldmap = target;
@@ -877,7 +884,10 @@ void irtkLaplacianSmoothing::UpsampleFieldmap(irtkRealImage& target, irtkRealIma
 	      if(value>padding)
 	       _fieldmap(i,j,k,t) = value;
 	      else
+	      {
 		_fieldmap(i,j,k,t) = 0;
+		newmask(i,j,k,t) = 0;
+	      }
 	    //_fieldmap(i,j,k,t) = interpolator.Evaluate(x,y,z,t);
 	    }
 	    else
@@ -962,15 +972,15 @@ irtkRealImage irtkLaplacianSmoothing::RunGD()
     irtkRealImage image(_image), mask(_mask);
     //step = attr._dz*8;
     step=3;
-    image.Write("image-before.nii.gz");
+    //image.Write("image-before.nii.gz");
     Blur(image,step/2,-1000);
-    image.Write("image-blurred.nii.gz");
+    //image.Write("image-blurred.nii.gz");
     Resample(image,step,-1000);
-    image.Write("image-res.nii.gz");
-    mask.Write("mask-before.nii.gz");
+    //image.Write("image-res.nii.gz");
+   // mask.Write("mask-before.nii.gz");
     ResampleOnGrid(mask,image);
-    image.Write("image-after.nii.gz");
-    mask.Write("mask-after.nii.gz");
+    //image.Write("image-after.nii.gz");
+    //mask.Write("mask-after.nii.gz");
 
 
     
@@ -985,6 +995,7 @@ irtkRealImage irtkLaplacianSmoothing::RunGD()
     _m.Write("_m.nii.gz");
     _mask.Write("_mask.nii.gz");
     UpsampleFieldmap(_image,_m,_mask);
+    _mask.Write("final-fieldmap-mask.nii.gz");
     image.Write("upsampled-2.nii.gz");
     return _fieldmap;
 }

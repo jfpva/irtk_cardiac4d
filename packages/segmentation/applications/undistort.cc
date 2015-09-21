@@ -26,6 +26,7 @@ void usage()
   cerr << "Options:\n" << endl;
   cerr << "<-x>        phase encoding direction is x [default: y]" << endl;
   cerr << "<-y>        phase encoding direction is y [default: y]" << endl;
+  cerr << "<-minus>    change sign of phase encoding direction [default: plus]" << endl;
   cerr << "<-wfs wfs>  water fat shift in pixels [default: 16.895]" << endl;
   cerr << "<-res res>  acquired resolution in phase-encoding direction [default: 2.32mm]" << endl;
   cerr << "<-3T>       3T scan [default: 1.5mm]" << endl;
@@ -49,6 +50,8 @@ int main(int argc, char **argv)
   char * output_name = NULL;
   //phase encode is y
   bool swap = true;
+  //sign of phase encoding direction
+  bool minus = false;
   //water fat shift
   double wfs = 16.895;
   //acquired resolution in phase encoding direction
@@ -111,6 +114,15 @@ int main(int argc, char **argv)
       argv++;
       swap=true;
       cout<< "Phase endoding direction is y."<<endl;
+      cout.flush();
+      ok = true;
+    }
+    
+    if ((ok == false) && (strcmp(argv[1], "-minus") == 0)){
+      argc--;
+      argv++;
+      minus=true;
+      cout<< "Sign of phase endoding direction is minus."<<endl;
       cout.flush();
       ok = true;
     }
@@ -284,9 +296,16 @@ int main(int argc, char **argv)
           z = k;
 	  //move it by fieldmap converted to voxels (reconstructed reslution)
 	  if(swap)
+	    if (minus)
+	    y-=resfieldmap(i,j,k)/attr._dy;
+	  else
 	    y+=resfieldmap(i,j,k)/attr._dy;
 	  else
-	    x+=resfieldmap(i,j,k)/attr._dx;
+	    if (minus)
+	      x-=resfieldmap(i,j,k)/attr._dx;
+	    else
+	      x+=resfieldmap(i,j,k)/attr._dx;
+	  
 	  
 	  if ((x > -0.5) && (x < image.GetX()-0.5) && 
 	      (y > -0.5) && (y < image.GetY()-0.5) &&

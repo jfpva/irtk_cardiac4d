@@ -171,9 +171,9 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
   for (i = 1; i < _NumberOfLevels; i++) {
     if(i<(_NumberOfLevels-1))
     {
-      _TargetBlurring[i]      = _TargetBlurring[i-1] * 2;
-      _TargetResolution[i][0] = _TargetResolution[i-1][0] * 2;
-      _TargetResolution[i][1] = _TargetResolution[i-1][1] * 2;
+      _TargetBlurring[i]      = _TargetBlurring[i-1]; //* 2;
+      _TargetResolution[i][0] = _TargetResolution[i-1][0]; //* 2;
+      _TargetResolution[i][1] = _TargetResolution[i-1][1]; //* 2;
     }
     else
     {
@@ -205,9 +205,9 @@ void irtkImageFreeFormRegistrationWithPadding::GuessParameterDistortion(double r
   for (i = 1; i < _NumberOfLevels; i++) {
     if(i<(_NumberOfLevels-1))
     {
-      _SourceBlurring[i]      = _SourceBlurring[i-1] * 2;
-      _SourceResolution[i][0] = _SourceResolution[i-1][0] * 2;
-      _SourceResolution[i][1] = _SourceResolution[i-1][1] * 2;
+      _SourceBlurring[i]      = _SourceBlurring[i-1]; // * 2;
+      _SourceResolution[i][0] = _SourceResolution[i-1][0]; // * 2;
+      _SourceResolution[i][1] = _SourceResolution[i-1][1]; // * 2;
     }
     else
     {

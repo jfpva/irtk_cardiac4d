@@ -436,6 +436,7 @@ double irtkReconstruction::CreateTemplate(irtkRealImage stack, double resolution
 
     //enlarge stack in z-direction in case top of the head is cut off
     attr._z += 2;
+    attr._t = 1;
 
     //create enlarged image
     irtkRealImage enlarged(attr);
@@ -1417,7 +1418,7 @@ _reconstructed.Write("reconstructed.nii.gz");
                         sim(i, j, 0) += p.value * _reconstructed(p.x, p.y, p.z);
                         weight += p.value;
                     }
-                    if(weight>0.99)
+                    if(weight>0.98)
                         sim(i,j,0)/=weight;
 		    else
 		      sim(i,j,0)=0;
