@@ -1211,7 +1211,7 @@ void irtkReconstructionb0::SaveDistortionTransformations()
   
 }
 
-void irtkReconstructionb0::CreateLargerMask(irtkRealImage mask)
+irtkRealImage irtkReconstructionb0::CreateLargerMask(irtkRealImage mask)
 {
     _larger_mask = mask;
     irtkImageAttributes attr = _mask.GetImageAttributes();
@@ -1229,6 +1229,7 @@ void irtkReconstructionb0::CreateLargerMask(irtkRealImage mask)
       ptr++;
     }
     _larger_mask.Write("larger_mask.nii.gz");
+    return _larger_mask;
  
 }
 

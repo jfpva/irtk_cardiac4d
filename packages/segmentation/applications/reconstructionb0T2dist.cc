@@ -677,7 +677,7 @@ int main(int argc, char **argv)
   reconstruction.CreateSlicesAndTransformations(stacks,stack_transformations,thickness);
   
   //Mask all the slices
-  //reconstruction.MaskSlices();
+  reconstruction.MaskSlices();
   
    
   //Set sigma for the bias field smoothing
@@ -732,9 +732,9 @@ int main(int argc, char **argv)
     simulated.clear();
     for(i=0;i<stacks.size();i++)
       simulated.push_back(stacks[i]);
-    reconstruction.MaskSlices();
+    //reconstruction.MaskSlices();
     reconstruction.SimulateStacks(simulated);
-    reconstruction.ResetSlices(stacks,thickness);
+    //reconstruction.UpdateSlices(stacks,thickness);
     //reconstruction.SaveSlices();
     cout<<"done."<<endl;
   
@@ -801,6 +801,8 @@ int main(int argc, char **argv)
      
     irtkRealImage fieldmap_mask = CreateMask(simul) ;
     fieldmap_mask.Write("fieldmap_mask.nii.gz");
+    fieldmap_mask = reconstruction.CreateLargerMask(fieldmap_mask);
+    fieldmap_mask.Write("fieldmap_mask_larger.nii.gz");
     irtkLaplacianSmoothing smoothing;
     smoothing.SetInput(fieldmap);
     smoothing.SetMask(fieldmap_mask);
@@ -808,14 +810,33 @@ int main(int argc, char **argv)
     sprintf(buffer,"fieldmap-smooth-%i.nii.gz",iter);
     fieldmap_smooth.Write(buffer);
     fieldmap = fieldmap_smooth;
+    fieldmap_mask = smoothing.GetMask();
+    fieldmap_mask.Write("fieldmap_mask_new.nii.gz");
     
     //Step 5: Correct stacks by smooth fieldmap
- 
+    
+    //introduce padding in fieldmap
+    irtkRealPixel mn,mx;
+    fieldmap.GetMinMax(&mn,&mx);
+    double padding = round(mn-2);
+    cout<<"padding = "<<padding<<endl;
+    irtkRealPixel *pf = fieldmap.GetPointerToVoxels();
+    irtkRealPixel *pm = fieldmap_mask.GetPointerToVoxels();
+    for (j=0; j<fieldmap.GetNumberOfVoxels();j++)
+    {
+      if(*pm!=1)
+        *pf = padding;
+      pm++;
+      pf++;
+    }
+
+    fieldmap.Write("fieldmap-pad.nii.gz");
+
     //resample fieldmap 
     attr = stacks[0].GetImageAttributes();
     irtkRealImage resfieldmap(attr);
     resfieldmap=0;
-    irtkImageFunction *interpolatorLin = new irtkLinearInterpolateImageFunction;
+    irtkLinearInterpolateImageFunction *interpolatorLin = new irtkLinearInterpolateImageFunction;
     interpolatorLin->SetInput(&fieldmap);
     interpolatorLin->Initialize();
 
@@ -833,11 +854,15 @@ int main(int argc, char **argv)
 	      (y > -0.5) && (y < fieldmap.GetY()-0.5) &&
               (z > -0.5) && (z < fieldmap.GetZ()-0.5))
 	    {
-	      resfieldmap(i,j,k) = interpolatorLin->Evaluate(x,y,z);
+	      resfieldmap(i,j,k) = interpolatorLin->EvaluateWithPadding(x,y,z,0,padding);
 	    }
+	    else
+	      resfieldmap(i,j,k) = padding;
         }
       }
     }
+    
+    resfieldmap.Write("resfieldmap.nii.gz");
     
     //correct stacks
     corrected_stacks.clear();
@@ -858,25 +883,32 @@ int main(int argc, char **argv)
         for (k = 0; k < image.GetZ(); k++) {
           for (j = 0; j < image.GetY(); j++) {
             for (i = 0; i < image.GetX(); i++) {
-              x = i;
-              y = j;
-              z = k;
-	      //move it by fieldmap converted to voxels (reconstructed reslution)
-	      if(swap[0])
+	      if (resfieldmap(i,j,k)>padding)
 	      {
-	        y+=resfieldmap(i,j,k)/attr._dy;
+                x = i;
+                y = j;
+                z = k;
+	        //move it by fieldmap converted to voxels (reconstructed reslution)
+	        if(swap[0])
+	        {
+	          y+=resfieldmap(i,j,k)/attr._dy;
+	        }
+	        else
+	        {
+	          x+=resfieldmap(i,j,k)/attr._dx;
+	        }
+	  
+	        if ((x > -0.5) && (x < image.GetX()-0.5) && 
+	            (y > -0.5) && (y < image.GetY()-0.5) &&
+                    (z > -0.5) && (z < image.GetZ()-0.5))
+	        {
+	          output(i,j,k,t) = interpolator->Evaluate(x,y,z,t);
+	        }
+	        else
+		  output(i,j,k,t) = 0;
 	      }
 	      else
-	      {
-	        x+=resfieldmap(i,j,k)/attr._dx;
-	      }
-	  
-	      if ((x > -0.5) && (x < image.GetX()-0.5) && 
-	          (y > -0.5) && (y < image.GetY()-0.5) &&
-                  (z > -0.5) && (z < image.GetZ()-0.5))
-	      {
-	        output(i,j,k,t) = interpolator->Evaluate(x,y,z,t);
-	      }
+		output(i,j,k,t) = 0;
             }
           }
         }
@@ -888,6 +920,8 @@ int main(int argc, char **argv)
 
     }
 
+    reconstruction.UpdateSlices(corrected_stacks,thickness);
+    reconstruction.MaskSlices();
     
    
     //perform slice-to-volume registrations - skip the first iteration 
@@ -899,7 +933,7 @@ int main(int argc, char **argv)
       
       reconstruction.SetT2Template(t2);//SetReconstructed(t2);
       
-      if((packages.size()>0)&&(iter<=5)&&(iter<(iterations-1)))
+      if((packages.size()>0)&&(iter<2)&&(iter<(iterations-1)))
       {
 	if(iter==0)
           reconstruction.PackageToVolume(corrected_stacks,packages,iter);
