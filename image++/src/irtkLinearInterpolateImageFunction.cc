@@ -222,14 +222,14 @@ double irtkLinearInterpolateImageFunction::EvaluateWithPadding(double x, double 
   return val;
 }
 
-double irtkLinearInterpolateImageFunction::EvaluateWithPadding2(double x, double y, double z, double time, double padding)
+double irtkLinearInterpolateImageFunction::EvaluateWithPadding2D(double x, double y, double z, double time, double padding)
 {
   double val, temp, sum, weight;
   int i, j, k, l, m, n, t;
   bool out = false;
   i = (int)floor(x);
   j = (int)floor(y);
-  k = (int)floor(z);
+  k = (int)round(z);
   t = round(time);
 
   val = 0;
@@ -238,7 +238,7 @@ double irtkLinearInterpolateImageFunction::EvaluateWithPadding2(double x, double
     if ((l >= 0) && (l < this->_x)) {
       for (m = j; m <= j+1; m++) {
         if ((m >= 0) && (m < this->_y)) {
-          for (n = k; n <= k+1; n++) {
+          for (n = k; n <= k; n++) {
             if ((n >= 0) && (n < this->_z)) {
 	      temp = this->_input->GetAsDouble(l, m, n, t);
 	      if(temp>padding)

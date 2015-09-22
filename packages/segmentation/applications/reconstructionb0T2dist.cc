@@ -662,10 +662,10 @@ int main(int argc, char **argv)
     average.Write("average1.nii.gz");
 
   //Rescale intensities of the stacks to have the same average
-  if (intensity_matching)
-    reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue);
-  else
-    reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue,true);
+  //if (intensity_matching)
+  //  reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue);
+  //else
+  //  reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue,true);
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average2.nii.gz");
@@ -833,6 +833,8 @@ int main(int argc, char **argv)
     fieldmap.Write("fieldmap-pad.nii.gz");
 
     //resample fieldmap 
+    irtkRealImage resfieldmap = fieldmap; //not needed - both on the same grid
+    /*
     attr = stacks[0].GetImageAttributes();
     irtkRealImage resfieldmap(attr);
     resfieldmap=0;
@@ -863,7 +865,7 @@ int main(int argc, char **argv)
     }
     
     resfieldmap.Write("resfieldmap.nii.gz");
-    
+    */
     //correct stacks
     corrected_stacks.clear();
     for (index = 0; index<stacks.size();index++)
@@ -933,7 +935,7 @@ int main(int argc, char **argv)
       
       reconstruction.SetT2Template(t2);//SetReconstructed(t2);
       
-      if((packages.size()>0)&&(iter<2)&&(iter<(iterations-1)))
+      if((packages.size()>0)&&(iter<=5)&&(iter<(iterations-1)))
       {
 	if(iter==0)
           reconstruction.PackageToVolume(corrected_stacks,packages,iter);
@@ -1067,8 +1069,8 @@ int main(int argc, char **argv)
 
   //save final result
   //reconstruction.SaveDistortionTransformations();
-  reconstruction.RestoreSliceIntensities();
-  reconstruction.ScaleVolume();
+  //reconstruction.RestoreSliceIntensities();
+  //reconstruction.ScaleVolume();
   reconstructed=reconstruction.GetReconstructed();
   reconstructed.Write(output_name); 
   reconstruction.SaveTransformations();

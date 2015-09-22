@@ -89,7 +89,7 @@ int main(int argc, char **argv)
   double lastIterLambda = 0.01;
   int rec_iterations;
   double averageValue = 700;
-  double smooth_mask = 4;
+  double smooth_mask = 0;
   bool global_bias_correction = false;
   double low_intensity_cutoff = 0.01;
   //folder for slice-to-volume registrations, if given

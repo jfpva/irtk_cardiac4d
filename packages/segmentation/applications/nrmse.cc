@@ -142,7 +142,7 @@ int main(int argc, char **argv)
   p2 = image2.GetPointerToVoxels();
   pm = m.GetPointerToVoxels();
   
-  double ssd=0, sum=0, num=0, diff, mean, stdev, nrmse, rmse;
+  double ssd=0, sum=0, num=0, diff, mean, stdev, nrmse, rmse, max=0;
   
   for(int i=0;i<image1.GetNumberOfVoxels();i++)
   {
@@ -150,6 +150,8 @@ int main(int argc, char **argv)
     {
       diff = *p1-*p2;
       ssd += diff*diff;
+      if(fabs(diff)>max)
+	max = fabs(diff);
       sum += *p1;
       num++;
     }
@@ -202,7 +204,7 @@ int main(int argc, char **argv)
     
     if(method != NULL)
       fileOut<<method<<", ";
-    fileOut<<nrmse<<", "<<stdev<<endl;
+    fileOut<<nrmse<<", "<<stdev<<", "<<max<<endl;
   }
 
   

@@ -222,7 +222,7 @@ int main(int argc, char **argv)
               (z > -0.5) && (z < output.GetZ()-0.5))
 	  {
 	    //output(i,j,k,l) = int_lin.Evaluate(x,y,z,l);
-	    output(i,j,k,l) = int_lin.EvaluateWithPadding2(x,y,z,l,0);
+	    output(i,j,k,l) = int_lin.EvaluateWithPadding2D(x,y,z,l,0);
 	  }
         }
       }
@@ -280,7 +280,7 @@ int main(int argc, char **argv)
 	      (y > -0.5) && (y < _fieldmap.GetY()-0.5) &&
               (z > -0.5) && (z < _fieldmap.GetZ()-0.5))
 	  {
-	    value = int_lin.EvaluateWithPadding2(x,y,z,l,0);
+	    value = int_lin.EvaluateWithPadding2D(x,y,z,l,0);
 	    if (_minus)
 	      output_fieldmap(i,j,k,l) = -value;
 	    else
