@@ -59,6 +59,7 @@ void usage()
   cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
   cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
   cerr << "\t-no_intensity_matching    Switch off intensity matching."<<endl;
+  cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl; 
   cerr << "\t-group [group1] ... [groupN]  Give group numbers for distortion correction. [Default: all in one group]"<<endl;
   cerr << "\t-phase [axis1] ... [axisG]  For each group give phase encoding axis in image coordinates [x or y]"<<endl;
   cerr << "\t-fieldMapSpacing [spacing]  B-spline control point spacing for field map"<<endl;
@@ -125,6 +126,8 @@ int main(int argc, char **argv)
   bool alignT2 = false;
   double fieldMapSpacing = 5;
   double penalty = 0;
+  //flag to swich the robust statistics on and off
+  bool robust_statistics = true;
 
   //Create reconstruction object
   irtkReconstructionb0 reconstruction;
@@ -364,6 +367,15 @@ int main(int argc, char **argv)
       intensity_matching=false;
       ok = true;
     }
+    
+    //Switch off robust statistics
+    if ((ok == false) && (strcmp(argv[1], "-no_robust_statistics") == 0)){
+      argc--;
+      argv++;
+      robust_statistics=false;
+      ok = true;
+    }
+
 
     //Perform bias correction of the reconstructed image agains the GW image in the same motion correction iteration
     if ((ok == false) && (strcmp(argv[1], "-global_bias_correction") == 0)){
@@ -839,7 +851,8 @@ int main(int argc, char **argv)
     reconstruction.InitializeRobustStatistics();
     
     //EStep
-    reconstruction.EStep();
+    if(robust_statistics)
+      reconstruction.EStep();
 
     //number of reconstruction iterations
     rec_iterations = 10;      
@@ -871,10 +884,12 @@ int main(int argc, char **argv)
       // after the update of the reconstructed volume)
       reconstruction.SimulateSlices();
       
-      reconstruction.MStep(i+1);
+      if(robust_statistics) 
+	reconstruction.MStep(i+1);
       
       //E-step
-      reconstruction.EStep();
+      if(robust_statistics)
+	reconstruction.EStep();
       
     //Save intermediate reconstructed image
     if (debug)
