@@ -114,23 +114,52 @@ int main(int argc, char **argv)
   double sum = 0;
   int num = 0;
   double value;
+  double mx=0, my=0, vx=0, vy=0, vxy=0;
   
   for (int i=0; i<x.GetNumberOfVoxels();i++)
   {
     if(*px!=padding)
     {
-      value = *px * *py; 
-      //*px = value;
-      sum += value;
+      mx += *px;
+      my += *py; 
       num++;
     }
     px++;
     py++;
   }
 
+  //cout<<"mx="<<mx<<", my="<<my<<", num="<<num<<endl;
+  mx/=num;
+  my/=num;
+  //cout<<"mx="<<mx<<", my="<<my<<endl;
+  
+  px = x.GetPointerToVoxels();
+  py = y.GetPointerToVoxels();
+  num=0;
+  for (int i=0; i<x.GetNumberOfVoxels();i++)
+  {
+    if((*px!=padding)&&(*py!=padding))
+    {
+      value += *px * *py;
+      vxy += (*px-mx) * (*py-my); 
+      vx += (*px-mx) * (*px-mx); 
+      vy += (*py-my) * (*py-my); 
+      num++;
+    }
+    px++;
+    py++;
+  }
+
+  //vx/=num;
+  //vy/=num;
+  //vxy/=num;
+  //cout<<"vx="<<sqrt(vx)<<", vy="<<sqrt(vy)<<", vxy="<<vxy<<", num="<<num<<endl;
+  //cout<<sqrt(vx)*sqrt(vy)<<endl;
+
   //x.Write("lc.nii.gz");
-  double cor = sum/num;
+  double cor = vxy/sqrt(vx*vy);
   cout<<"correlation is "<<cor<<endl;
+  //cout<<"orig value is"<<value/num<<endl;
   
   if (file_name != NULL)
   {
