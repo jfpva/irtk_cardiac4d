@@ -372,7 +372,8 @@ void irtkReconstructionb0::ShimDistortion(irtkRealImage &acquired, irtkRealImage
   registration.GuessParameterDistortion(xsize);
   registration.SetTargetPadding(0);
   registration.Run();
-  //distortion.irtkTransformation::Write("d.dof");
+  distortion.irtkTransformation::Write("d.dof");
+  distortion.Print();
   if(_debug)
     registration.Write("par-shim.areg");
   
