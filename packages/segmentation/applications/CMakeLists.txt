@@ -47,7 +47,7 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(reconstruction reconstruction.cc)
     ADD_EXECUTABLE(reconstructionb0 reconstructionb0.cc)
     ADD_EXECUTABLE(reconstructionConsistency reconstructionConsistency.cc)
-    ADD_EXECUTABLE(reconstructionConsistency2 reconstructionConsistency2.cc)
+    #ADD_EXECUTABLE(reconstructionConsistency2 reconstructionConsistency2.cc)
     ADD_EXECUTABLE(reconstructionMasking reconstructionMasking.cc)
     ADD_EXECUTABLE(emSeg2ndOrderMRF emSeg2ndOrderMRF.cc)
     
@@ -67,6 +67,7 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(correlation correlation.cc)
     
     ADD_EXECUTABLE(find-location find-location.cc)
+    ADD_EXECUTABLE(find-offset find-offset.cc)
   ENDIF (BUILD_MPI_EXE)
 
 INSTALL_TARGETS(/bin emSeg2ndOrderMRF atrophy_graphcut4D biasfield biascorrect createsamples detect ems emsbc emsmc graphcut multiimage_graphcut patchBasedSegmentation patchBasedSegmentation_native patchmatch mapm mapmSuperResolution mapmSegmentation seg_uncertainty)

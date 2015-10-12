@@ -32,6 +32,7 @@ void usage()
   cerr << "<-3T>       3T scan [default: 1.5mm]" << endl;
   cerr << "<-shim_fm sx sy sz> shim values for fieldmap [default: 0 0 0]" << endl;  
   cerr << "<-shim_image sx sy sz> shim values for image [default: 0 0 0]" << endl;  
+  cerr << "<-offset o> add offset in mm to image location [0]" << endl;  
   cerr << "<-sinc>     Use sinc interpolation [default: linear]" << endl;
   cerr << "<-debug>    Save intermediate results [default: off]" << endl;
   cerr << endl;
@@ -62,6 +63,8 @@ int main(int argc, char **argv)
   double fx=0,fy=0,fz=0;
   //shim values for image
   double sx=0,sy=0,sz=0;
+  //offset
+  double offset=0;
   //use sinc interpolation
   bool sinc = false;
   //save intermediate results
@@ -192,6 +195,17 @@ int main(int argc, char **argv)
       ok = true;
     }
 
+    if ((ok == false) && (strcmp(argv[1], "-offset") == 0)){
+      argc--;
+      argv++;
+      offset=atof(argv[1]);
+      argc--;
+      argv++;
+      cout<< "offset is "<<offset<<"mm."<<endl;
+      cout.flush();
+      ok = true;
+    }
+
     if ((ok == false) && (strcmp(argv[1], "-debug") == 0)){
       argc--;
       argv++;
@@ -255,7 +269,7 @@ int main(int argc, char **argv)
         y = j;
         z = k;
         resfieldmap.ImageToWorld(x, y, z);
-	resfieldmap(i,j,k)= sfactor * ((fy-sy)*x-(fx-sx)*y+(fz-sz)*z);
+	resfieldmap(i,j,k)= sfactor * ((fy-sy)*x-(fx-sx)*y+(fz-sz)*z)+offset;
 	
         fieldmap.WorldToImage(x,y,z);
 	if ((x > -0.5) && (x < fieldmap.GetX()-0.5) && 
