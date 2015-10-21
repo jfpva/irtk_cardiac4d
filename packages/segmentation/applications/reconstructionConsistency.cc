@@ -935,6 +935,10 @@ int main(int argc, char **argv)
 	
       }
       
+      //TEST to override varying fieldmap masks
+      fieldmapMask1=b0_mask;
+      fieldmapMask2=b0_mask;
+      
       if(current_group == 0)
 	reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask1,1-current_group,step,iter);
       else

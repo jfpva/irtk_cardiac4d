@@ -1335,8 +1335,9 @@ void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, in
   _distortion.Write("d.nii.gz");
   fieldmap.Write("f.nii.gz");
     
-  //change 4: add new only at first iter otherwise add to existing
-   _smoothFieldMap[group]+=fieldmap;
+  //change: add to both
+   _smoothFieldMap[0]+=fieldmap;
+   _smoothFieldMap[1]+=fieldmap;
     
      
     if(_groups.size()>1)
