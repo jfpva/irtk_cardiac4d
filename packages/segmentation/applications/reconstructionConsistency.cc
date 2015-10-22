@@ -739,6 +739,7 @@ int main(int argc, char **argv)
   //Repeat volumetric registrations with cropped stacks
 
   //volumetric registration
+  reconstruction.SetMask(mask,smooth_mask);
   reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
   cout<<endl;
   cout.flush();

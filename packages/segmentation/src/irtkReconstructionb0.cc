@@ -1328,12 +1328,16 @@ void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, in
   cout<<"test"<<endl;
   cout.flush();
   irtkLaplacianSmoothing smoothing;
+  sprintf(buffer,"_distortion%i-%i.nii.gz",iter,group);
+  _distortion.Write(buffer);
   smoothing.SetInput(_distortion);
+  sprintf(buffer,"fieldmapmask%i-%i.nii.gz",iter,group);
+  mask.Write(buffer);
   smoothing.SetMask(mask);
   _larger_mask = _mask;
   fieldmap = smoothing.RunGD();
-  _distortion.Write("d.nii.gz");
-  fieldmap.Write("f.nii.gz");
+  //_distortion.Write("d.nii.gz");
+  //fieldmap.Write("f.nii.gz");
     
   //change 4: add new only at first iter otherwise add to existing
    _smoothFieldMap[group]+=fieldmap;
