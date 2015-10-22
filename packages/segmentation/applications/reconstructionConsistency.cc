@@ -1044,7 +1044,7 @@ int main(int argc, char **argv)
       
       //reconstruction.SetT2Template(blurredT2);
       
-      if((packages.size()>0)&&(iter<=5)&&(iter<(iterations-2)))
+      if((packages.size()>0)&&(iter<=8))//&&(iter<(iterations-2)))
       {
 	if((iter==1)||(iter==2))
           reconstruction.PackageToVolume(corrected_stacks,packages,iter);
