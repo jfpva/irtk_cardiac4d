@@ -1307,7 +1307,7 @@ void irtkReconstructionb0::SmoothFieldmap(int iter)
 }
 
 
-void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, int iter)
+void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, int iter, bool combine_fieldmap)
 {
   
   char buffer[256];
@@ -1340,16 +1340,24 @@ void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, in
   //fieldmap.Write("f.nii.gz");
     
   //change: add to both
-   _smoothFieldMap[0]+=fieldmap;
-   _smoothFieldMap[1]+=fieldmap;
+  if (combine_fieldmap)
+  {
+     _smoothFieldMap[0]+=fieldmap;
+     _smoothFieldMap[1]+=fieldmap;
+  }
+  else
+     _smoothFieldMap[group]+=fieldmap;
     
      
     if(_groups.size()>1)
     {
       sprintf(buffer,"fieldmap%i-%i.nii.gz",iter,group);
       fieldmap.Write(buffer);
-      sprintf(buffer,"addedfieldmap%i-%i.nii.gz",iter,group);
-      _smoothFieldMap[group].Write(buffer);
+      for(int g=0;g<_groups.size();g++)
+      {
+        sprintf(buffer,"addedfieldmap%i-%i.nii.gz",iter,g);
+        _smoothFieldMap[g].Write(buffer);
+      }
     }
     else
     {
@@ -1810,4 +1818,13 @@ void irtkReconstructionb0::BSplineReconstructionGroup(int g)
   _reconstructed.Write("reconBSpline.nii.gz");
 }
 
+void irtkReconstructionb0::RememberDistortion()
+{
+  _BSplineField.AddImage(_distortion);
+}
 
+void irtkReconstructionb0::CombineDistortion()
+{
+  _distortion=_BSplineField.Average(); 
+  _BSplineField.Clear();
+}

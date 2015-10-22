@@ -46,6 +46,9 @@ public:
 
   ///Adds new image (channel)
   void AddImage(const irtkRealImage &image);
+  
+  ///Deletes all images
+  void Clear();
 
   ///Returns reference to image (channel)
   irtkRealImage& GetImage(int channel);

@@ -33,6 +33,12 @@ void irtkMultiChannelImage::AddImage(const irtkRealImage &image)
 
 }
 
+void irtkMultiChannelImage::Clear()
+{
+  _images.clear();
+  _pointers.clear();
+}
+
 void irtkMultiChannelImage::SetImage(int channel, irtkRealImage &image)
 {
   if (channel < (int) _images.size()) {

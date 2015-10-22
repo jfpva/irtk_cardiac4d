@@ -124,7 +124,6 @@ int main(int argc, char **argv)
   bool alignT2 = false;
   double fieldMapSpacing = 5;
   double penalty = 0;
-  bool combine_fieldmaps=false;
   irtkRealImage templ;
   irtkRealImage fieldmapMask1, fieldmapMask2;
   irtkRealImage correctedMask1, correctedMask2;
@@ -365,14 +364,6 @@ int main(int argc, char **argv)
       argc--;
       argv++;
       intensity_matching=false;
-      ok = true;
-    }
-
-    //Switch off intensity matching
-    if ((ok == false) && (strcmp(argv[1], "-combine_fieldmaps") == 0)){
-      argc--;
-      argv++;
-      combine_fieldmaps=true;
       ok = true;
     }
 
@@ -819,6 +810,12 @@ int main(int argc, char **argv)
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average-all.nii.gz");
+  
+  
+  
+  exit(1);
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////
   reconstruction.SetReconstructed(average);
   fieldmapMask1=average;
   fieldmapMask1=1;
@@ -945,18 +942,12 @@ int main(int argc, char **argv)
 	
       }
       
-      //TEST to override varying fieldmap masks
-      //fieldmapMask1=b0_mask;
-      //fieldmapMask2=b0_mask;
-      
       if(current_group == 0)
 	reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask1,1-current_group,step,iter);
       else
 	reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask2,1-current_group,step,iter);
 
-	reconstruction.SmoothFieldmapGroup(m,1-current_group,iter,combine_fieldmaps);
-        //TEST to override varying fieldmap masks
-	//reconstruction.SmoothFieldmapGroup(b0_mask,1-current_group,iter, combine_fieldmaps);
+	reconstruction.SmoothFieldmapGroup(m,1-current_group,iter);
 
 	corrected_stacks.clear();
         for(i=0;i<stacks.size();i++)
