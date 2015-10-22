@@ -178,6 +178,7 @@ class irtkReconstruction : public irtkObject
     ///Create zero image as a template for reconstructed volume
     double CreateTemplate( irtkRealImage stack,
                            double resolution=0 );
+    double CreateTemplateAniso(irtkRealImage stack);
     double CreateLargeTemplate( vector<irtkRealImage>& stacks,
                                 vector<irtkRigidTransformation>& stack_transformations,
                                 irtkImageAttributes &templateAttr,

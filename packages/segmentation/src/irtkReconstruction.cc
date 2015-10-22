@@ -474,6 +474,53 @@ double irtkReconstruction::CreateTemplate(irtkRealImage stack, double resolution
     return d;
 }
 
+double irtkReconstruction::CreateTemplateAniso(irtkRealImage stack)
+{
+    double dx, dy, dz, d;
+
+    //Get image attributes - image size and voxel size
+    irtkImageAttributes attr = stack.GetImageAttributes();
+
+    //enlarge stack in z-direction in case top of the head is cut off
+    //attr._z += 2;
+    attr._t = 1;
+
+    //create enlarged image
+    irtkRealImage enlarged(attr);
+/*
+    //determine resolution of volume to reconstruct
+    if (resolution <= 0) {
+        //resolution was not given by user
+        // set it to min of res in x or y direction
+        stack.GetPixelSize(&dx, &dy, &dz);
+        if ((dx <= dy) && (dx <= dz))
+            d = dx;
+        else if (dy <= dz)
+            d = dy;
+        else
+            d = dz;
+    }
+    else
+        d = resolution;
+*/
+    cout << "Constructing volume with anisotropic voxel size " << attr._x << " " <<attr._y<<" "<<attr._z << endl;
+/*
+    //resample "enlarged" to resolution "d"
+    irtkNearestNeighborInterpolateImageFunction interpolator;
+    irtkResampling<irtkRealPixel> resampling(d, d, d);
+    resampling.SetInput(&enlarged);
+    resampling.SetOutput(&enlarged);
+    resampling.SetInterpolator(&interpolator);
+    resampling.Run();
+*/
+    //initialize recontructed volume
+    _reconstructed = enlarged;
+    _template_created = true;
+
+    //return resulting resolution of the template image
+    return attr._x;
+}
+
 void irtkReconstruction::CreateMaskFromBlackBackground( vector<irtkRealImage>& stacks,
                                                         vector<irtkRigidTransformation>& stack_transformations,
                                                         double smooth_mask )
