@@ -870,9 +870,9 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, irtkReal
   
   if (_debug)
   {
-    sprintf(buffer,"fmstacks%i.nii.gz",iter);
+    sprintf(buffer,"fmstacks%i-%i.nii.gz",iter,group);
     stack.Write(buffer);
-    sprintf(buffer,"fmsims%i.nii.gz",iter);
+    sprintf(buffer,"fmsims%i-%i.nii.gz",iter,group);
     simul.Write(buffer);
   }
     
@@ -891,10 +891,10 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, irtkReal
   
   if(_debug)
   {
-    sprintf(buffer,"fmdist%i.dof",iter);
+    sprintf(buffer,"fmdist%i-%i.dof",iter,group);
     _fieldMap.irtkTransformation::Write(buffer);
   }
-    
+    /*
   //Corect the stacks
   imagetransformation->PutInterpolator(interpolatorLin); 
   for(ind=0; ind<stacks.size(); ind++)
@@ -904,7 +904,7 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, irtkReal
     imagetransformation->SetOutput(&stacks[ind]);
     imagetransformation->Run();
   }
-  
+  */
   //resample distortion on a template
   irtkRealImage tempDist = templateStack;
   _distortion = _reconstructed;
@@ -945,7 +945,7 @@ void irtkReconstructionb0::FieldMapGroup(vector<irtkRealImage> &stacks, irtkReal
       _distortion(i,j,k)=(x-xx)*attr._dx;
    }
 
-    sprintf(buffer,"fmdist%i.nii.gz",iter);
+    sprintf(buffer,"fmdist%i-%i.nii.gz",iter,group);
     _distortion.Write(buffer);
   
   delete imagetransformation;
@@ -1827,4 +1827,5 @@ void irtkReconstructionb0::CombineDistortion()
 {
   _distortion=_BSplineField.Average(); 
   _BSplineField.Clear();
+  _distortion.Write("average-distortion.nii.gz");
 }

@@ -40,6 +40,7 @@ void usage()
   cerr << "\t-thickness [th_1] .. [th_N] Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region of interest. [Default: whole image]"<<endl;
   cerr << "\t-second_mask [mask]       Binary mask to define the region of interest for second group. [Default: whole image]"<<endl;
+  cerr << "\t-fieldmap_mask [mask]     Binary mask to define the region of interest for fieldmap. [Default: whole image]"<<endl;
   cerr << "\t-packages [num_1] .. [num_N] Give number of packages used during acquisition for each stack."<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
@@ -101,6 +102,7 @@ int main(int argc, char **argv)
   int templateNumber=-1;
   irtkRealImage *mask = NULL;
   irtkRealImage *mask2 = NULL;
+  irtkRealImage *fmask = NULL;
   irtkRealImage b0_mask,T2_mask;
   int iterations = 13;
   bool debug = false;
@@ -255,6 +257,16 @@ int main(int argc, char **argv)
       argc--;
       argv++;
       mask2= new irtkRealImage(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    }
+    
+   //Read binary mask for final volume
+    if ((ok == false) && (strcmp(argv[1], "-fieldmap_mask") == 0)){
+      argc--;
+      argv++;
+      fmask= new irtkRealImage(argv[1]);
       ok = true;
       argc--;
       argv++;
@@ -948,15 +960,27 @@ int main(int argc, char **argv)
       //TEST to override varying fieldmap masks
       //fieldmapMask1=b0_mask;
       //fieldmapMask2=b0_mask;
+      if(fmask != NULL)
+      {
+        fieldmapMask1=*fmask;
+        fieldmapMask2=*fmask;
+      }
       
+     
       if(current_group == 0)
 	reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask1,1-current_group,step,iter);
       else
 	reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask2,1-current_group,step,iter);
-
-	reconstruction.SmoothFieldmapGroup(m,1-current_group,iter,combine_fieldmaps);
+        
+        
+	//reconstruction.SmoothFieldmapGroup(m,1-current_group,iter,combine_fieldmaps);
         //TEST to override varying fieldmap masks
 	//reconstruction.SmoothFieldmapGroup(b0_mask,1-current_group,iter, combine_fieldmaps);
+      	if(fmask!=NULL)
+	  reconstruction.SmoothFieldmapGroup(*fmask,1-current_group,iter, combine_fieldmaps);
+	else
+	  reconstruction.SmoothFieldmapGroup(m,1-current_group,iter, combine_fieldmaps);
+
 
 	corrected_stacks.clear();
         for(i=0;i<stacks.size();i++)
