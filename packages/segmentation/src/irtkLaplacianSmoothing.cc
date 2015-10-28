@@ -47,6 +47,7 @@ irtkLaplacianSmoothing::irtkLaplacianSmoothing()
   _lap_threshold=0.000001;
   _rel_diff_threshold=0.0001;
   _relax_iter=5;
+  _boundary_weight=0.4;
 }
 
 void irtkLaplacianSmoothing::InitializeFactors()
@@ -763,8 +764,8 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
   double prev_lap, lap;
   char buffer[255];
   
-  im.Write("im.nii.gz");
-  m.Write("m.nii.gz");
+  //im.Write("im.nii.gz");
+  //m.Write("m.nii.gz");
   
   irtkRealImage image(im);
   EnlargeImage(image);
@@ -773,8 +774,8 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
   EnlargeImage(mask);
   CalculateBoundary(mask);
 
-  image.Write("image.nii.gz");
-  m.Write("mask.nii.gz");
+  //image.Write("image.nii.gz");
+  //m.Write("mask.nii.gz");
 
   
   irtkRealImage weights(mask);
@@ -788,8 +789,8 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
   laplacian=0;
   llaplacian=0;
   multipliers=0;
-  image.Write("smooth-image.nii.gz");
-  mask.Write("smooth-mask.nii.gz");
+  //image.Write("smooth-image.nii.gz");
+  //mask.Write("smooth-mask.nii.gz");
 
   double alpha = 0.5;
   double rel_diff;
@@ -804,7 +805,12 @@ void irtkLaplacianSmoothing::SmoothGD(irtkRealImage& im, irtkRealImage m)
         //laplacian.Write("laplacian.nii.gz");
         LaplacianBoundary(fieldmap, mask,laplacian);
         //laplacian.Write("laplacian-with-boundary.nii.gz");
-        UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,1);
+	///Change
+        UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,_boundary_weight*0.5/alpha);
+        //UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,1);
+        //UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,sqrt(0.5/alpha));
+        //UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,0.5/alpha);
+        //UpdateFieldmapGD(fieldmap, image, laplacian, mask, weights, alpha,0.5/alpha,0.05/alpha);
 
         //sprintf(buffer,"fieldmap%f-%i.nii.gz",alpha,iter);
         //fieldmap.Write(buffer);
@@ -987,16 +993,16 @@ irtkRealImage irtkLaplacianSmoothing::RunGD()
    
     SmoothGD(image,mask);
 
-     image.Write("fieldmap-hr.nii.gz");
+     //image.Write("fieldmap-hr.nii.gz");
     _fieldmap = image;
     _m=mask;
-    _fieldmap.Write("fieldmap-added.nii.gz");
-    _image.Write("_image.nii.gz");
-    _m.Write("_m.nii.gz");
-    _mask.Write("_mask.nii.gz");
+    //_fieldmap.Write("fieldmap-added.nii.gz");
+    //_image.Write("_image.nii.gz");
+    //_m.Write("_m.nii.gz");
+    //_mask.Write("_mask.nii.gz");
     UpsampleFieldmap(_image,_m,_mask);
-    _mask.Write("final-fieldmap-mask.nii.gz");
-    image.Write("upsampled-2.nii.gz");
+    //_mask.Write("final-fieldmap-mask.nii.gz");
+    //image.Write("upsampled-2.nii.gz");
     return _fieldmap;
 }
 

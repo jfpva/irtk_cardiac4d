@@ -49,6 +49,7 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(reconstructionConsistency reconstructionConsistency.cc)
     ADD_EXECUTABLE(reconstructionConsistency2 reconstructionConsistency2.cc)
     ADD_EXECUTABLE(reconstructionConsistencyCombined reconstructionConsistencyCombined.cc)
+    ADD_EXECUTABLE(reconstructionConsistencyCombined2 reconstructionConsistencyCombined2.cc)
     ADD_EXECUTABLE(reconstructionMasking reconstructionMasking.cc)
     ADD_EXECUTABLE(emSeg2ndOrderMRF emSeg2ndOrderMRF.cc)
     

@@ -1829,3 +1829,17 @@ void irtkReconstructionb0::CombineDistortion()
   _BSplineField.Clear();
   _distortion.Write("average-distortion.nii.gz");
 }
+
+
+void irtkReconstructionb0::CombineFieldmaps()
+{
+  irtkMultiChannelImage mch;
+  mch.AddImage(_smoothFieldMap[0]);
+  mch.AddImage(_smoothFieldMap[1]);
+  _smoothFieldMap[0]=0;
+  _smoothFieldMap[1]=0;
+  _smoothFieldMap[0]+=mch.Average();
+  _smoothFieldMap[1]+=mch.Average();
+  _smoothFieldMap[0].Write("average-fieldmap-0-it4.nii.gz");
+  _smoothFieldMap[1].Write("average-fieldmap-1-it4.nii.gz");
+}

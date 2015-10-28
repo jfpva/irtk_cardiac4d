@@ -6,6 +6,7 @@ bool ok, have_target=false;
 double relax_iter=5;
 double lap_threshold=0.000001;
 double rel_diff_threshold=0.0001;
+double boundary_weight=1;
 
 void usage()
 {
@@ -77,6 +78,15 @@ int main(int argc, char **argv)
       ok = true;
     }
 
+      if ((ok == false) && (strcmp(argv[1], "-boundary_weight") == 0)){
+      argc--;
+      argv++;
+      boundary_weight = atof(argv[1]);
+      argc--;
+      argv++;
+      ok = true;
+    }
+
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
       usage();
@@ -86,7 +96,7 @@ int main(int argc, char **argv)
   irtkLaplacianSmoothing smoothing;
   smoothing.SetInput(_image);
   smoothing.SetMask(_mask);  
-  smoothing.SetParam(lap_threshold,rel_diff_threshold,relax_iter);
+  smoothing.SetParam(lap_threshold,rel_diff_threshold,relax_iter,boundary_weight);
   _fieldmap = smoothing.RunGD();
   //_fieldmap = smoothing.Run();
   //_fieldmap = smoothing.Run1level();

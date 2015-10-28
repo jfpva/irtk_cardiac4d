@@ -80,6 +80,7 @@ public:
   
   void RememberDistortion();
   void CombineDistortion();
+  void CombineFieldmaps();
 
   inline void SetGroups(vector<int>& stack_group, vector<int>& groups, vector<bool>& swap); 
   inline void SetReconstructed(irtkRealImage image);

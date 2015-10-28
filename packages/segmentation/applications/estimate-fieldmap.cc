@@ -262,6 +262,12 @@ int main(int argc, char **argv)
   cout<<"entering fieldmap distortion"<<endl;
   cout.flush();
   //cout<<levels<<endl;
+  if(levels==3)
+    step = 2.5;
+  if(levels==4)
+    step = 1.25;
+  if(levels==5)
+    step = 0.625;
   reconstruction.FieldMapDistortion(original,simulated,_fieldMap,swap[0],step,0, levels);
   
   cout<<"done with fieldmap distortion"<<endl;

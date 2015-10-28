@@ -104,7 +104,7 @@ int main(int argc, char **argv)
   irtkRealImage *mask2 = NULL;
   irtkRealImage *fmask = NULL;
   irtkRealImage b0_mask,T2_mask;
-  int iterations = 13;
+  int iterations = 7;
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
@@ -1077,19 +1077,19 @@ int main(int argc, char **argv)
       
       if((packages.size()>0)&&(iter<=5)&&(iter<(iterations-2)))
       {
-	if((iter==1)||(iter==2))
+	if(iter==1)
           reconstruction.PackageToVolume(corrected_stacks,packages,iter);
 	else
 	{
-	  if((iter==3)||(iter==4))
+	  if(iter==2)
             reconstruction.PackageToVolume(corrected_stacks,packages,iter,true);
 	  else
 	  {
-            if((iter==5)||(iter==6))
+            if(iter==3)
 	      reconstruction.PackageToVolume(corrected_stacks,packages,iter,true,true);
 	    else
 	    {
-	      if(iter>=7)
+	      if(iter>=4)
                 reconstruction.PackageToVolume(corrected_stacks,packages,iter,true,true,(iter-2)/2);
 	      else
 	        reconstruction.SliceToVolumeRegistration();
