@@ -136,6 +136,6 @@ int main(int argc, char **argv)
     md = mo*md;
     dof.PutMatrix(md);
     
-    dof.irtkTransformation::Write("translation.nii.gz");
+    dof.irtkTransformation::Write("translation.dof");
     
 }

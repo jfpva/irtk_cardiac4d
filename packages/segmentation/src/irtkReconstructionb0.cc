@@ -1307,7 +1307,7 @@ void irtkReconstructionb0::SmoothFieldmap(int iter)
 }
 
 
-void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, int iter, bool combine_fieldmap)
+void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, int iter, bool combine_fieldmap, double boundary_weight,bool minus)
 {
   
   char buffer[256];
@@ -1335,6 +1335,7 @@ void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, in
   mask.Write(buffer);
   smoothing.SetMask(mask);
   _larger_mask = _mask;
+  smoothing.SetBoundaryWeight(boundary_weight);
   fieldmap = smoothing.RunGD();
   //_distortion.Write("d.nii.gz");
   //fieldmap.Write("f.nii.gz");
@@ -1343,10 +1344,18 @@ void irtkReconstructionb0::SmoothFieldmapGroup(irtkRealImage mask, int group, in
   if (combine_fieldmap)
   {
      _smoothFieldMap[0]+=fieldmap;
-     _smoothFieldMap[1]+=fieldmap;
+     if(minus)
+       _smoothFieldMap[1]-=fieldmap;
+     else
+       _smoothFieldMap[1]+=fieldmap;
   }
   else
+  {
+    if((minus)&&(group==1))
+     _smoothFieldMap[group]-=fieldmap;
+    else
      _smoothFieldMap[group]+=fieldmap;
+  }
     
      
     if(_groups.size()>1)
@@ -1547,7 +1556,7 @@ void irtkReconstructionb0::CorrectStacksSmoothFieldmap(vector<irtkRealImage> &st
   }//index
 }//function
 
-void irtkReconstructionb0::CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealImage> &stacks, irtkRealImage fieldmapMask1, irtkRealImage fieldmapMask2)
+void irtkReconstructionb0::CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealImage> &stacks, irtkRealImage fieldmapMask1, irtkRealImage fieldmapMask2, bool minus)
 {
   char buffer[256];
   irtkMatrix m;
@@ -1642,11 +1651,20 @@ void irtkReconstructionb0::CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealI
 		  x = i;
 		  y = j;
 		  z = k;
-
-		  if(_swap[index])
-	            y+=f/attr._dy;
-	          else
-	            x+=f/attr._dx;
+                 if((index==1)&&(minus))
+		  {
+		    if(_swap[index])
+	              y-=f/attr._dy;
+	            else
+	              x-=f/attr._dx;
+		  }
+		  else
+		  {
+		    if(_swap[index])
+	              y+=f/attr._dy;
+	             else
+	               x+=f/attr._dx;
+		   }
 		 
 		 if ((x > -0.5) && (x < image.GetX()-0.5) && 
 	             (y > -0.5) && (y < image.GetY()-0.5) &&
@@ -1676,7 +1694,7 @@ void irtkReconstructionb0::CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealI
 }//function
 
 
-void irtkReconstructionb0::CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRealImage fieldmapMask, int group )
+void irtkReconstructionb0::CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRealImage fieldmapMask, int group, bool minus )
 {
   char buffer[256];
   //irtkMatrix m;
@@ -1747,11 +1765,20 @@ void irtkReconstructionb0::CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRe
 		x = i;
 		y = j;
 		z = k;
-
-		if(_swap[group])
-	          y+=f/attr._dy;
-	        else
-	          x+=f/attr._dx;
+               if((group==1)&&(minus))
+	       {
+		  if(_swap[group])
+	            y-=f/attr._dy;
+	          else
+	            x-=f/attr._dx;
+	       }
+	       else
+	       {
+		  if(_swap[group])
+	            y+=f/attr._dy;
+	          else
+	            x+=f/attr._dx;
+	       }
 		 
 	      if ((x > -0.5) && (x < image.GetX()-0.5) && 
 	          (y > -0.5) && (y < image.GetY()-0.5) &&

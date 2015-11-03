@@ -70,13 +70,13 @@ public:
   void CorrectStacks(vector<irtkRealImage> &stacks);
   void CorrectStacksSmoothFieldmap(vector<irtkRealImage> &stacks);
   void SmoothFieldmap(int iter);
-  void SmoothFieldmapGroup(irtkRealImage mask, int group, int iter,bool combine_fieldmap = false);
+  void SmoothFieldmapGroup(irtkRealImage mask, int group, int iter,bool combine_fieldmap = false, double boundary_weight =1, bool minus = false);
   irtkRealImage CreateLargerMask(irtkRealImage mask);
   void CreateStackMask(vector<irtkRealImage> &simulated);
   void BSplineReconstructionGroup(int g);
   void SimulateStacksWithMask(vector<irtkRealImage>& stacks, irtkRealImage mask);
-  void CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRealImage fieldmapMask, int group );
-  void CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealImage> &stacks, irtkRealImage fieldmapMask1, irtkRealImage fieldmapMask2);
+  void CorrectMaskSmoothFieldmap(irtkRealImage& mask, irtkRealImage fieldmapMask, int group, bool minus = false );
+  void CorrectStacksSmoothFieldmapWithMasks(vector<irtkRealImage> &stacks, irtkRealImage fieldmapMask1, irtkRealImage fieldmapMask2, bool minus = false);
   
   void RememberDistortion();
   void CombineDistortion();

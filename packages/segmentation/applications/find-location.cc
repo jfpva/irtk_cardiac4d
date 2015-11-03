@@ -150,7 +150,7 @@ int main(int argc, char **argv)
   psz=(z1-z0);
   
   cout<<"translation in image coord of source is "<<psx/dy<<" "<<psy/dy<<" "<<psz/dy<<" "<<endl;
-  
+  exit(1);
   double dist_transl = (psy-pty)/2;
   
   cout<<"distortion translation is: "<<dist_transl/dy<<endl;

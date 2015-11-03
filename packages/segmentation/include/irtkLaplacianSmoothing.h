@@ -79,6 +79,7 @@ public:
   void SetInput(irtkRealImage image);
   void SetMask(irtkRealImage mask);
   void SetParam(double lap_threshold, double rel_diff_threshold, double relax_iter,double boundary_weight);
+  void SetBoundaryWeight(double boundary_weight);
   irtkRealImage GetMask();
   
   irtkRealImage Run();
@@ -100,6 +101,11 @@ inline void irtkLaplacianSmoothing::SetParam(double lap_threshold, double rel_di
   _lap_threshold = lap_threshold;
   _rel_diff_threshold = rel_diff_threshold;
   _relax_iter = relax_iter;
+  _boundary_weight = boundary_weight;
+}
+
+inline void irtkLaplacianSmoothing::SetBoundaryWeight(double boundary_weight=1)
+{
   _boundary_weight = boundary_weight;
 }
 
