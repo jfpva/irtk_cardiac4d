@@ -138,6 +138,8 @@ int main(int argc, char **argv)
   int mid_iter = 4;
   double boundary_weight=1;
   bool minus = false;
+  bool crop = true;
+  bool do_first_iter_second_image = true;
 
   //Create reconstruction object
   irtkReconstructionb0 reconstruction;
@@ -422,6 +424,24 @@ int main(int argc, char **argv)
       correct_distortion=false;
       ok = true;
     }
+
+    //Switch off intensity matching
+    if ((ok == false) && (strcmp(argv[1], "-no_crop") == 0)){
+      argc--;
+      argv++;
+      crop=false;
+      ok = true;
+    }
+    
+    //Switch off intensity matching
+    if ((ok == false) && (strcmp(argv[1], "-skip_first_iter_second_group") == 0)){
+      argc--;
+      argv++;
+      do_first_iter_second_image=false;
+      ok = true;
+    }
+    
+    
 
     //Switch off intensity matching
     if ((ok == false) && (strcmp(argv[1], "-combine_fieldmaps") == 0)){
@@ -737,20 +757,24 @@ int main(int argc, char **argv)
   average = reconstruction.CreateAverage(stacks1,stack_transformations1);
   if (debug)
     average.Write("average1.nii.gz");
-  for (i=0; i<stacks1.size(); i++)
+  
+  if(crop)
   {
-    //transform the mask
-    irtkRealImage m= *mask;
-    m.Write("mask1.nii.gz");
-    reconstruction.TransformMask(stacks1[i],m,stack_transformations1[i]);
-    //Crop template stack
-    reconstruction.CropImage(stacks1[i],m);
-    if (debug)
+    for (i=0; i<stacks1.size(); i++)
     {
-      sprintf(buffer,"mask1-%i.nii.gz",i);
-      m.Write(buffer); 
-      sprintf(buffer,"cropped1-%i.nii.gz",i);
-      stacks1[i].Write(buffer);
+      //transform the mask
+      irtkRealImage m= *mask;
+      m.Write("mask1.nii.gz");
+      reconstruction.TransformMask(stacks1[i],m,stack_transformations1[i]);
+      //Crop template stack
+      reconstruction.CropImage(stacks1[i],m);
+      if (debug)
+      {
+        sprintf(buffer,"mask1-%i.nii.gz",i);
+        m.Write(buffer); 
+        sprintf(buffer,"cropped1-%i.nii.gz",i);
+        stacks1[i].Write(buffer);
+      }
     }
   }
  
@@ -760,20 +784,24 @@ int main(int argc, char **argv)
   average = reconstruction.CreateAverage(stacks2,stack_transformations2);
   if (debug)
     average.Write("average2.nii.gz");
-  for (i=0; i<stacks2.size(); i++)
+  
+  if(crop)
   {
-    //transform the mask
-    irtkRealImage m= *mask2;
-    m.Write("mask2.nii.gz");
-    reconstruction.TransformMask(stacks2[i],m,stack_transformations2[i]);
-    //Crop template stack
-    reconstruction.CropImage(stacks2[i],m);
-    if (debug)
+    for (i=0; i<stacks2.size(); i++)
     {
-      sprintf(buffer,"mask2-%i.nii.gz",i);
-      m.Write(buffer); 
-      sprintf(buffer,"cropped2-%i.nii.gz",i);
-      stacks2[i].Write(buffer);
+      //transform the mask
+      irtkRealImage m= *mask2;
+      m.Write("mask2.nii.gz");
+      reconstruction.TransformMask(stacks2[i],m,stack_transformations2[i]);
+      //Crop template stack
+      reconstruction.CropImage(stacks2[i],m);
+      if (debug)
+      {
+        sprintf(buffer,"mask2-%i.nii.gz",i);
+        m.Write(buffer); 
+        sprintf(buffer,"cropped2-%i.nii.gz",i);
+        stacks2[i].Write(buffer);
+      }
     }
   }
   
@@ -1027,22 +1055,25 @@ int main(int argc, char **argv)
 	  else
            reconstruction.SmoothFieldmapGroup(fieldmapMask1,1,iter, false,boundary_weight,minus);
 	}
-
-	reconstruction.BSplineReconstructionGroup(groups[1]);
-        reconstructed=reconstruction.GetReconstructed();
-	sprintf(buffer,"target1-%i.nii.gz",iter);
-	reconstructed.Write(buffer);
-	reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask2,0,step,iter);
-	
-	///Change 2
-	if(iter>mid_iter)
-	  reconstruction.RememberDistortion();
-	else
+        
+        if((do_first_iter_second_image)||(iter>1))
 	{
-	  if(fmask!=NULL)
-            reconstruction.SmoothFieldmapGroup(*fmask,0,iter, false,boundary_weight,minus);
+	  reconstruction.BSplineReconstructionGroup(groups[1]);
+          reconstructed=reconstruction.GetReconstructed();
+	  sprintf(buffer,"target1-%i.nii.gz",iter);
+	  reconstructed.Write(buffer);
+	  reconstruction.FieldMapGroup(corrected_stacks,fieldmapMask2,0,step,iter);
+	
+	  ///Change 2
+	  if(iter>mid_iter)
+	    reconstruction.RememberDistortion();
 	  else
-           reconstruction.SmoothFieldmapGroup(fieldmapMask2,0,iter, false,boundary_weight,minus);
+	  {
+	    if(fmask!=NULL)
+              reconstruction.SmoothFieldmapGroup(*fmask,0,iter, false,boundary_weight,minus);
+	    else
+             reconstruction.SmoothFieldmapGroup(fieldmapMask2,0,iter, false,boundary_weight,minus);
+	  }
 	}
 	  
 	
@@ -1064,15 +1095,24 @@ int main(int argc, char **argv)
         for(i=0;i<stacks.size();i++)
           corrected_stacks.push_back(stacks[i]);
         //reconstruction.CorrectStacksSmoothFieldmap(corrected_stacks);
-        reconstruction.CorrectStacksSmoothFieldmapWithMasks(corrected_stacks,fieldmapMask1,fieldmapMask2,minus);
+	if(fmask!=NULL)
+          reconstruction.CorrectStacksSmoothFieldmapWithMasks(corrected_stacks,*fmask,*fmask,minus);
+	else
+          reconstruction.CorrectStacksSmoothFieldmapWithMasks(corrected_stacks,fieldmapMask1,fieldmapMask2,minus);
 	//if(current_group==0)
 	//{
 	  correctedMask2=*mask2;
+	if(fmask!=NULL)
+	  reconstruction.CorrectMaskSmoothFieldmap(correctedMask2,*fmask,1,minus);
+	else
 	  reconstruction.CorrectMaskSmoothFieldmap(correctedMask2,fieldmapMask1,1,minus);
 	//}
 	//else
 	//{
 	  correctedMask1=*mask;
+	if(fmask!=NULL)
+	  reconstruction.CorrectMaskSmoothFieldmap(correctedMask1,*fmask,0,minus);
+	else
 	  reconstruction.CorrectMaskSmoothFieldmap(correctedMask1,fieldmapMask2,0,minus);
 	//}
 	//if(iter==2)
