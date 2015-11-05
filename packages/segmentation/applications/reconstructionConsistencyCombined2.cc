@@ -140,6 +140,7 @@ int main(int argc, char **argv)
   bool minus = false;
   bool crop = true;
   bool do_first_iter_second_image = true;
+  bool full_motion = true;
 
   //Create reconstruction object
   irtkReconstructionb0 reconstruction;
@@ -434,6 +435,14 @@ int main(int argc, char **argv)
     }
     
     //Switch off intensity matching
+    if ((ok == false) && (strcmp(argv[1], "-restricted_motion") == 0)){
+      argc--;
+      argv++;
+      full_motion=false;
+      ok = true;
+    }
+    
+    //Switch off intensity matching
     if ((ok == false) && (strcmp(argv[1], "-skip_first_iter_second_group") == 0)){
       argc--;
       argv++;
@@ -688,6 +697,8 @@ int main(int argc, char **argv)
   //if resolution==0 it will be determined from in-plane resolution of the image
   resolution = reconstruction.CreateTemplate(stacks[templateNumber],resolution);
   templ=stacks[templateNumber];
+  reconstructed = reconstruction.GetReconstructed();
+  reconstructed.Write("template.nii.gz");
 
   //to redirect output from screen to text files
   
@@ -881,13 +892,16 @@ int main(int argc, char **argv)
   
   //create template using both masks
   reconstruction.TransformMask(templ,m,stack_transformations[templateNumber]);
-  reconstruction.CropImage(templ,m);
-  if (debug)
+  if(crop)
   {
-    m.Write("maskTemplate.nii.gz"); 
-    templ.Write("croppedTemplate.nii.gz");
+    reconstruction.CropImage(templ,m);
+    if (debug)
+    {
+      m.Write("maskTemplate.nii.gz"); 
+      templ.Write("croppedTemplate.nii.gz");
+    }
+    resolution = reconstruction.CreateTemplate(templ,resolution);
   }
-  resolution = reconstruction.CreateTemplate(templ,resolution);
   reconstruction.SetMask(&m,resolution,0.45);
   b0_mask=reconstruction.GetMask();
   b0_mask.Write("b0mask.nii.gz");
@@ -1189,7 +1203,8 @@ int main(int argc, char **argv)
       reconstructed.Write(buffer);
       //reconstruction.SetT2Template(blurredT2);
       
-      
+      if(full_motion)
+      {
       if((packages.size()>0)&&(iter<=5)&&(iter<(iterations-2)))
       {
 	if(iter==1)
@@ -1214,8 +1229,9 @@ int main(int argc, char **argv)
       }
       else
         reconstruction.SliceToVolumeRegistration();
-      
-      /*
+      }
+      else
+      {
       ///change 5
       if((packages.size()>0)&&(iter<(iterations-1)))
       {
@@ -1226,7 +1242,7 @@ int main(int argc, char **argv)
       }
       else
 	 reconstruction.SliceToVolumeRegistration();
-      */
+      }
     }
     
     //print to screen
