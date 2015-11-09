@@ -2070,7 +2070,7 @@ public:
         
             //start of a loop for a slice inputIndex
             cout << inputIndex << " ";
-
+            cout.flush();
             //read the slice
             irtkRealImage& slice = reconstructor->_slices[inputIndex];
 
@@ -2368,6 +2368,7 @@ void irtkReconstruction::CoeffInit()
     _slice_inside.resize(_slices.size());
 
     cout << "Initialising matrix coefficients...";
+    cout.flush();
     ParallelCoeffInit coeffinit(this);
     coeffinit();
     cout << " ... done." << endl;

@@ -71,6 +71,7 @@ ELSE(BUILD_CONDOR_EXE)
     
     ADD_EXECUTABLE(find-location find-location.cc)
     ADD_EXECUTABLE(find-offset find-offset.cc)
+    ADD_EXECUTABLE(superheart superheart.cc)
     #ADD_EXECUTABLE(profile profile.cc)
   ENDIF (BUILD_MPI_EXE)
 
