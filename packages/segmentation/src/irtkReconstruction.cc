@@ -3603,7 +3603,7 @@ public:
 void irtkReconstruction::AdaptiveRegularization(int iter, irtkRealImage& original)
 {
     if (_debug)
-        cout << "AdaptiveRegularization" << endl;
+        cout << "AdaptiveRegularization: _delta = "<<_delta<<" _lambda = "<<_lambda <<" _alpha = "<<_alpha<< endl;
 
     vector<double> factor(13,0);
     for (int i = 0; i < 13; i++) {
