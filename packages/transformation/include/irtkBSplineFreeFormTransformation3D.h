@@ -167,6 +167,9 @@ protected:
 
 public:
 
+  /// Calculate the laplacian of the transformation at arbitrary points  (3D)
+  virtual double Laplacian3D(double x, double y, double z);
+
   /// Returns the value of the B-spline basis function
   static double B (double);
 
