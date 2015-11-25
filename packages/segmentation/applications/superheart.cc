@@ -8,6 +8,8 @@ double frame_duration, cardiac_cycle;
 vector<double > times;
 double delta = 50, lambda = 0.01;
 double resolution = 0;
+double fwhm_prop = 1;
+bool robust_statistics = true;
 
 bool ok;
 char buffer[256];
@@ -16,6 +18,9 @@ void usage()
 {
   cerr<<"superhart [image] [output] [frame duration] [cardiac cycle]"<<endl;
   cerr<<"         <-mask mask> <-times n time_1 ... time_n> <-delta delta> <-lambda lambda>"<<endl;
+  cerr<<"         <-resolution res> <-fwhm_proportion prop > <-no_robust_statistics>"<<endl;
+  cerr<<"         for fwhm_proportion give proportion of frame duration>"<<endl;
+  
   exit(1);
 }
 
@@ -55,7 +60,6 @@ int main(int argc, char **argv)
       cout<<"Reading mask "<<argv[1]<<" ...";
       cout.flush();
       _mask= new irtkRealImage(argv[1]);
-      _mask->Write("_mask.nii.gz");
       cout<<" done."<<endl;
       cout.flush();
       argc--;
@@ -113,6 +117,25 @@ int main(int argc, char **argv)
       argv++;
     }
 
+    if ((ok == false) && (strcmp(argv[1], "-fwhm_proportion") == 0)){
+      argc--;
+      argv++;
+      fwhm_prop=atof(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    }
+
+    //Switch off robust statistics
+    if ((ok == false) && (strcmp(argv[1], "-no_robust_statistics") == 0)){
+      argc--;
+      argv++;
+      robust_statistics=false;
+      ok = true;
+    }
+    
+
+
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
       usage();
@@ -143,11 +166,11 @@ int main(int argc, char **argv)
   
   cout<<"Virtual time step is "<<timestep<<endl;
   cout<<"Virtual cardiac cycle is "<<timestep*no_frames<<endl;
-  cout<<"Real time step is "<<cardiac_cycle/no_frames<<endl;
+  cout<<"Real time step is "<<cardiac_cycle/no_frames<<" ms"<<endl;
 
   double sigma = timestep*no_frames*frame_duration/cardiac_cycle;
   cout<<"Virtual frame duration is "<<sigma<<endl;
-  //sigma=0.75*sigma;
+  sigma=fwhm_prop*sigma;
   cout<<"FWHM of time frame is "<<sigma<<endl;
   
   if(times.size()==0)
@@ -193,7 +216,6 @@ int main(int argc, char **argv)
      resolution = reconstruction.CreateTemplate(temp,resolution);
    
    irtkRealImage reconstructed = reconstruction.GetReconstructed();
-   reconstructed.Write("template.nii.gz");
    
    if(_mask==NULL)
    {
@@ -234,36 +256,32 @@ int main(int argc, char **argv)
  //reconstruction.SaveTransformations();
  
  reconstruction.SpeedupOff();
- cout<<"InitializeEM ...";
  reconstruction.InitializeEM();
- reconstruction.InitializeEMValues();
- cout<<"done."<<endl;
- cout.flush();
- 
- 
- cout<<"Sizes:"<<slices.size()<<" "<<transformations.size()<<" "<<thickness.size()<<endl;
- cout<<"CoeffInit ...";
-  cout.flush();
+ reconstruction.InitializeEMValues(); 
  reconstruction.CoeffInit();
- cout<<"done."<<endl;
- cout.flush();
 
- cout<<"GaussianReconstruction ...";
  reconstruction.GaussianReconstruction();
- cout<<"done."<<endl;
  cout.flush();
  reconstructed = reconstruction.GetReconstructed();
  reconstructed.Write("init.nii.gz"); 
  
  reconstruction.SimulateSlices();
  reconstruction.InitializeRobustStatistics();
+ if(robust_statistics)
+   reconstruction.EStep();
  
  for(int i = 0; i<10; i++)
  {
    cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
    reconstruction.Superresolution(i+1);
    reconstruction.SimulateSlices();
-   
+
+   if(robust_statistics)
+   {
+     reconstruction.MStep(i+1);
+     reconstruction.EStep();
+   }
+
    reconstructed=reconstruction.GetReconstructed();
    sprintf(buffer,"super%i.nii.gz",i);
    reconstructed.Write(buffer);
@@ -279,49 +297,30 @@ int main(int argc, char **argv)
  cout<<"time 0: ";
  z=no_frames;
  temp.ImageToWorld(x,y,z);
- cout<<z<<" in world coord."<<endl;
  reconstructed.WorldToImage(x,y,z);
- cout<<z<<" in recon coord."<<endl;
+ cout<<"slice "<<z<<" in reconstructed.nii.gz."<<endl;
  int z0=round(z);
  
- /*
- cout<<"All times:"<<endl;
- 
- for (int i=0; i<reconstructed.GetZ();i++)
- {
-   cout<<"Recon frame "<<i<<": ";
-   z=i;
-   reconstructed.ImageToWorld(x,y,z);
-   temp.WorldToImage(x,y,z);
-   cout<<z<<" in temp; ";
-   if(z>=no_frames)
-     z=z-no_frames;
-   cout<<z<<" in no frames; ";
-   double time = z*cardiac_cycle/no_frames;
-   cout<<time<<"ms in cardiac_cycle"<<endl;
-   
- }
- */
  
  irtkImageAttributes attr2 = reconstructed.GetImageAttributes();
  attr = _image.GetImageAttributes();
  attr2._t=no_frames;
  attr2._z=1;
  attr2._dz=attr._dz;
- attr2._dt=cardiac_cycle/no_frames;
+ attr2._dt=0.001*cardiac_cycle/no_frames;
  
  irtkRealImage result(attr2);
  
  for(int ind=z0-(no_frames/2);ind<z0+(no_frames/2)-1;ind++)
  {
-   cout<<"recon"<<ind<<"; ";
+   cout<<"reconstructed: z="<<ind<<"; ";
    z=ind;
    reconstructed.ImageToWorld(x,y,z);
    temp.WorldToImage(x,y,z);
    if(z>=no_frames)
      z=z-no_frames;
    int t = round(z);
-   cout<<"frame "<<t<<endl;
+   cout<<"superheart frame "<<t<<"."<<endl;
    for(int i=0;i<reconstructed.GetX();i++)
      for(int j=0;j<reconstructed.GetY();j++)
      {
@@ -336,5 +335,6 @@ int main(int argc, char **argv)
  }
  
  result.Write(output_name);  
+ reconstruction.Evaluate(9);
 
 }
