@@ -35,7 +35,7 @@ void usage()
 int main(int argc, char **argv)
 {
 	bool ok;
-	irtkGreyImage in, out, ref;
+	irtkRealImage in, out, ref;
 	irtkPointSet landmarks;
 	int x1, x2, y1, t1, y2, z1, z2, t2;
 	double tx[8],ty[8],tz[8],scale;

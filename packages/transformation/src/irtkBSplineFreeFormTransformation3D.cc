@@ -1406,6 +1406,97 @@ double irtkBSplineFreeFormTransformation3D::Bending3D(double x, double y, double
 		x_jk*x_jk + y_jk*y_jk + z_jk*z_jk));
 }
 
+double irtkBSplineFreeFormTransformation3D::Laplacian3D(double x, double y, double z)
+{
+	int i, j, k, l, m, n, I, J, K, S, T, U;
+	double s, t, u, v;
+	double B_K, B_J, B_I, B_K_I, B_J_I, B_I_I, B_K_II, B_J_II, B_I_II;
+	double z_kk=0, y_kk=0, x_kk=0, z_jj=0, y_jj=0, x_jj=0, z_ii=0, y_ii=0, x_ii=0;
+	double z_ij=0, y_ij=0, x_ij=0, z_ik=0, y_ik=0, x_ik=0, z_jk=0, y_jk=0, x_jk=0;
+
+	this->WorldToLattice(x, y, z);
+
+	// Compute BSpline derivatives
+	l = (int)floor(x);
+	m = (int)floor(y);
+	n = (int)floor(z);
+	s = x-l;
+	t = y-m;
+	u = z-n;
+	S = round(LUTSIZE*s);
+	T = round(LUTSIZE*t);
+	U = round(LUTSIZE*u);
+	for (k = 0; k < 4; k++) {
+		K = k + n - 1;
+		if ((K >= 0) && (K < _z)) {
+			B_K    = this->LookupTable[U][k];
+			B_K_I  = this->LookupTable_I[U][k];
+			B_K_II = this->LookupTable_II[U][k];
+			for (j = 0; j < 4; j++) {
+				J = j + m - 1;
+				if ((J >= 0) && (J < _y)) {
+					B_J    = this->LookupTable[T][j];
+					B_J_I  = this->LookupTable_I[T][j];
+					B_J_II = this->LookupTable_II[T][j];
+					for (i = 0; i < 4; i++) {
+						I = i + l - 1;
+						if ((I >= 0) && (I < _x)) {
+							B_I    = this->LookupTable[S][i];
+							B_I_I  = this->LookupTable_I[S][i];
+							B_I_II = this->LookupTable_II[S][i];
+
+							v = B_I * B_J * B_K_II;
+							z_kk += _data[K][J][I]._z * v;
+							y_kk += _data[K][J][I]._y * v;
+							x_kk += _data[K][J][I]._x * v;
+
+							v = B_I * B_J_II * B_K;
+							z_jj += _data[K][J][I]._z * v;
+							y_jj += _data[K][J][I]._y * v;
+							x_jj += _data[K][J][I]._x * v;
+
+							v = B_I_II * B_J * B_K;
+							z_ii += _data[K][J][I]._z * v;
+							y_ii += _data[K][J][I]._y * v;
+							x_ii += _data[K][J][I]._x * v;
+
+							v = B_I_I * B_J_I * B_K;
+							z_ij += _data[K][J][I]._z * v;
+							y_ij += _data[K][J][I]._y * v;
+							x_ij += _data[K][J][I]._x * v;
+
+							v = B_I_I * B_J * B_K_I;
+							z_ik += _data[K][J][I]._z * v;
+							y_ik += _data[K][J][I]._y * v;
+							x_ik += _data[K][J][I]._x * v;
+
+							v = B_I * B_J_I * B_K_I;
+							z_jk += _data[K][J][I]._z * v;
+							y_jk += _data[K][J][I]._y * v;
+							x_jk += _data[K][J][I]._x * v;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Compute bending
+	/*
+	return (x_ii*x_ii + x_jj*x_jj + x_kk*x_kk +
+		y_ii*y_ii + y_jj*y_jj + y_kk*y_kk +
+		z_ii*z_ii + z_jj*z_jj + z_kk*z_kk +
+		2*(x_ij*x_ij + y_ij*y_ij + z_ij*z_ij +
+		x_ik*x_ik + y_ik*y_ik + z_ik*z_ik +
+		x_jk*x_jk + y_jk*y_jk + z_jk*z_jk));
+		*/
+	//Laplacian
+	return (x_ii+x_jj+x_kk)*(x_ii+x_jj+x_kk)+
+	       (y_ii+y_jj+y_kk)*(y_ii+y_jj+y_kk)+
+	       (z_ii+z_jj+z_kk)*(z_ii+z_jj+z_kk);
+}
+
+
 int irtkBSplineFreeFormTransformation3D::CheckHeader(char *name)
 {
 	char buffer[255];

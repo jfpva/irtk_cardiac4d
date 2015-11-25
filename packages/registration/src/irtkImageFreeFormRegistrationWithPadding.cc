@@ -353,7 +353,8 @@ void irtkImageFreeFormRegistrationWithPadding::Initialize(int level)
   }
 
   // Padding of FFD
-  irtkPadding(*tmp_target, this->_TargetPadding, _affd);
+  //irtkPadding(*tmp_target, this->_TargetPadding, _affd);
+  cout<<"Commented out irtkPadding"<<endl;
 
   // Register in the x-direction only
   if (_Mode == RegisterX) {
@@ -477,14 +478,15 @@ double irtkImageFreeFormRegistrationWithPadding::SmoothnessPenalty()
   double x, y, z, penalty;
 
   penalty = 0;
-  for (k = 0; k < _affd->GetZ(); k++) {
-    for (j = 0; j < _affd->GetY(); j++) {
-      for (i = 0; i < _affd->GetX(); i++) {
+  for (k = 2; k < (_affd->GetZ()-2); k++) {
+    for (j = 2; j < (_affd->GetY()-2); j++) {
+      for (i = 2; i < (_affd->GetX()-2); i++) {
         x = i;
         y = j;
         z = k;
         _affd->LatticeToWorld(x, y, z);
-        penalty += _affd->Bending(x, y, z);
+        //penalty += _affd->Bending(x, y, z);
+        penalty += _affd->Laplacian3D(x, y, z);
       }
     }
   }
@@ -495,13 +497,23 @@ double irtkImageFreeFormRegistrationWithPadding::SmoothnessPenalty(int index)
 {
   int i, j, k;
   double x, y, z;
+  double penalty=0;
 
   _affd->IndexToLattice(index, i, j, k);
-  x = i;
-  y = j;
-  z = k;
-  _affd->LatticeToWorld(x, y, z);
-  return -_affd->Bending(x, y, z);
+  for (int ii=i-1;ii<=i+1;ii++)
+    for (int jj=j-1;jj<=j+1;jj++)
+      for (int kk=k-1;kk<=k+1;kk++)
+	if((ii>=2)&&(ii<(_affd->GetX()-2))&&(jj>=2)&&(jj<(_affd->GetY()-2))&&(kk>=2)&&(kk<(_affd->GetZ()-2)))
+        {
+          x = ii;
+          y = jj;
+          z = kk;
+          _affd->LatticeToWorld(x, y, z);
+	  //penalty += _affd->Bending(x, y, z);
+	  penalty += _affd->Laplacian3D(x, y, z);
+        }
+   return -penalty / _affd->NumberOfDOFs();
+  //return -_affd->Bending(x, y, z);
 }
 
 double irtkImageFreeFormRegistrationWithPadding::VolumePreservationPenalty()
@@ -857,6 +869,7 @@ double irtkImageFreeFormRegistrationWithPadding::EvaluateDerivative(int index, d
   // Smoothness
   if (this->_Lambda1 > 0) {
     similarityA += this->_Lambda1*this->SmoothnessPenalty(index);
+    //similarityA += this->_Lambda1*this->SmoothnessPenalty();
   }
   // Volume preservation
   if (this->_Lambda2 > 0) {
@@ -876,6 +889,7 @@ double irtkImageFreeFormRegistrationWithPadding::EvaluateDerivative(int index, d
   // Smoothness
   if (this->_Lambda1 > 0) {
     similarityB += this->_Lambda1*this->SmoothnessPenalty(index);
+    //similarityB += this->_Lambda1*this->SmoothnessPenalty();
   }
   // Volume preservation
   if (this->_Lambda2 > 0) {

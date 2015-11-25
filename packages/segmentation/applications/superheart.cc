@@ -19,6 +19,7 @@ void usage()
   cerr<<"superhart [image] [output] [frame duration] [cardiac cycle]"<<endl;
   cerr<<"         <-mask mask> <-times n time_1 ... time_n> <-delta delta> <-lambda lambda>"<<endl;
   cerr<<"         <-resolution res> <-fwhm_proportion prop > <-no_robust_statistics>"<<endl;
+  cerr<<"         <-resolution res> <-fwhm_proportion prop >"<<endl;
   cerr<<"         for fwhm_proportion give proportion of frame duration>"<<endl;
   
   exit(1);
