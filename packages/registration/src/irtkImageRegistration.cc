@@ -519,6 +519,9 @@ void irtkImageRegistration::Run()
   this->Finalize();
 }
 
+
+
+
 double irtkImageRegistration::EvaluateGradient(float step, float *dx)
 {
   int i;

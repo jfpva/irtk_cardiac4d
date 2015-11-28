@@ -190,6 +190,10 @@ public:
   /// Write registration parameters to file
   virtual void Write(ostream &);
 
+  /// Run with relaxation of _Lambda1
+  virtual void RunRelax();
+
+
   // Access parameters for control point space
   virtual SetMacro(DX, double);
   virtual GetMacro(DX, double);

@@ -268,6 +268,7 @@ int main(int argc, char **argv)
     step = 1.25;
   if(levels==5)
     step = 0.625;
+  reconstruction.SetSmoothnessPenalty(penalty);
   reconstruction.FieldMapDistortion(original,simulated,_fieldMap,swap[0],step,0, levels);
   
   cout<<"done with fieldmap distortion"<<endl;
@@ -306,6 +307,7 @@ int main(int argc, char **argv)
    }
    
    fieldmap.Write("fieldmap-bspline.nii.gz");
+   //exit(1);
    irtkLaplacianSmoothing smoothing;
    smoothing.SetInput(fieldmap);
    smoothing.SetMask(*mask);

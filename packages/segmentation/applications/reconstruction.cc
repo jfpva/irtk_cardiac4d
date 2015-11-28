@@ -59,6 +59,7 @@ void usage()
   cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
   cerr << "\t-no_intensity_matching    Switch off intensity matching."<<endl;
   cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl;
+  cerr << "\t-exclude_slices_only      Do not exclude individual voxels."<<endl;
   cerr << "\t-bspline                  Use multi-level bspline interpolation instead of super-resolution."<<endl;
   cerr << "\t-log_prefix [prefix]      Prefix for the log file."<<endl;
   cerr << "\t-info [filename]          Filename for slice information in\
@@ -122,6 +123,7 @@ int main(int argc, char **argv)
 
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
+  bool robust_slices_only = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
   
@@ -340,8 +342,14 @@ int main(int argc, char **argv)
       ok = true;
     }
     
+    //Switch off robust statistics
+    if ((ok == false) && (strcmp(argv[1], "-exclude_slices_only") == 0)){
+      argc--;
+      argv++;
+      robust_slices_only=true;
+      ok = true;
+    }
     
-
     //Use multilevel B-spline interpolation instead of super-resolution
     if ((ok == false) && (strcmp(argv[1], "-bspline") == 0)){
       argc--;
@@ -771,6 +779,9 @@ int main(int argc, char **argv)
       reconstruction.SpeedupOn();
     else 
       reconstruction.SpeedupOff();
+    
+    if(robust_slices_only)
+      reconstruction.ExcludeWholeSlicesOnly();
     
     //Initialise values of weights, scales and bias fields
     reconstruction.InitializeEMValues();

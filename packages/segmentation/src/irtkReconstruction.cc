@@ -163,6 +163,7 @@ irtkReconstruction::irtkReconstruction()
     _low_intensity_cutoff = 0.01;
     _global_bias_correction = false;
     _adaptive = false;
+    _robust_slices_only = false;
 
     int directions[13][3] = {
         { 1, 0, -1 },
@@ -3241,8 +3242,17 @@ public:
                         int n = reconstructor->_volcoeffs[inputIndex][i][j].size();
                         for (int k = 0; k < n; k++) {
                             p = reconstructor->_volcoeffs[inputIndex][i][j][k];
-                            addon(p.x, p.y, p.z) += p.value * slice(i, j, 0) * w(i, j, 0) * reconstructor->_slice_weight[inputIndex];
-                            confidence_map(p.x, p.y, p.z) += p.value * w(i, j, 0) * reconstructor->_slice_weight[inputIndex];
+			    if(reconstructor->_robust_slices_only)
+			    {
+                              addon(p.x, p.y, p.z) += p.value * slice(i, j, 0) * reconstructor->_slice_weight[inputIndex];
+                              confidence_map(p.x, p.y, p.z) += p.value * reconstructor->_slice_weight[inputIndex];
+			      
+			    }
+			    else
+			    {
+                              addon(p.x, p.y, p.z) += p.value * slice(i, j, 0) * w(i, j, 0) * reconstructor->_slice_weight[inputIndex];
+                              confidence_map(p.x, p.y, p.z) += p.value * w(i, j, 0) * reconstructor->_slice_weight[inputIndex];
+			    }
                         }
                     }
         } //end of loop for a slice inputIndex

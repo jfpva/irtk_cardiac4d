@@ -9,6 +9,7 @@ vector<double > times;
 double delta = 50, lambda = 0.01;
 double resolution = 0;
 double fwhm_prop = 1;
+bool robust_statistics = true;
 
 bool ok;
 char buffer[256];
@@ -17,6 +18,7 @@ void usage()
 {
   cerr<<"superhart [image] [output] [frame duration] [cardiac cycle]"<<endl;
   cerr<<"         <-mask mask> <-times n time_1 ... time_n> <-delta delta> <-lambda lambda>"<<endl;
+  cerr<<"         <-resolution res> <-fwhm_proportion prop > <-no_robust_statistics>"<<endl;
   cerr<<"         <-resolution res> <-fwhm_proportion prop >"<<endl;
   cerr<<"         for fwhm_proportion give proportion of frame duration>"<<endl;
   
@@ -124,6 +126,16 @@ int main(int argc, char **argv)
       argc--;
       argv++;
     }
+
+    //Switch off robust statistics
+    if ((ok == false) && (strcmp(argv[1], "-no_robust_statistics") == 0)){
+      argc--;
+      argv++;
+      robust_statistics=false;
+      ok = true;
+    }
+    
+
 
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
@@ -245,6 +257,7 @@ int main(int argc, char **argv)
  //reconstruction.SaveTransformations();
  
  reconstruction.SpeedupOff();
+ reconstruction.ExcludeWholeSlicesOnly();
  reconstruction.InitializeEM();
  reconstruction.InitializeEMValues(); 
  reconstruction.CoeffInit();
@@ -256,13 +269,21 @@ int main(int argc, char **argv)
  
  reconstruction.SimulateSlices();
  reconstruction.InitializeRobustStatistics();
+ if(robust_statistics)
+   reconstruction.EStep();
  
  for(int i = 0; i<10; i++)
  {
    cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
    reconstruction.Superresolution(i+1);
    reconstruction.SimulateSlices();
-   
+
+   if(robust_statistics)
+   {
+     reconstruction.MStep(i+1);
+     reconstruction.EStep();
+   }
+
    reconstructed=reconstruction.GetReconstructed();
    sprintf(buffer,"super%i.nii.gz",i);
    reconstructed.Write(buffer);
@@ -271,7 +292,9 @@ int main(int argc, char **argv)
  reconstruction.MaskVolume();
  reconstructed = reconstruction.GetReconstructed();
  reconstructed.Write("reconstructed.nii.gz"); 
- 
+ reconstruction.SaveWeights();
+ reconstruction.SaveSlices();
+ reconstruction.SaveTransformations();
  
  double x=0,y=0,z;
  //time 0
@@ -288,11 +311,11 @@ int main(int argc, char **argv)
  attr2._t=no_frames;
  attr2._z=1;
  attr2._dz=attr._dz;
- attr2._dt=cardiac_cycle/no_frames;
+ attr2._dt=0.001*cardiac_cycle/no_frames;
  
  irtkRealImage result(attr2);
  
- for(int ind=z0-(no_frames/2);ind<z0+(no_frames/2)-1;ind++)
+ for(int ind=z0-no_frames/2;ind<z0-no_frames/2+no_frames;ind++)
  {
    cout<<"reconstructed: z="<<ind<<"; ";
    z=ind;
@@ -316,5 +339,6 @@ int main(int argc, char **argv)
  }
  
  result.Write(output_name);  
+ reconstruction.Evaluate(9);
 
 }
