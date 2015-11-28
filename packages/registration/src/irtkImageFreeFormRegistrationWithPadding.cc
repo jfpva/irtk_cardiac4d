@@ -353,8 +353,9 @@ void irtkImageFreeFormRegistrationWithPadding::Initialize(int level)
   }
 
   // Padding of FFD
-  //irtkPadding(*tmp_target, this->_TargetPadding, _affd);
-  cout<<"Commented out irtkPadding"<<endl;
+  irtkPadding(*tmp_target, this->_TargetPadding, _affd);
+  //cout<<"Commented out irtkPadding"<<endl;
+  cout<<"irtkPadding is back"<<endl;
 
   // Register in the x-direction only
   if (_Mode == RegisterX) {
@@ -476,17 +477,53 @@ double irtkImageFreeFormRegistrationWithPadding::SmoothnessPenalty()
 {
   int i, j, k;
   double x, y, z, penalty;
+  int a=1;
+  bool inside;
+  _Status sx,sy,sz;
+  bool active;
 
   penalty = 0;
-  for (k = 2; k < (_affd->GetZ()-2); k++) {
-    for (j = 2; j < (_affd->GetY()-2); j++) {
-      for (i = 2; i < (_affd->GetX()-2); i++) {
+  for (k = a; k < (_affd->GetZ()-a); k++) {
+    for (j = a; j < (_affd->GetY()-a); j++) {
+      for (i = a; i < (_affd->GetX()-a); i++) {
+	////test
+	inside = true;
+	for (int ii=i-1;ii<=i+1;ii++)
+          for (int jj=j-1;jj<=j+1;jj++)
+            for (int kk=k-1;kk<=k+1;kk++)
+	    {
+	      if((ii>=a)&&(ii<(_affd->GetX()-a))&&(jj>=a)&&(jj<(_affd->GetY()-a))&&(kk>=a)&&(kk<(_affd->GetZ()-a)))
+	      {
+	        _affd->GetStatusCP(ii,jj,kk,sx,sy,sz);
+	        if((sx==_Active)||(sy==_Active)||(sz==_Active))
+	          active = true;
+	        else
+	          active=false;
+		if (!active)
+		  inside = false;
+	      }
+	      else
+	      {
+		inside = false;
+	      }
+	    }
+	if(inside)    
+	{
+          x = i;
+          y = j;
+          z = k;
+          _affd->LatticeToWorld(x, y, z);
+          penalty += _affd->Laplacian3D(x, y, z);
+	}
+	////end test
+	/*original
         x = i;
         y = j;
         z = k;
         _affd->LatticeToWorld(x, y, z);
         //penalty += _affd->Bending(x, y, z);
         penalty += _affd->Laplacian3D(x, y, z);
+        end original*/
       }
     }
   }
@@ -498,19 +535,56 @@ double irtkImageFreeFormRegistrationWithPadding::SmoothnessPenalty(int index)
   int i, j, k;
   double x, y, z;
   double penalty=0;
-
+  int a=1;
+  bool inside;
+  _Status sx,sy,sz;
+  bool active;
+  
   _affd->IndexToLattice(index, i, j, k);
   for (int ii=i-1;ii<=i+1;ii++)
     for (int jj=j-1;jj<=j+1;jj++)
       for (int kk=k-1;kk<=k+1;kk++)
-	if((ii>=2)&&(ii<(_affd->GetX()-2))&&(jj>=2)&&(jj<(_affd->GetY()-2))&&(kk>=2)&&(kk<(_affd->GetZ()-2)))
+	if((ii>=a)&&(ii<(_affd->GetX()-a))&&(jj>=a)&&(jj<(_affd->GetY()-a))&&(kk>=a)&&(kk<(_affd->GetZ()-a)))
         {
+	  ////test
+	  inside = true;
+	  for (int iii=ii-1;iii<=ii+1;iii++)
+            for (int jjj=jj-1;jjj<=jj+1;jjj++)
+              for (int kkk=kk-1;kkk<=kk+1;kkk++)
+	      {
+	        if((iii>=a)&&(iii<(_affd->GetX()-a))&&(jjj>=a)&&(jjj<(_affd->GetY()-a))&&(kkk>=a)&&(kkk<(_affd->GetZ()-a)))
+	        {
+  	          _affd->GetStatusCP(iii,jjj,kkk,sx,sy,sz);
+	          if((sx==_Active)||(sy==_Active)||(sz==_Active))
+	            active = true;
+	          else
+	            active=false;
+		  if (!active)
+		    inside = false;
+	        }
+	        else
+	        {
+		  inside = false;
+	        }
+	      }
+	  if(inside)    
+	  {
+            x = ii;
+            y = jj;
+            z = kk;
+            _affd->LatticeToWorld(x, y, z);
+            penalty += _affd->Laplacian3D(x, y, z);
+	  }
+	////end test
+	/*original
+
           x = ii;
           y = jj;
           z = kk;
           _affd->LatticeToWorld(x, y, z);
 	  //penalty += _affd->Bending(x, y, z);
 	  penalty += _affd->Laplacian3D(x, y, z);
+	end original*/
         }
    return -penalty / _affd->NumberOfDOFs();
   //return -_affd->Bending(x, y, z);
@@ -1052,3 +1126,122 @@ void irtkImageFreeFormRegistrationWithPadding::Write(ostream &to)
 
   this->irtkImageRegistration::Write(to);
 }
+
+void irtkImageFreeFormRegistrationWithPadding::RunRelax()
+{
+  int i, j, level;
+  char buffer[256];
+  double step, epsilon = 0, delta, maxChange = 0;
+
+  // Print debugging information
+  this->Debug("irtkImageRegistration::Run");
+
+  if (_source == NULL) {
+    cerr << "Registration::Run: Filter has no source input" << endl;
+    exit(1);
+  }
+
+  if (_target == NULL) {
+    cerr << "Registration::Run: Filter has no target input" << endl;
+    exit(1);
+  }
+
+  if (_transformation == NULL) {
+    cerr << "irtkImageRegistration::Run: Filter has no transformation output" << endl;
+    exit(1);
+  }
+
+  // Do the initial set up for all levels
+  this->Initialize();
+
+  // Loop over levels
+  for (level = _NumberOfLevels-1; level >= 0; level--) {
+
+
+    // Initial step size
+    step = _LengthOfSteps[level];
+
+    // Print resolution level
+    cout << "Resolution level no. " << level+1 << " (step sizes ";
+    cout << step << " to " << step / pow(2.0, static_cast<double>(_NumberOfSteps[level]-1)) << ")\n";
+
+    // Initial Delta
+    delta = _Delta[level];
+    cout << "Delta values : " << delta << " to ";
+    cout << delta / pow(2.0, static_cast<double>(_NumberOfSteps[level]-1)) << "\n";
+
+#ifdef HISTORY
+    history->Clear();
+#endif
+
+    // Initialize for this level
+    this->Initialize(level);
+
+    // Save pre-processed images if we are debugging
+    sprintf(buffer, "source_%d.nii.gz", level);
+    if (_DebugFlag == true) _source->Write(buffer);
+    sprintf(buffer, "target_%d.nii.gz", level);
+    if (_DebugFlag == true) _target->Write(buffer);
+
+#ifdef HAS_TBB
+    task_scheduler_init init(tbb_no_threads);
+
+    tick_count t_start = tick_count::now();
+#endif
+
+    _Lambda1 = 0.2;
+    for (int relax_iter = 0; relax_iter < 5; relax_iter++)
+    {
+      cout<<endl<<"Lambda1 = "<<_Lambda1<<endl;
+      step = _LengthOfSteps[level];
+      delta = _Delta[level];
+    // Run the registration filter at this resolution
+    for (i = 0; i < _NumberOfSteps[level]; i++) {
+      for (j = 0; j < _NumberOfIterations[level]; j++) {
+        cout << "Iteration = " << j + 1 << " (out of " << _NumberOfIterations[level];
+        cout << "), step size = " << step << endl;
+
+        // Optimize at lowest level of resolution
+        _optimizer->SetStepSize(step);
+        _optimizer->SetEpsilon(_Epsilon);
+        _optimizer->Run(epsilon, maxChange);
+
+        // Check whether we made any improvement or not
+        if (epsilon > _Epsilon && maxChange > delta) {
+          sprintf(buffer, "log_%.3d_%.3d_%.3d.dof", level, i+1, j+1);
+          if (_DebugFlag == true) _transformation->Write(buffer);
+          this->Print();
+        } else {
+          sprintf(buffer, "log_%.3d_%.3d_%.3d.dof", level, i+1, j+1);
+          if (_DebugFlag == true) _transformation->Write(buffer);
+          this->Print();
+          break;
+        }
+      }
+      step = step / 2;
+      delta = delta / 2.0;
+    }
+    _Lambda1*=10;
+    }
+
+#ifdef HAS_TBB
+
+    tick_count t_end = tick_count::now();
+    if (tbb_debug) cout << this->NameOfClass() << " = " << (t_end - t_start).seconds() << " secs." << endl;
+    init.terminate();
+
+#endif
+
+    // Do the final cleaning up for this level
+    this->Finalize(level);
+
+#ifdef HISTORY
+    history->Print();
+#endif
+
+  }
+
+  // Do the final cleaning up for all levels
+  this->Finalize();
+}
+

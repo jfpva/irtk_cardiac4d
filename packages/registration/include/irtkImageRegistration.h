@@ -170,6 +170,7 @@ public:
    *  histogram. This function returns the value of the similarity measure
    *  using Similarity().
    */
+    
   virtual double Evaluate() = 0;
 
   /** Evaluates the gradient of the similarity metric. This function

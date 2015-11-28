@@ -152,6 +152,9 @@ class irtkReconstruction : public irtkObject
     //utility
     ///Debug mode
     bool _debug;
+    
+    //do not exclude voxels, only whole slices
+    bool _robust_slices_only;
 
   
     //Probability density functions
@@ -396,6 +399,8 @@ class irtkReconstruction : public irtkObject
 
     inline void UseAdaptiveRegularisation();
     
+    inline void ExcludeWholeSlicesOnly();
+    
     ///Write included/excluded/outside slices
     void Evaluate( int iter );
   
@@ -488,6 +493,12 @@ inline void irtkReconstruction::DebugOn()
 {
     _debug=true;
     cout<<"Debug mode."<<endl;
+}
+
+inline void irtkReconstruction::ExcludeWholeSlicesOnly()
+{
+    _robust_slices_only=true;
+    cout<<"Exclude only whole slices."<<endl;
 }
 
 inline void irtkReconstruction::UseAdaptiveRegularisation()

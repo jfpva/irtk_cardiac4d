@@ -257,6 +257,7 @@ int main(int argc, char **argv)
  //reconstruction.SaveTransformations();
  
  reconstruction.SpeedupOff();
+ reconstruction.ExcludeWholeSlicesOnly();
  reconstruction.InitializeEM();
  reconstruction.InitializeEMValues(); 
  reconstruction.CoeffInit();
@@ -291,7 +292,9 @@ int main(int argc, char **argv)
  reconstruction.MaskVolume();
  reconstructed = reconstruction.GetReconstructed();
  reconstructed.Write("reconstructed.nii.gz"); 
- 
+ reconstruction.SaveWeights();
+ reconstruction.SaveSlices();
+ reconstruction.SaveTransformations();
  
  double x=0,y=0,z;
  //time 0
@@ -312,7 +315,7 @@ int main(int argc, char **argv)
  
  irtkRealImage result(attr2);
  
- for(int ind=z0-(no_frames/2);ind<z0+(no_frames/2)-1;ind++)
+ for(int ind=z0-no_frames/2;ind<z0-no_frames/2+no_frames;ind++)
  {
    cout<<"reconstructed: z="<<ind<<"; ";
    z=ind;
