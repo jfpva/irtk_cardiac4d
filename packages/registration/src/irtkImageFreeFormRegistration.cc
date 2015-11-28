@@ -218,7 +218,7 @@ void irtkImageFreeFormRegistration::Initialize(int level)
   }
 
   // Padding of FFD
-  //irtkPadding(*tmp_target, this->_TargetPadding, _affd);
+  irtkPadding(*tmp_target, this->_TargetPadding, _affd);
 
   // Register in the x-direction only
   if (_Mode == RegisterX) {
@@ -336,6 +336,7 @@ void irtkImageFreeFormRegistration::UpdateLUT()
   }
 }
 
+/*
 double irtkImageFreeFormRegistration::SmoothnessPenalty()
 {
   int i, j, k;
@@ -376,6 +377,104 @@ double irtkImageFreeFormRegistration::SmoothnessPenalty(int index)
         }
    return -penalty / _affd->NumberOfDOFs();
 }
+
+*/
+
+double irtkImageFreeFormRegistration::SmoothnessPenalty()
+{
+  int i, j, k;
+  double x, y, z, penalty;
+  int a=1;
+  bool inside;
+  _Status sx,sy,sz;
+  bool active;
+
+  penalty = 0;
+  for (k = a; k < (_affd->GetZ()-a); k++) {
+    for (j = a; j < (_affd->GetY()-a); j++) {
+      for (i = a; i < (_affd->GetX()-a); i++) {
+	inside = true;
+	for (int ii=i-1;ii<=i+1;ii++)
+          for (int jj=j-1;jj<=j+1;jj++)
+            for (int kk=k-1;kk<=k+1;kk++)
+	    {
+	      if((ii>=a)&&(ii<(_affd->GetX()-a))&&(jj>=a)&&(jj<(_affd->GetY()-a))&&(kk>=a)&&(kk<(_affd->GetZ()-a)))
+	      {
+	        _affd->GetStatusCP(ii,jj,kk,sx,sy,sz);
+	        if((sx==_Active)||(sy==_Active)||(sz==_Active))
+	          active = true;
+	        else
+	          active=false;
+		if (!active)
+		  inside = false;
+	      }
+	      else
+	      {
+		inside = false;
+	      }
+	    }
+	if(inside)    
+	{
+          x = i;
+          y = j;
+          z = k;
+          _affd->LatticeToWorld(x, y, z);
+          penalty += _affd->Bending(x, y, z);
+	}
+      }
+    }
+  }
+  return -penalty / _affd->NumberOfDOFs();
+}
+
+double irtkImageFreeFormRegistration::SmoothnessPenalty(int index)
+{
+  int i, j, k;
+  double x, y, z;
+  double penalty=0;
+  int a=1;
+  bool inside;
+  _Status sx,sy,sz;
+  bool active;
+  
+  _affd->IndexToLattice(index, i, j, k);
+  for (int ii=i-1;ii<=i+1;ii++)
+    for (int jj=j-1;jj<=j+1;jj++)
+      for (int kk=k-1;kk<=k+1;kk++)
+	if((ii>=a)&&(ii<(_affd->GetX()-a))&&(jj>=a)&&(jj<(_affd->GetY()-a))&&(kk>=a)&&(kk<(_affd->GetZ()-a)))
+        {
+	  inside = true;
+	  for (int iii=ii-1;iii<=ii+1;iii++)
+            for (int jjj=jj-1;jjj<=jj+1;jjj++)
+              for (int kkk=kk-1;kkk<=kk+1;kkk++)
+	      {
+	        if((iii>=a)&&(iii<(_affd->GetX()-a))&&(jjj>=a)&&(jjj<(_affd->GetY()-a))&&(kkk>=a)&&(kkk<(_affd->GetZ()-a)))
+	        {
+  	          _affd->GetStatusCP(iii,jjj,kkk,sx,sy,sz);
+	          if((sx==_Active)||(sy==_Active)||(sz==_Active))
+	            active = true;
+	          else
+	            active=false;
+		  if (!active)
+		    inside = false;
+	        }
+	        else
+	        {
+		  inside = false;
+	        }
+	      }
+	  if(inside)    
+	  {
+            x = ii;
+            y = jj;
+            z = kk;
+            _affd->LatticeToWorld(x, y, z);
+            penalty += _affd->Bending(x, y, z);
+	  }
+        }
+   return -penalty / _affd->NumberOfDOFs();
+}
+
 
 double irtkImageFreeFormRegistration::VolumePreservationPenalty()
 {
