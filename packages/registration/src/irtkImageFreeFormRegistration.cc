@@ -218,7 +218,7 @@ void irtkImageFreeFormRegistration::Initialize(int level)
   }
 
   // Padding of FFD
-  irtkPadding(*tmp_target, this->_TargetPadding, _affd);
+  //irtkPadding(*tmp_target, this->_TargetPadding, _affd);
 
   // Register in the x-direction only
   if (_Mode == RegisterX) {
@@ -342,9 +342,9 @@ double irtkImageFreeFormRegistration::SmoothnessPenalty()
   double x, y, z, penalty;
 
   penalty = 0;
-  for (k = 0; k < _affd->GetZ(); k++) {
-    for (j = 0; j < _affd->GetY(); j++) {
-      for (i = 0; i < _affd->GetX(); i++) {
+  for (k = 1; k < (_affd->GetZ()-1); k++) {
+    for (j = 1; j < (_affd->GetY()-1); j++) {
+      for (i = 1; i < (_affd->GetX()-1); i++) {
         x = i;
         y = j;
         z = k;
@@ -360,13 +360,21 @@ double irtkImageFreeFormRegistration::SmoothnessPenalty(int index)
 {
   int i, j, k;
   double x, y, z;
+  double penalty=0;
 
   _affd->IndexToLattice(index, i, j, k);
-  x = i;
-  y = j;
-  z = k;
-  _affd->LatticeToWorld(x, y, z);
-  return -_affd->Bending(x, y, z);
+  for (int ii=i-1;ii<=i+1;ii++)
+    for (int jj=j-1;jj<=j+1;jj++)
+      for (int kk=k-1;kk<=k+1;kk++)
+	if((ii>=1)&&(ii<(_affd->GetX()-1))&&(jj>=1)&&(jj<(_affd->GetY()-1))&&(kk>=1)&&(kk<(_affd->GetZ()-1)))
+        {
+          x = ii;
+          y = jj;
+          z = kk;
+          _affd->LatticeToWorld(x, y, z);
+	  penalty += _affd->Bending(x, y, z);
+        }
+   return -penalty / _affd->NumberOfDOFs();
 }
 
 double irtkImageFreeFormRegistration::VolumePreservationPenalty()

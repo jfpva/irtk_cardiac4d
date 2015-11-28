@@ -115,7 +115,7 @@ int main(int argc, char **argv)
     }
   }
   
-  /*
+  
   irtkImageAttributes attr = image.GetImageAttributes();
   for (int t=0;t<image.GetT();t++)
   {
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
     sprintf(buffer,"stack%i.nii.gz",t);
     stack.Write(buffer);
   }
-  */
+  
   
   if (file_name !=NULL)
   {

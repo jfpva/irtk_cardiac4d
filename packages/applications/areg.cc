@@ -332,6 +332,21 @@ int main(int argc, char **argv)
       transformation->PutStatus(SXZ, _Passive);
       ok = true;
     }
+    if ((ok == false) && (strcmp(argv[1], "-dist") == 0)) {
+      argc--;
+      argv++;
+      transformation->PutStatus(TY,  _Passive);
+      transformation->PutStatus(TZ,  _Passive);
+      transformation->PutStatus(RX,  _Passive);
+      transformation->PutStatus(RY,  _Passive);
+      transformation->PutStatus(RZ,  _Passive);
+      transformation->PutStatus(SY,  _Passive);
+      transformation->PutStatus(SZ,  _Passive);
+      //transformation->PutStatus(SXY, _Passive);
+      transformation->PutStatus(SYZ, _Passive);
+      //transformation->PutStatus(SXZ, _Passive);
+      ok = true;
+    }
     if ((ok == false) && (strcmp(argv[1], "-xy_only") == 0)) {
       argc--;
       argv++;
