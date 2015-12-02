@@ -51,7 +51,7 @@ int main(int argc, char **argv)
   irtkRealImage *mask=NULL;
   bool debug = false;
   double fieldMapSpacing = 5;
-  double penalty = 0;
+  double penalty = 0.1;
   double step = 2.5;
   int levels = 4;
 

@@ -6,7 +6,7 @@ bool ok, have_target=false;
 double relax_iter=5;
 double lap_threshold=0.000001;
 double rel_diff_threshold=0.0001;
-double boundary_weight=1;
+double boundary_weight=0.4;
 
 void usage()
 {

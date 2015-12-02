@@ -1188,8 +1188,9 @@ void irtkImageFreeFormRegistrationWithPadding::RunRelax()
 
     tick_count t_start = tick_count::now();
 #endif
-
-    _Lambda1 = 0.2;
+    //remember original _Lambda1
+    double lambda1 = _Lambda1;
+    //_Lambda1 = 0.2;
     for (int relax_iter = 0; relax_iter < 5; relax_iter++)
     {
       cout<<endl<<"Lambda1 = "<<_Lambda1<<endl;
@@ -1223,6 +1224,8 @@ void irtkImageFreeFormRegistrationWithPadding::RunRelax()
     }
     _Lambda1*=10;
     }
+    //Reset _Lambda1 to the original value
+    _Lambda1=lambda1;
 
 #ifdef HAS_TBB
 
