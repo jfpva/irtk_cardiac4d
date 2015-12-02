@@ -164,6 +164,7 @@ irtkReconstruction::irtkReconstruction()
     _global_bias_correction = false;
     _adaptive = false;
     _robust_slices_only = false;
+    _recon_type = _3D;
 
     int directions[13][3] = {
         { 1, 0, -1 },
@@ -2090,9 +2091,28 @@ public:
             slice.GetPixelSize(&dx, &dy, &dz);
 
             //sigma of 3D Gaussian (sinc with FWHM=dx or dy in-plane, Gaussian with FWHM = dz through-plane)
-            double sigmax = 1.2 * dx / 2.3548;
-            double sigmay = 1.2 * dy / 2.3548;
-            double sigmaz = dz / 2.3548;
+	    
+	    double sigmax, sigmay, sigmaz;
+	    if(reconstructor->_recon_type == _3D)
+	    {
+              sigmax = 1.2 * dx / 2.3548;
+              sigmay = 1.2 * dy / 2.3548;
+              sigmaz = dz / 2.3548;
+	    }
+
+	    if(reconstructor->_recon_type == _1D)
+	    {
+              sigmax = 0.5 * dx / 2.3548;
+              sigmay = 0.5 * dy / 2.3548;
+              sigmaz = dz / 2.3548;
+	    }
+
+	    if(reconstructor->_recon_type == _interpolate)
+	    {
+              sigmax = 0.5 * dx / 2.3548;
+              sigmay = 0.5 * dy / 2.3548;
+              sigmaz = 0.5 * dz / 2.3548;
+	    }
             /*
               cout<<"Original sigma"<<sigmax<<" "<<sigmay<<" "<<sigmaz<<endl;
         
@@ -2126,6 +2146,11 @@ public:
             int xDim = round(2 * dx / size);
             int yDim = round(2 * dy / size);
             int zDim = round(2 * dz / size);
+	    ///test to make dimension alwways odd
+	    xDim = xDim/2*2+1;
+	    yDim = yDim/2*2+1;
+	    zDim = zDim/2*2+1;
+	    ///end test
 
             //image corresponding to PSF
             irtkImageAttributes attr;

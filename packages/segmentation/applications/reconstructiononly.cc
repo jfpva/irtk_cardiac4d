@@ -124,6 +124,9 @@ int main(int argc, char **argv)
   bool robust_statistics = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
+  bool recon_1D = false;
+  bool recon_interpolate = false;
+
   
   irtkRealImage average;
 
@@ -340,6 +343,21 @@ int main(int argc, char **argv)
       ok = true;
     }
     
+    //Perform reconstruction only in z direction
+    if ((ok == false) && (strcmp(argv[1], "-1D") == 0)){
+      argc--;
+      argv++;
+      recon_1D = true;
+      ok = true;
+    }
+
+    //Perform reconstruction only in z direction
+    if ((ok == false) && (strcmp(argv[1], "-interpolate") == 0)){
+      argc--;
+      argv++;
+      recon_interpolate = true;
+      ok = true;
+    }
     
 
     //Use multilevel B-spline interpolation instead of super-resolution
@@ -496,6 +514,13 @@ int main(int argc, char **argv)
   //Set debug mode
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
+  
+    //type of recon - default 3D PSF
+  if(recon_1D)
+    reconstruction.Set1DRecon();
+  if(recon_interpolate)
+    reconstruction.SetInterpolationRecon();
+
   
   //Set force excluded slices
   reconstruction.SetForceExcludedSlices(force_excluded);
@@ -658,8 +683,9 @@ int main(int argc, char **argv)
   //Rescale intensities of the stacks to have the same average
   if (intensity_matching)
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue);
-  else
-    reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue,true);
+  //else
+    //reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue,true);
+    
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average2.nii.gz");
@@ -886,8 +912,12 @@ int main(int argc, char **argv)
   }// end of interleaved registration-reconstruction iterations
 
   //save final result
-  reconstruction.RestoreSliceIntensities();
-  reconstruction.ScaleVolume();
+  if(intensity_matching)
+  {
+    reconstruction.RestoreSliceIntensities();
+    reconstruction.ScaleVolume();
+  }
+  
   reconstructed=reconstruction.GetReconstructed();
   reconstructed.Write(output_name); 
   reconstruction.SaveTransformations();
