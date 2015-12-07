@@ -22,7 +22,8 @@ using namespace std;
 
 void usage()
 {
-  cerr << "Usage: ssd [image1] [image2] <-mask> <-file> <-method> <-padding> <-minus>\n" << endl;
+  cerr << "Usage: ssd [image1] [image2] <-mask> <-file> <-method> <-padding> <-minus>" << endl;
+  cerr << "<-param param><-first_param param><-max>\n" << endl;
   cerr << endl;
   exit(1);
 }
@@ -38,6 +39,8 @@ int main(int argc, char **argv)
   char *method=NULL;
   double padding=0;
   bool minus = false;
+  double param = 0, first_param=0;
+  bool print_max = false;
     
   //if not enough arguments print help
   if (argc < 3)
@@ -89,11 +92,41 @@ int main(int argc, char **argv)
       ok = true;
     }
 
+    if ((ok == false) && (strcmp(argv[1], "-max") == 0)){
+      argc--;
+      argv++;
+
+      print_max=true;
+      ok = true;
+    }
+
     if ((ok == false) && (strcmp(argv[1], "-padding") == 0)){
       argc--;
       argv++;
 
       padding = atof(argv[1]);
+
+      argc--;
+      argv++;
+      ok = true;
+    }
+
+    if ((ok == false) && (strcmp(argv[1], "-param") == 0)){
+      argc--;
+      argv++;
+
+      param = atof(argv[1]);
+
+      argc--;
+      argv++;
+      ok = true;
+    }
+
+    if ((ok == false) && (strcmp(argv[1], "-first_param") == 0)){
+      argc--;
+      argv++;
+
+      first_param = atof(argv[1]);
 
       argc--;
       argv++;
@@ -204,8 +237,23 @@ int main(int argc, char **argv)
     fileOut.precision(3);  
     
     if(method != NULL)
-      fileOut<<method<<", ";
-    fileOut<<mean<<", "<<stdev<<", "<<max<<endl;
+    {
+      if(param == first_param)
+        fileOut<<endl<<method<<", ";
+      if(print_max)
+        fileOut<<max<<", ";
+      else
+        fileOut<<mean<<", ";
+    }
+    else
+    {
+      if(param == first_param)
+        fileOut<<endl;
+      if(print_max)
+        fileOut<<max<<", ";
+      else
+        fileOut<<mean<<", ";
+    }
   }
   //The end of main()
 }  
