@@ -2110,8 +2110,8 @@ public:
 	    if(reconstructor->_recon_type == _interpolate)
 	    {
               sigmax = 0.5 * dx / 2.3548;
-              sigmay = 0.5 * dy / 2.3548;
-              sigmaz = 0.5 * dz / 2.3548;
+              sigmay = 0.5 * dx / 2.3548;
+              sigmaz = 0.5 * dx / 2.3548;
 	    }
             /*
               cout<<"Original sigma"<<sigmax<<" "<<sigmay<<" "<<sigmaz<<endl;

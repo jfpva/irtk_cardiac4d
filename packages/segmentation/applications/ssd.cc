@@ -23,7 +23,7 @@ using namespace std;
 void usage()
 {
   cerr << "Usage: ssd [image1] [image2] <-mask> <-file> <-method> <-padding> <-minus>" << endl;
-  cerr << "<-param param><-first_param param>\n" << endl;
+  cerr << "<-param param><-first_param param><-max>\n" << endl;
   cerr << endl;
   exit(1);
 }
@@ -40,6 +40,7 @@ int main(int argc, char **argv)
   double padding=0;
   bool minus = false;
   double param = 0, first_param=0;
+  bool print_max = false;
     
   //if not enough arguments print help
   if (argc < 3)
@@ -88,6 +89,14 @@ int main(int argc, char **argv)
 
       argc--;
       argv++;
+      ok = true;
+    }
+
+    if ((ok == false) && (strcmp(argv[1], "-max") == 0)){
+      argc--;
+      argv++;
+
+      print_max=true;
       ok = true;
     }
 
@@ -231,13 +240,19 @@ int main(int argc, char **argv)
     {
       if(param == first_param)
         fileOut<<endl<<method<<", ";
-      fileOut<<mean<<", ";
+      if(print_max)
+        fileOut<<max<<", ";
+      else
+        fileOut<<mean<<", ";
     }
     else
     {
       if(param == first_param)
         fileOut<<endl;
-      fileOut<<mean<<", ";
+      if(print_max)
+        fileOut<<max<<", ";
+      else
+        fileOut<<mean<<", ";
     }
   }
   //The end of main()
