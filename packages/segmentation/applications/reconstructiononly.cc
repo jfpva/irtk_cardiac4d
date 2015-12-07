@@ -90,6 +90,7 @@ int main(int argc, char **argv)
   bool have_stack_transformations = false;
   /// Stack thickness
   vector<double > thickness;
+  vector<double > thickness2;
   ///number of stacks
   int nStacks;
   /// number of packages for each stack
@@ -124,6 +125,10 @@ int main(int argc, char **argv)
   bool robust_statistics = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
+  bool recon_1D = false;
+  bool recon_interpolate = false;
+  bool init_interpolate = false;
+
   
   irtkRealImage average;
 
@@ -340,6 +345,29 @@ int main(int argc, char **argv)
       ok = true;
     }
     
+    //Perform reconstruction only in z direction
+    if ((ok == false) && (strcmp(argv[1], "-1D") == 0)){
+      argc--;
+      argv++;
+      recon_1D = true;
+      ok = true;
+    }
+
+    //Interpolate
+    if ((ok == false) && (strcmp(argv[1], "-interpolate") == 0)){
+      argc--;
+      argv++;
+      recon_interpolate = true;
+      ok = true;
+    }
+    
+    //Initialise with interpolation
+    if ((ok == false) && (strcmp(argv[1], "-init_interpolate") == 0)){
+      argc--;
+      argv++;
+      init_interpolate = true;
+      ok = true;
+    }
     
 
     //Use multilevel B-spline interpolation instead of super-resolution
@@ -489,6 +517,16 @@ int main(int argc, char **argv)
     }
     cout<<"."<<endl;
   }
+  
+  cout<< "Slice thickness 2 is ";
+  for (i=0;i<nStacks;i++)
+  {
+    double dx,dy,dz;
+    stacks[i].GetPixelSize(&dx,&dy,&dz);
+    thickness2.push_back(dz);
+    cout<<thickness2[i]<<" ";
+  }
+  cout<<"."<<endl;
 
   //Output volume
   irtkRealImage reconstructed;
@@ -496,6 +534,13 @@ int main(int argc, char **argv)
   //Set debug mode
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
+  
+    //type of recon - default 3D PSF
+  if(recon_1D)
+    reconstruction.Set1DRecon();
+  if(recon_interpolate)
+    reconstruction.SetInterpolationRecon();
+
   
   //Set force excluded slices
   reconstruction.SetForceExcludedSlices(force_excluded);
@@ -539,6 +584,26 @@ int main(int argc, char **argv)
   
   //Set mask to reconstruction object. 
   reconstruction.SetMask(mask,smooth_mask);   
+  
+  //calculate delta
+  /*
+  double mean=0;
+  int num=0;
+    for (int i=0;i<stacks[0].GetX();i++)
+      for (int j=0;j<stacks[0].GetY();j++)
+        for (int k=0;k<stacks[0].GetZ();k++)
+	{
+	  if(mask->GetAsDouble(i,j,k)>0)
+	  {
+	    mean+=stacks[0](i,j,k);
+	    num++;
+	  }
+	}
+    mean/=num;
+    cout<<"Average of image is "<<mean<<endl;
+    delta = mean*1.5;
+    */
+  //end calculate delta
 
   //to redirect output from screen to text files
   
@@ -660,6 +725,7 @@ int main(int argc, char **argv)
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue);
   else
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue,true);
+    
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average2.nii.gz");
@@ -778,17 +844,30 @@ int main(int argc, char **argv)
     reconstruction.InitializeEMValues();
     
     //Calculate matrix of transformation between voxels of slices and volume
-    if (bspline)
-      reconstruction.CoeffInitBSpline();
-    else
+    if(init_interpolate)
+    {
+      reconstruction.SetInterpolationRecon();
+      //reconstruction.ResetSlices(stacks,thickness2);
       reconstruction.CoeffInit();
-    
-    //Initialize reconstructed image with Gaussian weighted reconstruction
-    if (bspline)
-      reconstruction.BSplineReconstruction();
-    else
       reconstruction.GaussianReconstruction();
-
+      reconstruction.Set3DRecon();
+      //reconstruction.ResetSlices(stacks,thickness);
+      reconstruction.CoeffInit();
+    }
+    else
+    {    
+      if (bspline)
+        reconstruction.CoeffInitBSpline();
+      else
+        reconstruction.CoeffInit();
+    
+      //Initialize reconstructed image with Gaussian weighted reconstruction
+      if (bspline)
+        reconstruction.BSplineReconstruction();
+      else
+        reconstruction.GaussianReconstruction();
+    }
+    
     //Simulate slices (needs to be done after Gaussian reconstruction)
     reconstruction.SimulateSlices();
         
@@ -886,8 +965,12 @@ int main(int argc, char **argv)
   }// end of interleaved registration-reconstruction iterations
 
   //save final result
-  reconstruction.RestoreSliceIntensities();
-  reconstruction.ScaleVolume();
+  //if(intensity_matching)
+  //{
+    reconstruction.RestoreSliceIntensities();
+    reconstruction.ScaleVolume();
+  //}
+  
   reconstructed=reconstruction.GetReconstructed();
   reconstructed.Write(output_name); 
   reconstruction.SaveTransformations();

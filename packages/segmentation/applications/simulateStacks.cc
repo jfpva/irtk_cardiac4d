@@ -101,6 +101,8 @@ int main(int argc, char **argv)
   bool alignT2 = false;
   double fieldMapSpacing = 5;
   double penalty = 0;
+  bool recon_1D = false;
+  bool recon_interpolate = false;
 
   //Create reconstruction object
   irtkReconstructionb0 reconstruction;
@@ -308,6 +310,22 @@ int main(int argc, char **argv)
       ok = true;
     }
 
+    //Perform reconstruction only in z direction
+    if ((ok == false) && (strcmp(argv[1], "-1D") == 0)){
+      argc--;
+      argv++;
+      recon_1D = true;
+      ok = true;
+    }
+
+    //Perform reconstruction only in z direction
+    if ((ok == false) && (strcmp(argv[1], "-interpolate") == 0)){
+      argc--;
+      argv++;
+      recon_interpolate = true;
+      ok = true;
+    }
+
     //Perform bias correction of the reconstructed image agains the GW image in the same motion correction iteration
     if ((ok == false) && (strcmp(argv[1], "-global_bias_correction") == 0)){
       argc--;
@@ -483,7 +501,10 @@ int main(int argc, char **argv)
     {
       double dx,dy,dz;
       stacks[i].GetPixelSize(&dx,&dy,&dz);
-      thickness.push_back(dz*2);
+      if(recon_interpolate)
+        thickness.push_back(dz);
+      else
+        thickness.push_back(dz*2);
       cout<<thickness[i]<<" ";
     }
     cout<<"."<<endl;
@@ -493,6 +514,12 @@ int main(int argc, char **argv)
   
   //Output volume
   irtkRealImage reconstructed;
+  
+  //type of recon - default 3D PSF
+  if(recon_1D)
+    reconstruction.Set1DRecon();
+  if(recon_interpolate)
+    reconstruction.SetInterpolationRecon();
 
   //Set up for distortion
   reconstruction.SetGroups(stack_group, groups, swap);
@@ -500,6 +527,8 @@ int main(int argc, char **argv)
   //Set debug mode
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
+  
+  reconstruction.SpeedupOn();
   
   
   //Set force excluded slices

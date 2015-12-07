@@ -28,6 +28,7 @@ using namespace std;
   Reconstruction of volume from 2D slices
 
 */
+enum RECON_TYPE {_3D, _1D, _interpolate};
 
 struct POINT3D
 {
@@ -45,6 +46,8 @@ class irtkReconstruction : public irtkObject
 
  protected:
 
+    //Reconstruction type
+    RECON_TYPE _recon_type;
     //Structures to store the matrix of transformation between volume and slices
     std::vector<SLICECOEFFS> _volcoeffs;
 
@@ -390,6 +393,9 @@ class irtkReconstruction : public irtkObject
     ///Set slices which need to be excluded by default
     inline void SetForceExcludedSlices( vector<int>& force_excluded );
 
+    inline void Set3DRecon();
+    inline void Set1DRecon();
+    inline void SetInterpolationRecon();
 
     //utility
     ///Save intermediate results
@@ -562,6 +568,21 @@ inline void irtkReconstruction::SetSmoothingParameters(double delta, double lamb
 inline void irtkReconstruction::SetForceExcludedSlices(vector<int>& force_excluded)
 {
     _force_excluded = force_excluded;  
+}
+
+inline void irtkReconstruction::Set3DRecon()
+{
+    _recon_type = _3D;
+}
+
+inline void irtkReconstruction::Set1DRecon()
+{
+    _recon_type = _1D;
+}
+
+inline void irtkReconstruction::SetInterpolationRecon()
+{
+    _recon_type = _interpolate;
 }
 
 #endif

@@ -138,12 +138,12 @@ int main(int argc, char **argv)
       cout<<"file open"<<endl;
     fileOut.precision(3); 
     
-    for(int i=0;i<300;i++)
+    for(int i=0;i<image.GetT();i++)
     {
       fileOut<<i<<" ";
       cout<<i<<" ";
     }
-    exit(1);
+    //exit(1);
  
   double average;
   int num;
@@ -167,100 +167,5 @@ int main(int argc, char **argv)
     
   }	 
   } 
-  
-  /*
-  if(image1.GetNumberOfVoxels()!=image2.GetNumberOfVoxels())
-  {
-    cout<<"Give images on the same grid!"<<endl;
-    exit(1);
-  }
-  
-  if(mask!=NULL)
-  {
-    if(image1.GetNumberOfVoxels()!=mask->GetNumberOfVoxels())
-    {
-      cout<<"Give mask on the same grid as images!"<<endl;
-      exit(1);
-    }   
-    else
-      m=*mask;
-  }
-  else
-  {
-    m=image1;
-    m=1;
-  }
-  
-  irtkRealPixel *p1,*p2,*pm;
-  p1 = image1.GetPointerToVoxels();
-  p2 = image2.GetPointerToVoxels();
-  pm = m.GetPointerToVoxels();
-  
-  double sum=0,num=0,max = 0,diff,mean,stdev;
-  for(int i=0;i<image1.GetNumberOfVoxels();i++)
-  {
-    if((*pm==1)&&(*p1!=padding)&&(*p2!=padding))
-    {
-      if (minus)
-        diff = *p1+*p2;
-      else
-        diff = *p1-*p2;
-      if(fabs(diff)>max) max=fabs(diff);
-      sum+=diff*diff;
-      num++;
-    }
-    p1++;
-    p2++;
-    pm++;
-  }
-  mean = sum/num;
-  //cout<<"sum = "<<sum<<endl;
-  //cout<<"num = "<<num<<endl;
-  cout<<"SSD = "<<mean<<endl;
-  mean=sqrt(mean);
-  cout<<"RMSE = "<<mean<<endl;
-  cout<<"max diff = "<<max<<endl;
-  
-  p1 = image1.GetPointerToVoxels();
-  p2 = image2.GetPointerToVoxels();
-  pm = m.GetPointerToVoxels();
-  
-  sum=0,num=0;
-  for(int i=0;i<image1.GetNumberOfVoxels();i++)
-  {
-    if((*pm==1)&&(*p1!=padding)&&(*p2!=padding))
-    {
-      if (minus)
-        diff = fabs(*p1+*p2)-mean;
-      else
-        diff = fabs(*p1-*p2)-mean;
-      sum+=diff*diff;
-      num++;
-    }
-    p1++;
-    p2++;
-    pm++;
-  }
-  stdev = sqrt(sum/num);
-  cout<<"stdev RMSE = "<<stdev<<endl;
-  
  
-  if (file_name !=NULL)
-  {
-    ofstream fileOut(file_name, ofstream::out | ofstream::app);
-
-    if(!fileOut)
-    {
-      cerr << "Can't open file " << file_name << endl;
-      exit(1);
-    }
-
-    fileOut.precision(3);  
-    
-    if(method != NULL)
-      fileOut<<method<<", ";
-    fileOut<<mean<<", "<<stdev<<", "<<max<<endl;
-  }
-  */
-  //The end of main()
 }  
