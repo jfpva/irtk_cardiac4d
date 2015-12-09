@@ -3228,6 +3228,16 @@ void irtkReconstruction::Bias()
         cout << "done. " << endl;
 }
 
+void irtkReconstruction::ExcludeSlicesScale()
+{
+  int inputIndex;
+  for(inputIndex=0; inputIndex<_slices.size(); inputIndex++)
+  {
+    if(_scale[inputIndex]>1.25)
+      _slice_weight[inputIndex]=0;
+  }
+}
+
 
 class ParallelSuperresolution {
     irtkReconstruction* reconstructor;
@@ -3885,13 +3895,13 @@ void irtkReconstruction::NormaliseBias(int iter)
     gb.Run();
     bias/=m;
 
-    /*
+    
     if (_debug) {
         char buffer[256];
         sprintf(buffer,"averagebias%i.nii.gz",iter);
         bias.Write(buffer);
     }
-    */
+    
     irtkRealPixel *pi, *pb;
     pi = _reconstructed.GetPointerToVoxels();
     pb = bias.GetPointerToVoxels();

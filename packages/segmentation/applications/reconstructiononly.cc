@@ -122,7 +122,7 @@ int main(int argc, char **argv)
   bool rescale_stacks = false;
 
   //flag to swich the robust statistics on and off
-  bool robust_statistics = false;
+  bool robust_statistics = true;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
   bool recon_1D = false;
@@ -877,7 +877,8 @@ int main(int argc, char **argv)
     //EStep
     if(robust_statistics)
       reconstruction.EStep();
-
+    
+    
     //number of reconstruction iterations
     if ( iter==(iterations-1) ) 
     {
@@ -902,6 +903,7 @@ int main(int argc, char **argv)
           reconstruction.Bias();
         //calculate scales
         reconstruction.Scale();
+	reconstruction.ExcludeSlicesScale();
       }
       
       //Update reconstructed volume

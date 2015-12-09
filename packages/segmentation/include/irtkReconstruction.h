@@ -317,7 +317,8 @@ class irtkReconstruction : public irtkObject
   
     ///Calculate slice-dependent scale
     void Scale();
-  
+    void ExcludeSlicesScale();
+    
     ///Calculate slice-dependent bias fields
     void Bias();
     void NormaliseBias(int iter);
