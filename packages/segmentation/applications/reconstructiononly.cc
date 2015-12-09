@@ -118,7 +118,7 @@ int main(int argc, char **argv)
   //flag to remove black background, e.g. when neonatal motion correction is performed
   bool remove_black_background = false;
   //flag to swich the intensity matching on and off
-  bool intensity_matching = false;
+  bool intensity_matching = true;
   bool rescale_stacks = false;
 
   //flag to swich the robust statistics on and off
