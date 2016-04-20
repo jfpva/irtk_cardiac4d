@@ -236,7 +236,7 @@ class irtkReconstruction : public irtkObject
     void CropImage( irtkRealImage& image,
                     irtkRealImage& mask );
 
-    // GF 190416, retainin all slices along z direction
+    // GF 190416, retainig all slices along z direction
     void CropImageIgnoreZ( irtkRealImage& image,
                         irtkRealImage& mask );
 

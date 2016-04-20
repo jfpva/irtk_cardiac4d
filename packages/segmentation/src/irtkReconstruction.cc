@@ -4429,6 +4429,7 @@ void irtkReconstruction::CropImage(irtkRealImage& image, irtkRealImage& mask)
     image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
 }
 
+// GF 190416, useful for handling different slice orders
 void irtkReconstruction::CropImageIgnoreZ(irtkRealImage& image, irtkRealImage& mask)
 
 {

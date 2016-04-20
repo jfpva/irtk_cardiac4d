@@ -43,6 +43,8 @@ void usage()
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
   cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
   cerr << "\t                          volume approach. [Default: slice to volume registration only]"<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
+  cerr << "\t                          Possible values: A, D (descending), I (interleaved)."<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: 9]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
