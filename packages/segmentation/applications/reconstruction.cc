@@ -43,8 +43,8 @@ void usage()
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
   cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
   cerr << "\t                          volume approach. [Default: slice to volume registration only]"<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
-  cerr << "\t                          Possible values: A, D (descending), I (interleaved)."<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (1)]"<<endl;
+  cerr << "\t                          Possible values: 2 (descending), 3 (interleaved)."<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: 9]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
@@ -97,12 +97,15 @@ int main(int argc, char **argv)
   int nStacks;
   /// number of packages for each stack
   vector<int> packages;
+  vector<int> multiband_packages;
+  // GF 200416
+  char * order = NULL;
 
     
   // Default values.
   int templateNumber=-1;
   irtkRealImage *mask=NULL;
-  int iterations = 7;
+  int iterations = 3;
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
@@ -123,11 +126,13 @@ int main(int argc, char **argv)
   bool intensity_matching = true;
   bool rescale_stacks = false;
 
+
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
   bool robust_slices_only = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
+  int multiband_factor=1;
   
   irtkRealImage average;
 
@@ -238,11 +243,39 @@ int main(int argc, char **argv)
       ok = true;
     }
 
+    // GF 200416
+    if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
+
+    	argc--;
+    	argv++;
+
+    	char temp;
+    	order = argv[1];
+    	temp = *order;
+
+    	if ((temp == 'A')) {
+    			cout<<"Slice acquisition order is ascending"<<endl;
+    	}
+    	else if ((temp == 'D')) {
+    			cout<<"Slice acquisition order is descending"<<endl;
+    	}
+    	else if ((temp == 'I')) {
+    			cout<<"Slice acquisition order is interleaved"<<endl;
+    	}
+    	else {
+    		 	cout<<"Slice acquisition order not recognised, set to ascending (A)"<<endl;
+    	}
+
+        ok = true;
+        argc--;
+        argv++;
+    }
+
     //Read binary mask for final volume
     if ((ok == false) && (strcmp(argv[1], "-mask") == 0)){
       argc--;
       argv++;
-      mask= new irtkRealImage(argv[1]);
+      mask = new irtkRealImage(argv[1]);
       ok = true;
       argc--;
       argv++;
@@ -268,6 +301,15 @@ int main(int argc, char **argv)
       argv++;
     } 
     
+    //Variance of Gaussian kernel to smooth the bias field.
+        if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
+          argc--;
+          argv++;
+          multiband_factor=atof(argv[1]);
+          ok = true;
+          argc--;
+          argv++;
+        }
     //Smoothing parameter
     if ((ok == false) && (strcmp(argv[1], "-lambda") == 0)){
       argc--;
@@ -500,6 +542,13 @@ int main(int argc, char **argv)
     cout<<"."<<endl;
   }
 
+  //create multiband packages
+  cout<<"multiband packages: ";
+  for(i=0;i<stacks.size();i++)
+  {
+	  multiband_packages.push_back(stacks[i].GetZ()/multiband_factor);
+	  cout<<multiband_packages[i]<<" ";
+  }
   //Output volume
   irtkRealImage reconstructed;
 
@@ -511,7 +560,7 @@ int main(int argc, char **argv)
   reconstruction.SetForceExcludedSlices(force_excluded);
 
   //Set low intensity cutoff for bias estimation
-  reconstruction.SetLowIntensityCutoff(low_intensity_cutoff)  ;
+  //reconstruction.SetLowIntensityCutoff(low_intensity_cutoff)  ;
 
   
   // Check whether the template stack can be indentified
@@ -548,6 +597,10 @@ int main(int argc, char **argv)
   
   //Set mask to reconstruction object. 
   reconstruction.SetMask(mask,smooth_mask);   
+
+
+  // Testing first function
+  //reconstruction.GetSliceAcquisitionOrder(*mask, 6, *order,1);
 
   //to redirect output from screen to text files
   
@@ -720,7 +773,16 @@ int main(int argc, char **argv)
             cout.rdbuf (file.rdbuf());
         }
       cout<<"Iteration "<<iter<<": "<<endl;
-      
+      if(iter==1)
+           reconstruction.PackageToVolume(stacks,packages,iter);
+      if(iter==2)
+      {
+    	  if(multiband_factor>1)
+             reconstruction.PackageToVolume(stacks,multiband_packages,iter);
+    	  else
+    		  reconstruction.SliceToVolumeRegistration();
+      }
+      /*
       //if((packages.size()>0)&&(iter<(iterations-1)))
       if((packages.size()>0)&&(iter<=iterations*(levels-1)/levels)&&(iter<(iterations-1)))
       {
@@ -746,7 +808,7 @@ int main(int argc, char **argv)
       }
       else
         reconstruction.SliceToVolumeRegistration();
-      
+      */
       cout<<endl;
       if ( ! no_log ) {
           cerr.rdbuf (strm_buffer_e);

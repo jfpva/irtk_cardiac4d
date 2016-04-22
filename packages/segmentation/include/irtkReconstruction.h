@@ -142,6 +142,10 @@ class irtkReconstruction : public irtkObject
     vector<double> _stack_factor;
     double _average_value;
     vector<int> _stack_index;
+
+    // GF 200416 Handling slice acquisition order
+    // vector containing slice acquisition order
+    vector<int> _slice_order;
   
     //forced excluded slices
     vector<int> _force_excluded;
@@ -449,6 +453,8 @@ class irtkReconstruction : public irtkObject
     void SplitImageEvenOdd( irtkRealImage image,
                             int packages,
                             vector<irtkRealImage>& stacks );
+    // GF 200416 creating slice acquisition order
+    void GetSliceAcquisitionOrder(irtkRealImage image, int packages, char order, int stacks);
     ///Splits image into top and bottom half roi according to z coordinate
     void HalfImage( irtkRealImage image,
                     vector<irtkRealImage>& stacks );
