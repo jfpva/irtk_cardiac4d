@@ -4429,6 +4429,97 @@ void irtkReconstruction::CropImage(irtkRealImage& image, irtkRealImage& mask)
     image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
 }
 
+void irtkReconstruction::CropImageIgnoreZ(irtkRealImage& image, irtkRealImage& mask)
+
+{
+    //Crops the image according to the mask
+
+    int i, j, k;
+    //ROI boundaries
+    int x1, x2, y1, y2, z1, z2;
+
+    //Original ROI
+    x1 = 0;
+    y1 = 0;
+    z1 = 0;
+    x2 = image.GetX();
+    y2 = image.GetY();
+    z2 = image.GetZ();
+
+    // GF 190416
+    z2 = z2-1;
+
+    //upper boundary for y coordinate
+    int sum = 0;
+    for (j = image.GetY() - 1; j >= 0; j--) {
+        sum = 0;
+        for (k = image.GetZ() - 1; k >= 0; k--)
+            for (i = image.GetX() - 1; i >= 0; i--)
+                if (mask.Get(i, j, k) > 0)
+                    sum++;
+        if (sum > 0)
+            break;
+    }
+    y2 = j;
+
+    //lower boundary for y coordinate
+    sum = 0;
+    for (j = 0; j <= image.GetY() - 1; j++) {
+        sum = 0;
+        for (k = image.GetZ() - 1; k >= 0; k--)
+            for (i = image.GetX() - 1; i >= 0; i--)
+                if (mask.Get(i, j, k) > 0)
+                    sum++;
+        if (sum > 0)
+            break;
+    }
+    y1 = j;
+
+    //upper boundary for x coordinate
+    sum = 0;
+    for (i = image.GetX() - 1; i >= 0; i--) {
+        sum = 0;
+        for (k = image.GetZ() - 1; k >= 0; k--)
+            for (j = image.GetY() - 1; j >= 0; j--)
+                if (mask.Get(i, j, k) > 0)
+                    sum++;
+        if (sum > 0)
+            break;
+    }
+    x2 = i;
+
+    //lower boundary for x coordinate
+    sum = 0;
+    for (i = 0; i <= image.GetX() - 1; i++) {
+        sum = 0;
+        for (k = image.GetZ() - 1; k >= 0; k--)
+            for (j = image.GetY() - 1; j >= 0; j--)
+                if (mask.Get(i, j, k) > 0)
+                    sum++;
+        if (sum > 0)
+            break;
+    }
+
+    x1 = i;
+
+    if (_debug)
+        cout << "Region of interest is " << x1 << " " << y1 << " " << z1 << " " << x2 << " " << y2
+             << " " << z2 << endl;
+
+    // if no intersection with mask, force exclude
+    if ((x2 < x1) || (y2 < y1) || (z2 < z1) ) {
+        x1 = 0;
+        y1 = 0;
+        z1 = 0;
+        x2 = 0;
+        y2 = 0;
+        z2 = 0;
+    }
+
+    //Cut region of interest
+    image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
+}
+
 void irtkReconstruction::InvertStackTransformations( vector<irtkRigidTransformation>& stack_transformations)
 {
     //for each stack

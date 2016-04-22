@@ -235,7 +235,11 @@ class irtkReconstruction : public irtkObject
     ///Crop image according to the mask
     void CropImage( irtkRealImage& image,
                     irtkRealImage& mask );
-  
+
+    // GF 190416, retainin all slices along z direction
+    void CropImageIgnoreZ( irtkRealImage& image,
+                        irtkRealImage& mask );
+
     /// Transform and resample mask to the space of the image
     void TransformMask( irtkRealImage& image,
                         irtkRealImage& mask,
