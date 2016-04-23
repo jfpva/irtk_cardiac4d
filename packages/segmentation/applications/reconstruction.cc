@@ -168,7 +168,7 @@ int main(int argc, char **argv)
   {
       //if ( i == 0 )
           //log_id = argv[1];
-      stack_files.push_back(argv[1]);
+    stack_files.push_back(argv[1]);
     stack.Read(argv[1]);
     cout<<"Reading stack ... "<<argv[1]<<endl;
     argc--;
@@ -235,12 +235,12 @@ int main(int argc, char **argv)
       for (i=0;i<nStacks;i++)
       {
         packages.push_back(atoi(argv[1]));
-	cout<<packages[i]<<" ";
+        cout<<packages[i]<<" ";
         argc--;
         argv++;
        }
        cout<<"."<<endl;
-      ok = true;
+       ok = true;
     }
 
     // GF 200416
@@ -600,7 +600,7 @@ int main(int argc, char **argv)
 
 
   // Testing first function
-  //reconstruction.GetSliceAcquisitionOrder(*mask, 6, *order,1);
+  reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order);
 
   //to redirect output from screen to text files
   
@@ -773,6 +773,7 @@ int main(int argc, char **argv)
             cout.rdbuf (file.rdbuf());
         }
       cout<<"Iteration "<<iter<<": "<<endl;
+
       if(iter==1)
            reconstruction.PackageToVolume(stacks,packages,iter);
       if(iter==2)
@@ -782,6 +783,7 @@ int main(int argc, char **argv)
     	  else
     		  reconstruction.SliceToVolumeRegistration();
       }
+
       /*
       //if((packages.size()>0)&&(iter<(iterations-1)))
       if((packages.size()>0)&&(iter<=iterations*(levels-1)/levels)&&(iter<(iterations-1)))

@@ -454,7 +454,7 @@ class irtkReconstruction : public irtkObject
                             int packages,
                             vector<irtkRealImage>& stacks );
     // GF 200416 creating slice acquisition order
-    void GetSliceAcquisitionOrder(irtkRealImage image, int packages, char order, int stacks);
+    void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order);
     ///Splits image into top and bottom half roi according to z coordinate
     void HalfImage( irtkRealImage image,
                     vector<irtkRealImage>& stacks );

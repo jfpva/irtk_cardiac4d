@@ -4158,145 +4158,143 @@ void irtkReconstruction::SplitImageEvenOdd(irtkRealImage image, int packages, ve
 }
 
 // GF 200416 creating slice acquisition order
-void irtkReconstruction::GetSliceAcquisitionOrder(irtkRealImage image, int packages, char order, int stacks)
+void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order)
 {
-	irtkImageAttributes attr = image.GetImageAttributes();
-	int slicesPerPackage = (attr._z/packages);
-	int slice_order[attr._z];
-	int slice_pos_counter;
-
+	irtkImageAttributes attr;
+	int slicesPerPackage;
+	int slice_pos_counter, counter, temp, p, previous_stacks;
 	vector<int> fakeAscending;
 	vector<int> realInterleaved;
 
-	int counter;
-	if (order == 'A') {
+	previous_stacks = 0;
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
 
-		counter = 0;
-		slice_pos_counter = 0;
-		int p = 0;
+		// Variable Inizialization
+		attr = stacks[dyn].GetImageAttributes();
+		slicesPerPackage = (attr._z/pack_num[dyn]);
+		int slice_order[attr._z];
 
-		while(counter < attr._z)	{
+		if (order == 'A') {
 
-			//cout<<"ciao_"<<slice_pos_counter<<endl;
-			slice_order[slice_pos_counter] = counter;
+			counter = 0;
+			slice_pos_counter = 0;
+			p = 0; // package counter
 
-			counter++;
-			slice_pos_counter = slice_pos_counter + packages;
+			while(counter < attr._z)	{
 
-			// start new package
-			if (slice_pos_counter >= attr._z) {
-				p++;
-				slice_pos_counter = p;
+				slice_order[slice_pos_counter] = counter;
+
+				counter++;
+				slice_pos_counter = slice_pos_counter + pack_num[dyn];
+
+				// start new package
+				if (slice_pos_counter >= attr._z) {
+					p++;
+					slice_pos_counter = p;
+				}
+			}
+
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_slice_order.push_back(slice_order[temp] + previous_stacks);
 			}
 		}
 
-		for(int temp1=0; temp1<attr._z; temp1++) 	{
-					cout<<slice_order[temp1]<<endl;
-							}
+		else if (order== 'D') {
 
-	}
+			counter = 0;
+			slice_pos_counter = attr._z - 1;
+			int p = 0; // package counter
 
-	else if (order== 'D') {
+			while(counter < attr._z)	{
 
-		counter = 0;
-		slice_pos_counter = attr._z - 1;
-		int p = 0;
+				slice_order[slice_pos_counter] = counter;
+				counter++;
+				slice_pos_counter = slice_pos_counter - pack_num[dyn];
 
-		while(counter < attr._z)	{
+				// start new package
+				if (slice_pos_counter < 0) {
+					p++;
+					slice_pos_counter = attr._z - 1 - p;
+				}
+			}
 
-			//cout<<"ciao_"<<slice_pos_counter<<endl;
-			slice_order[slice_pos_counter] = counter;
-			counter++;
-			slice_pos_counter = slice_pos_counter - packages;
-
-			// start new package
-			if (slice_pos_counter < 0) {
-				p++;
-				slice_pos_counter = attr._z - 1 - p;
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_slice_order.push_back(slice_order[temp] + previous_stacks);
 			}
 		}
 
-		for(int temp1=0; temp1<attr._z; temp1++) 	{
-					cout<<slice_order[temp1]<<endl;
-							}
+		else {
 
-	}
-
-	else {
-			// Getting step size
 			int step, index, restart;
-			if(attr._z > slicesPerPackage*packages)		{
-				step = (int) sqrt(slicesPerPackage + 1);
-			}
-			else	{
-				step = (int) sqrt(slicesPerPackage);
-			}
-			//cout<<slicesPerPackage<<endl;
-			//cout<<step<<endl;
-
-			// "Pretending" to do ascending slice ordering for each package, and then shuffle according to interleaved
-			for(int p=0; p<packages; p++)
+			if (order== 'I')
 			{
-				// Middle part of the stack
-				for(int s=0; s<slicesPerPackage; s++)
+				// Getting step size
+				if(attr._z > slicesPerPackage*pack_num[dyn])		{
+					step = (int) sqrt(slicesPerPackage + 1);
+				}
+				else	{
+					step = (int) sqrt(slicesPerPackage);
+				}
+			}
+			else
+			{
+					// step = stepFactor;
+					// etc
+			}
+
+			// "Pretending" to do ascending ordering within each package, and then shuffling according to interleaved ordering
+			for(int p=0; p<pack_num[dyn]; p++)
 				{
-					slice_pos_counter = s*packages + p;
-					fakeAscending.push_back(slice_pos_counter);
-					//cout<<slice_pos_counter<<endl;
-				}
-
-				// last slices for "larger packages"
-				if(attr._z > slicesPerPackage*packages) {
-					slice_pos_counter = slicesPerPackage*packages + p;
-					if (slice_pos_counter < attr._z) {
+					// Middle part of the stack
+					for(int s=0; s<slicesPerPackage; s++)
+					{
+						slice_pos_counter = s*pack_num[dyn] + p;
 						fakeAscending.push_back(slice_pos_counter);
-						//cout<<slice_pos_counter<<endl;
 					}
-				}
 
-				// Feel up each package with interleaved order
-				index = 0;
-				restart = 0;
-				for(int i=0; i<fakeAscending.size(); i++) 	{
-					if (index >= fakeAscending.size()) {
-						restart++;
-						index = restart;
-					}
-					realInterleaved.push_back(fakeAscending[index]);
-					index = index + step;
-				}
-				// Clear fake ascending package and start a new one
-				fakeAscending.clear();
-			}
-
-			// Saving slice ordering indexes according to ascending position
-			for(int temp=0; temp<attr._z; temp++) 	{
-				slice_order[realInterleaved[temp]] = temp;
-
-			}
-
-			for(int temp1=0; temp1<attr._z; temp1++) 	{
-				cout<<slice_order[temp1]<<endl;
+					// last slices for "larger initial packages"
+					if(attr._z > slicesPerPackage*pack_num[dyn]) {
+						slice_pos_counter = slicesPerPackage*pack_num[dyn] + p;
+						if (slice_pos_counter < attr._z) {
+							fakeAscending.push_back(slice_pos_counter);
 						}
+					}
 
+					// Shuffling ascending slice ordering according to interleaved acquisition
+					index = 0;
+					restart = 0;
+					for(int i = 0; i < fakeAscending.size(); i++) 	{
+						if (index >= fakeAscending.size()) {
+							restart++;
+							index = restart;
+						}
+						realInterleaved.push_back(fakeAscending[index]);
+						index = index + step;
+					}
+					// Clear fake ascending and start with a new one
+					fakeAscending.clear();
+				}
 
+			// Saving
+			for(temp=0; temp<attr._z; temp++) 	{
+				slice_order[realInterleaved[temp]] = temp;
+			}
+
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_slice_order.push_back(slice_order[temp] + previous_stacks);
+			}
+			realInterleaved.clear();
 		}
+		previous_stacks = previous_stacks + attr._z;
+	}
 
-		/*for (int temp = 0; temp < stacks; temp++) {
-				cout<<slice_order[temp]<<endl;
-		}
-
-		// copying the final result for each dynamics and populate _slice_order
-		/*for (int st = 0; st < stacks; st++) {
-			//_slice_order.push_back(slice_order[st] + st*attr._z);
-			//cout<<_slice_order[temp]<<endl;
-		}
-
-		for (int temp = 0; temp < _slice_order.size(); temp++) {
-			//cout<<_slice_order[temp]<<endl;
-		}*/
-
-
+	// copying
+	/*for(int temp1 = 0; temp1 < _slice_order.size(); temp1++) 	{
+		cout<<_slice_order[temp1]<<endl;
+	}*/
 }
 
 void irtkReconstruction::SplitImageEvenOddHalf(irtkRealImage image, int packages, vector<irtkRealImage>& stacks, int iter)
