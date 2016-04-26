@@ -30,12 +30,12 @@ void usage()
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
   cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
-  cerr << "\t                        in \'dof\' format used in IRTK." <<endl;
-  cerr << "\t                        Only rough alignment with correct orienation and " << endl;
-  cerr << "\t                        some overlap is needed." << endl;
-  cerr << "\t                        Use \'id\' for an identity transformation for at least" << endl;
-  cerr << "\t                        one stack. The first stack with \'id\' transformation" << endl;
-  cerr << "\t                        will be resampled as template." << endl;
+  cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
+  cerr << "\t                          Only rough alignment with correct orienation and " << endl;
+  cerr << "\t                          some overlap is needed." << endl;
+  cerr << "\t                          Use \'id\' for an identity transformation for at least" << endl;
+  cerr << "\t                          one stack. The first stack with \'id\' transformation" << endl;
+  cerr << "\t                          will be resampled as template." << endl;
   cerr << "\t-thickness [th_1] .. [th_N] Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
   cerr << "\t-packages [num_1] .. [num_N] Give number of packages used during acquisition for each stack."<<endl;
@@ -43,8 +43,10 @@ void usage()
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
   cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
   cerr << "\t                          volume approach. [Default: slice to volume registration only]"<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (1)]"<<endl;
-  cerr << "\t                          Possible values: 2 (descending), 3 (interleaved)."<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
+  cerr << "\t                          Possible values: D (descending), I (interleaved) and C (Customized)."<<endl;
+  cerr << "\t-step      		       Forward slice jump for customized slice ordering [Default: 1]"<<endl;
+  cerr << "\t-rewinder	               Rewinder for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: 9]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
@@ -100,12 +102,14 @@ int main(int argc, char **argv)
   vector<int> multiband_packages;
   // GF 200416
   char * order = NULL;
+  int step = 1;
+  int rewinder = 1;
 
     
   // Default values.
   int templateNumber=-1;
   irtkRealImage *mask=NULL;
-  int iterations = 3;
+  int iterations = 2;
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
@@ -244,6 +248,7 @@ int main(int argc, char **argv)
     }
 
     // GF 200416
+    // Input slice ordering
     if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
 
     	argc--;
@@ -262,7 +267,10 @@ int main(int argc, char **argv)
     	else if ((temp == 'I')) {
     			cout<<"Slice acquisition order is interleaved"<<endl;
     	}
-    	else {
+    	else if ((temp == 'C'))	 {
+    			cout<<"Slice acquisition order is customized"<<endl;
+    	}
+    	else	{
     		 	cout<<"Slice acquisition order not recognised, set to ascending (A)"<<endl;
     	}
 
@@ -270,6 +278,28 @@ int main(int argc, char **argv)
         argc--;
         argv++;
     }
+
+    // GF 2504
+    // Foward slice jump for arbitrary slice ordering
+	if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
+	  argc--;
+	  argv++;
+	  step=atof(argv[1]);
+	  ok = true;
+	  argc--;
+	  argv++;
+	}
+
+	// GF 2504
+	// Rewinder slice jump for arbitrary slice ordering
+	if ((ok == false) && (strcmp(argv[1], "-rewinder") == 0)){
+	  argc--;
+	  argv++;
+	  rewinder=atof(argv[1]);
+	  ok = true;
+	  argc--;
+	  argv++;
+	}
 
     //Read binary mask for final volume
     if ((ok == false) && (strcmp(argv[1], "-mask") == 0)){
@@ -583,7 +613,7 @@ int main(int argc, char **argv)
     irtkRealImage m = *mask;
     reconstruction.TransformMask(stacks[templateNumber],m,stack_transformations[templateNumber]);
     //Crop template stack
-    reconstruction.CropImage(stacks[templateNumber],m);
+    reconstruction.CropImageIgnoreZ(stacks[templateNumber],m);
     if (debug)
     {
       m.Write("maskTemplate.nii.gz"); 
@@ -600,7 +630,7 @@ int main(int argc, char **argv)
 
 
   // Testing first function
-  reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order);
+  //reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order, step, rewinder);
 
   //to redirect output from screen to text files
   
@@ -658,7 +688,7 @@ int main(int argc, char **argv)
     irtkRealImage m=reconstruction.GetMask();
     reconstruction.TransformMask(stacks[i],m,stack_transformations[i]);
     //Crop template stack
-    reconstruction.CropImage(stacks[i],m);
+    reconstruction.CropImageIgnoreZ(stacks[i],m);
     if (debug)
     {
       sprintf(buffer,"mask%i.nii.gz",i);
@@ -774,7 +804,14 @@ int main(int argc, char **argv)
         }
       cout<<"Iteration "<<iter<<": "<<endl;
 
-      if(iter==1)
+      if(iter == 1) {
+		if(multiband_factor>1)
+		   reconstruction.PackageToVolume(stacks,multiband_packages,iter);
+		else
+		  reconstruction.SliceToVolumeRegistration();
+      }
+
+      /*if(iter==1)
            reconstruction.PackageToVolume(stacks,packages,iter);
       if(iter==2)
       {

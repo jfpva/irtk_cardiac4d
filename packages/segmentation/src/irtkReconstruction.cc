@@ -4158,18 +4158,18 @@ void irtkReconstruction::SplitImageEvenOdd(irtkRealImage image, int packages, ve
 }
 
 // GF 200416 creating slice acquisition order
-void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order)
+void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder)
 {
 	irtkImageAttributes attr;
 	int slicesPerPackage;
-	int slice_pos_counter, counter, temp, p, previous_stacks;
+	int slice_pos_counter, counter, temp, p, previous_stacks, stepFactor, rewinderFactor;
 	vector<int> fakeAscending;
 	vector<int> realInterleaved;
 
 	previous_stacks = 0;
 	for (int dyn = 0; dyn < stacks.size(); dyn++) {
 
-		// Variable Inizialization
+		// Variable Init.
 		attr = stacks[dyn].GetImageAttributes();
 		slicesPerPackage = (attr._z/pack_num[dyn]);
 		int slice_order[attr._z];
@@ -4227,21 +4227,23 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 
 		else {
 
-			int step, index, restart;
-			if (order== 'I')
+			int index, restart;
+			if (order == 'I')
 			{
 				// Getting step size
 				if(attr._z > slicesPerPackage*pack_num[dyn])		{
-					step = (int) sqrt(slicesPerPackage + 1);
+					stepFactor = (int) sqrt(slicesPerPackage + 1);
+					rewinderFactor = 1;
 				}
 				else	{
-					step = (int) sqrt(slicesPerPackage);
+					stepFactor = (int) sqrt(slicesPerPackage);
+					rewinderFactor = 1;
 				}
 			}
 			else
 			{
-					// step = stepFactor;
-					// etc
+					stepFactor = step;
+					rewinderFactor = rewinder;
 			}
 
 			// "Pretending" to do ascending ordering within each package, and then shuffling according to interleaved ordering
@@ -4262,16 +4264,16 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 						}
 					}
 
-					// Shuffling ascending slice ordering according to interleaved acquisition
+					// Shuffling ascending slice ordering according to interleaved or customized acquisition
 					index = 0;
 					restart = 0;
 					for(int i = 0; i < fakeAscending.size(); i++) 	{
 						if (index >= fakeAscending.size()) {
-							restart++;
+							restart = restart + rewinderFactor;
 							index = restart;
 						}
 						realInterleaved.push_back(fakeAscending[index]);
-						index = index + step;
+						index = index + stepFactor;
 					}
 					// Clear fake ascending and start with a new one
 					fakeAscending.clear();
@@ -4291,7 +4293,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		previous_stacks = previous_stacks + attr._z;
 	}
 
-	// copying
+	// printing
 	/*for(int temp1 = 0; temp1 < _slice_order.size(); temp1++) 	{
 		cout<<_slice_order[temp1]<<endl;
 	}*/
