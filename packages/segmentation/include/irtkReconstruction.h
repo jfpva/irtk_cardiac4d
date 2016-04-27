@@ -145,7 +145,8 @@ class irtkReconstruction : public irtkObject
 
     // GF 200416 Handling slice acquisition order
     // vector containing slice acquisition order
-    vector<int> _slice_order;
+    vector<int> _z_slice_order;
+    vector<int> _t_slice_order;
   
     //forced excluded slices
     vector<int> _force_excluded;
@@ -437,6 +438,13 @@ class irtkReconstruction : public irtkObject
     void ResetOrigin( irtkGreyImage &image,
                       irtkRigidTransformation& transformation);
   
+    void newPackageToVolume( vector<irtkRealImage>& stacks,
+                              vector<int> &pack_num,
+                              int iter,
+                              bool evenodd=false,
+                              bool half=false,
+                              int half_iter=1);
+
     ///Packages to volume registrations
     void PackageToVolume( vector<irtkRealImage>& stacks,
                           vector<int> &pack_num,
@@ -445,6 +453,8 @@ class irtkReconstruction : public irtkObject
                           bool half=false,
                           int half_iter=1);
   
+    /// GF2604 Splits stacks into packages looking at the slice acquisition order vector
+    void newSplitImage( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks ); //, vector<irtkRealImage>& packageStacks );
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
                      int packages,

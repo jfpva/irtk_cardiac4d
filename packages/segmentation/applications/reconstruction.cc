@@ -38,6 +38,7 @@ void usage()
   cerr << "\t                          will be resampled as template." << endl;
   cerr << "\t-thickness [th_1] .. [th_N] Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
+  cerr << "\t-multiband 		       Multiband factor used at acquisition."<<endl;
   cerr << "\t-packages [num_1] .. [num_N] Give number of packages used during acquisition for each stack."<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
@@ -223,12 +224,12 @@ int main(int argc, char **argv)
       for (i=0;i<nStacks;i++)
       {
         thickness.push_back(atof(argv[1]));
-	cout<<thickness[i]<<" ";
+        cout<<thickness[i]<<" ";
         argc--;
         argv++;
        }
        cout<<"."<<endl;
-      ok = true;
+       ok = true;
     }
     
     //Read number of packages for each stack
@@ -332,14 +333,14 @@ int main(int argc, char **argv)
     } 
     
     //Variance of Gaussian kernel to smooth the bias field.
-        if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
-          argc--;
-          argv++;
-          multiband_factor=atof(argv[1]);
-          ok = true;
-          argc--;
-          argv++;
-        }
+	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
+	  argc--;
+	  argv++;
+	  multiband_factor=atof(argv[1]);
+	  ok = true;
+	  argc--;
+	  argv++;
+	}
     //Smoothing parameter
     if ((ok == false) && (strcmp(argv[1], "-lambda") == 0)){
       argc--;
@@ -524,15 +525,13 @@ int main(int argc, char **argv)
       for (i=0;i<number_of_force_excluded_slices;i++)
       {
         force_excluded.push_back(atoi(argv[1]));
-	cout<<force_excluded[i]<<" ";
+        cout<<force_excluded[i]<<" ";
         argc--;
         argv++;
        }
        cout<<"."<<endl;
-
-      ok = true;
+       ok = true;
     }
-
 
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
@@ -592,7 +591,6 @@ int main(int argc, char **argv)
   //Set low intensity cutoff for bias estimation
   //reconstruction.SetLowIntensityCutoff(low_intensity_cutoff)  ;
 
-  
   // Check whether the template stack can be indentified
   if (templateNumber<0)
   {
@@ -627,10 +625,6 @@ int main(int argc, char **argv)
   
   //Set mask to reconstruction object. 
   reconstruction.SetMask(mask,smooth_mask);   
-
-
-  // Testing first function
-  //reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order, step, rewinder);
 
   //to redirect output from screen to text files
   
@@ -674,7 +668,6 @@ int main(int argc, char **argv)
       cerr.rdbuf (strm_buffer_e);
   }
   
-
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average1.nii.gz");
@@ -697,6 +690,19 @@ int main(int argc, char **argv)
       stacks[i].Write(buffer);
     }
   }
+
+  // Getting acquisition slice order
+  vector<irtkRealImage> misc;
+  reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order, step, rewinder);
+  reconstruction.newSplitImage(stacks, packages, misc);
+
+  for (int i=0; i < misc.size(); i++)
+  {
+    //sprintf(buffer,'misc%i.nii.gz',i);
+    cout<<"Doing mish"<<endl;
+	misc[i].Write("misc.nii.gz");
+  }
+
 
   // we remove stacks of size 1 voxel (no intersection with ROI)
   vector<irtkRealImage> selected_stacks;
