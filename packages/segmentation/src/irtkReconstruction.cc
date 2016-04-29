@@ -4080,7 +4080,7 @@ void irtkReconstruction::SlicesInfo( const char* filename,
 /* end Set/Get/Save operations */
 
 /* GF 260416 Package specific functions */
-void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks)
+void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order)
 {
 	irtkRealImage image;
 	irtkImageAttributes attr;
@@ -4093,7 +4093,6 @@ void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int
 	double x,y,z,sx,sy,sz,ox,oy,oz;
 
 	vector<int> z_internal_slice_order;
-	vector<int> t_internal_slice_order;
 
 	int counter1 = 0;
 	int counter2 = 0;
@@ -4110,7 +4109,6 @@ void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int
 		// Slice loop
 		for (int sl = 0; sl < attr._z; sl++) {
 			z_internal_slice_order.push_back(_z_slice_order[counter1 + sl]);
-			t_internal_slice_order.push_back(_t_slice_order[counter1 + sl]);
 		}
 
 		// Package loop
@@ -4125,6 +4123,7 @@ void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int
 				internalIterations = pkg_z;
 				attr._z = pkg_z;
 			}
+			attr._dz = pkg_dz;
 
 			irtkRealImage stack(attr);
 
@@ -4133,60 +4132,99 @@ void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int
 				//fill values in each stack
 				stack.GetOrigin(ox,oy,oz);
 
-				//cout<<"Stack "<<l<<":"<<endl;
-
 				// find the next available z location
 				int nextLocation;
-				int toRemove = counter3;
-				int previousLocation = z_internal_slice_order[counter3];
-				for(int n = counter3 + 1; n < internalIterations + counter3; n++) {
-					nextLocation = z_internal_slice_order[n];
-					if (nextLocation < previousLocation) {
-						previousLocation = nextLocation;
-						toRemove = n;
+				int previousLocation;
+				int toRemove;
+				int iter = 0;
+
+				// discending order needs to be treated differently
+				if (order == 'D')	{
+
+					for(int n = counter3 + 1; n < internalIterations + counter3; n++) {
+
+						// first slice for this package
+						if (iter == 0) {
+							toRemove = n-1;
+							previousLocation = z_internal_slice_order[n-1];
+						}
+						iter++;
+
+						nextLocation = z_internal_slice_order[n];
+						if (nextLocation > previousLocation) {
+							previousLocation = nextLocation;
+							toRemove = n;
+						}
 					}
+					z_internal_slice_order[toRemove] = -1000;
+
+					for(j=0; j<stack.GetY();j++)
+						for(i=0; i<stack.GetX();i++)
+						{
+							stack.Put(i,j,internalIterations - sl -1,image(i,j,previousLocation));
+						}
+
 				}
-				cout<<"prev = "<<previousLocation<<endl;
-				cout<<"next = "<<nextLocation<<endl;
+				else 	{
 
-				z_internal_slice_order[toRemove] = 1000;
+					for(int n = counter3 + 1; n < internalIterations + counter3; n++) {
 
-				for(j=0; j<stack.GetY();j++)
-					for(i=0; i<stack.GetX();i++)
-					{
-						stack.Put(i,j,sl,image(i,j,previousLocation));
+						// first slice for this package
+						if (iter == 0) {
+							toRemove = n-1;
+							previousLocation = z_internal_slice_order[n-1];
+						}
+						iter++;
+
+						nextLocation = z_internal_slice_order[n];
+						if (nextLocation < previousLocation) {
+							previousLocation = nextLocation;
+							toRemove = n;
+						}
 					}
+					z_internal_slice_order[toRemove] = 1000;
+
+					for(j=0; j<stack.GetY();j++)
+						for(i=0; i<stack.GetX();i++)
+						{
+							stack.Put(i,j,sl,image(i,j,previousLocation));
+						}
+				}
+				iter = 0;
 			}
 
-			//for(int temp = 0; temp < z_internal_slice_order.size(); temp++)
-			//{
-			//	cout<<"print = "<<z_internal_slice_order[temp]<<endl;
-			//}
-
-
 			//original image coordinates
-			x=0;y=0;z=l;
+			x=0;y=0;
+			if (order == 'D')
+				z = image.GetZ()-1-p;
+			else
+				z = p;
 			image.ImageToWorld(x,y,z);
-			//cout<<"image: "<<x<<" "<<y<<" "<<z<<endl;
+			cout<<"image: "<<x<<" "<<y<<" "<<z<<endl;
 			//stack coordinates
-			sx=0;sy=0;sz=0;
-			stack.PutOrigin(ox,oy,oz); //adjust to original value
+			sx=0;sy=0;
+			if (order == 'D')
+				sz=stack.GetZ()-1;
+			else
+				sz = 0;
 			stack.ImageToWorld(sx,sy,sz);
-			//cout<<"stack: "<<sx<<" "<<sy<<" "<<sz<<endl;
+			cout<<"stack: "<<sx<<" "<<sy<<" "<<sz<<endl;
 			//adjust origin
-			//cout<<"adjustment needed: "<<x-sx<<" "<<y-sy<<" "<<z-sz<<endl;
+			cout<<"adjustment needed: "<<x-sx<<" "<<y-sy<<" "<<z-sz<<endl;
 			stack.PutOrigin(ox + (x-sx), oy + (y-sy), oz + (z-sz));
 			sx=0;sy=0;sz=0;
 			stack.ImageToWorld(sx,sy,sz);
-			//cout<<"adjusted: "<<sx<<" "<<sy<<" "<<sz<<endl;
+			cout<<"adjusted: "<<sx<<" "<<sy<<" "<<sz<<endl;
 
-			//sprintf(buffer,"stack%i.nii.gz",l);
-			//stack.Write(buffer);
+			sprintf(buffer,"ciao2%p.nii.gz",p);
+			stack.Write(buffer);
+
 			packageStacks.push_back(stack);
 			cout<<"done."<<endl;
 
 			counter3 = counter3 + internalIterations;
 		}
+
 		z_internal_slice_order.clear();
 		counter1 = counter1 + attr._z;
 		counter2 = 0;

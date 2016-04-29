@@ -694,7 +694,7 @@ int main(int argc, char **argv)
   // Getting acquisition slice order
   vector<irtkRealImage> misc;
   reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order, step, rewinder);
-  reconstruction.newSplitImage(stacks, packages, misc);
+  reconstruction.newSplitImage(stacks, packages, misc, *order);
 
   for (int i=0; i < misc.size(); i++)
   {
