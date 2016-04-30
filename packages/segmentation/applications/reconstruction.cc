@@ -694,13 +694,15 @@ int main(int argc, char **argv)
   // Getting acquisition slice order
   vector<irtkRealImage> misc;
   reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order, step, rewinder);
-  reconstruction.newSplitImage(stacks, packages, misc, *order);
+  //reconstruction.newSplitImage2(stacks, packages, misc);
+  reconstruction.flexibleSplitImage(stacks, misc,9);
 
-  for (int i=0; i < misc.size(); i++)
+  for (i=0; i<misc.size(); i++)
   {
-    //sprintf(buffer,'misc%i.nii.gz',i);
-    cout<<"Doing mish"<<endl;
-	misc[i].Write("misc.nii.gz");
+	  //sprintf(buffer,"mask%i.nii.gz",i);
+	  //m.Write(buffer);
+	  sprintf(buffer,"misc%i.nii.gz",i);
+	  misc[i].Write(buffer);
   }
 
 

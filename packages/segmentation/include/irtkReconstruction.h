@@ -454,6 +454,9 @@ class irtkReconstruction : public irtkObject
                           int half_iter=1);
   
     /// GF2604 Splits stacks into packages looking at the slice acquisition order vector
+    /* GF 260416 Package specific functions */
+    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, int sliceNum);
+    void newSplitImage2( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks);
     void newSplitImage( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order); //, vector<irtkRealImage>& packageStacks );
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
