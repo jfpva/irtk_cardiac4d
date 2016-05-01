@@ -4529,11 +4529,11 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 			{
 				// Getting step size
 				if(attr._z > slicesPerPackage*pack_num[dyn])		{
-					stepFactor = (int) sqrt(slicesPerPackage + 1);
+					stepFactor = round(sqrt(double(slicesPerPackage + 1)));
 					rewinderFactor = 1;
 				}
 				else	{
-					stepFactor = (int) sqrt(slicesPerPackage);
+					stepFactor = round(sqrt(double(slicesPerPackage)));
 					rewinderFactor = 1;
 				}
 			}
