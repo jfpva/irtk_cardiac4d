@@ -4079,7 +4079,6 @@ void irtkReconstruction::SlicesInfo( const char* filename,
 
 /* end Set/Get/Save operations */
 
-/* GF 260416 Package specific functions */
 void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, int sliceNum)
 {
 	irtkRealImage image;
@@ -4151,13 +4150,17 @@ void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vecto
 		z_internal_slice_order.clear();
 		counter1 = counter1 + attr._z;
 		counter2 = 0;
-
 	}
 }
 
-/* GF 260416 Package specific functions */
-void irtkReconstruction::newSplitImage2(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks)
+void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, int sliceNum, int multiband)
 {
+	flexibleSplitImage(stacks,sliceStacks,sliceNum);
+}
+
+void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks)
+{
+
 	irtkRealImage image;
 	irtkImageAttributes attr;
 	int pkg_z, internalIterations;
@@ -4174,8 +4177,9 @@ void irtkReconstruction::newSplitImage2(vector<irtkRealImage>& stacks, vector<in
 	for (int dyn = 0; dyn < stacks.size(); dyn++) {
 
 		// current stack
-		image = stacks[dyn];
+		image  = stacks[dyn];
 		attr   = image.GetImageAttributes();
+		pkg_z  = attr._z/pack_num[dyn];
 
 		// Slice loop
 		for (int sl = 0; sl < attr._z; sl++) {
@@ -4198,6 +4202,8 @@ void irtkReconstruction::newSplitImage2(vector<irtkRealImage>& stacks, vector<in
 			irtkRealImage stack(attr);
 			for(int sl = counter3; sl < internalIterations + counter3; sl++) {
 
+				//cout<<z_internal_slice_order[sl]<<endl;
+
 				for(int j=0; j<stack.GetY();j++)
 					for(int i=0; i<stack.GetX();i++)
 					{
@@ -4219,7 +4225,11 @@ void irtkReconstruction::newSplitImage2(vector<irtkRealImage>& stacks, vector<in
 	}
 }
 
-/* GF 260416 Package specific functions */
+void irtkReconstruction::splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband)
+{
+	splitPackages(stacks, pack_num, packageStacks);
+}
+
 void irtkReconstruction::newSplitImage(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order)
 {
 	irtkRealImage image;
@@ -4451,7 +4461,6 @@ void irtkReconstruction::SplitImageEvenOdd(irtkRealImage image, int packages, ve
     cout<<"done."<<endl;
 }
 
-// GF 200416 creating slice acquisition order
 void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder)
 {
 	irtkImageAttributes attr;
@@ -4525,27 +4534,33 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		else {
 
 			int index, restart;
+			counter = 0;
+
 			if (order == 'I')
 			{
-				// Getting step size
-				if(attr._z > slicesPerPackage*pack_num[dyn])		{
-					stepFactor = round(sqrt(double(slicesPerPackage + 1)));
-					rewinderFactor = 1;
-				}
-				else	{
-					stepFactor = round(sqrt(double(slicesPerPackage)));
-					rewinderFactor = 1;
-				}
+				rewinderFactor = 1;
 			}
 			else
 			{
-					stepFactor = step;
-					rewinderFactor = rewinder;
+				stepFactor = step;
+				rewinderFactor = rewinder;
 			}
 
 			// "Pretending" to do ascending ordering within each package, and then shuffling according to interleaved ordering
 			for(int p=0; p<pack_num[dyn]; p++)
 				{
+
+					if (order == 'I')
+					{
+						// Getting step size
+						if((attr._z - counter) > slicesPerPackage*pack_num[dyn])		{
+							stepFactor = round(sqrt(double(slicesPerPackage + 1)));
+							counter++;
+						}
+						else	{
+							stepFactor = round(sqrt(double(slicesPerPackage)));
+						}
+					}
 
 					// Middle part of the stack
 					for(int s=0; s<slicesPerPackage; s++)
@@ -4592,9 +4607,9 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		}
 	}
 
-	for (int iter = 0; iter < _z_slice_order.size(); iter++) {
+	/*for (int iter = 0; iter < _z_slice_order.size(); iter++) {
 		cout<<_z_slice_order[iter]<<endl;
-	}
+	}*/
 }
 
 void irtkReconstruction::SplitImageEvenOddHalf(irtkRealImage image, int packages, vector<irtkRealImage>& stacks, int iter)
