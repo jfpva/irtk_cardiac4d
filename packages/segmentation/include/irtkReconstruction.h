@@ -455,11 +455,13 @@ class irtkReconstruction : public irtkObject
   
     /// GF2604 Splits stacks into packages looking at the slice acquisition order vector
     /* GF 260416 Package specific functions */
-    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, int sliceNum);
-    void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, int sliceNum, int multiband);
-    void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks);
-    void splitPackageswithMB( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband);
-    void newSplitImage( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order); //, vector<irtkRealImage>& packageStacks );
+    void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder);
+    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, int sliceNum, char order, int step, int rewinder);
+    void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder);
+    void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
+    void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband, char order, int step, int rewinder);
+    void newSplitImage( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order);
+
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
                      int packages,
@@ -468,8 +470,6 @@ class irtkReconstruction : public irtkObject
     void SplitImageEvenOdd( irtkRealImage image,
                             int packages,
                             vector<irtkRealImage>& stacks );
-    // GF 200416 creating slice acquisition order
-    void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder);
     ///Splits image into top and bottom half roi according to z coordinate
     void HalfImage( irtkRealImage image,
                     vector<irtkRealImage>& stacks );

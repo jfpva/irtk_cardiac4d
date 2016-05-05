@@ -692,29 +692,25 @@ int main(int argc, char **argv)
   }
 
   // Getting acquisition slice order
-  vector<irtkRealImage> chucks;
+  vector<irtkRealImage> out;
   vector<irtkRealImage> packs;
-  reconstruction.GetSliceAcquisitionOrder(stacks, packages, *order, step, rewinder);
 
-  reconstruction.flexibleSplitImagewithMB(stacks, chucks,20,1);
+	reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 10, multiband_factor, *order, step, rewinder);
 
-    for (i=0; i<chucks.size(); i++)
-    {
-  	  //sprintf(buffer,"mask%i.nii.gz",i);
-  	  //m.Write(buffer);
-  	  sprintf(buffer,"flexible%i.nii.gz",i);
-  	  chucks[i].Write(buffer);
-    }
+	/*for (i=0; i<out.size(); i++)
+	{
+		sprintf(buffer,"flexible%i.nii.gz",i);
+		out[i].Write(buffer);
+	}
 
-    reconstruction.splitPackageswithMB(stacks, packages, packs,1);
+	reconstruction.splitPackages(stacks, packages, packs, *order, step, rewinder);
 
-    for (i=0; i<packs.size(); i++)
-    {
-  	  //sprintf(buffer,"mask%i.nii.gz",i);
-  	  //m.Write(buffer);
-  	  sprintf(buffer,"package%i.nii.gz",i);
-  	  packs[i].Write(buffer);
-    }
+	for (i=0; i<packs.size(); i++)
+	{
+
+		sprintf(buffer,"package%i.nii.gz",i);
+		packs[i].Write(buffer);
+	}*/
 
 
   // we remove stacks of size 1 voxel (no intersection with ROI)
