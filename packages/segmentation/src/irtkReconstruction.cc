@@ -4279,7 +4279,6 @@ void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vecto
 			sliceStacks.push_back(stack);
 			// updating varialbles for next package
 			counter2 = counter2 + internalIterations;
-
 		}
 
 		// last loop if there are reamining slices
@@ -4313,125 +4312,89 @@ void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vecto
 void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder)
 {
 	irtkRealImage chunck;
-	vector<irtkRealImage> chuncks, chuncks_separated,  chuncks_separated_reordered;
+	vector<irtkRealImage> chuncks, chuncks_separated, chuncks_separated_reordered;
 	vector<int> pack_num_chucks;
 	irtkRealImage image;
 	irtkRealImage multibanded, toAdd;
 	irtkImageAttributes attr;
 	int sliceMB;
 	int stepFactor;
+	int counter1, counter2, counter3;
 
 	char buffer[256];
-
-	int counter1, counter2, counter3;
-	double ztoAddw;
-	double zw;
 
 	// Dynamic loop
 	for (int dyn = 0; dyn < stacks.size(); dyn++) {
 
-			image  = stacks[dyn];
-			attr   = image.GetImageAttributes();
-			irtkRealImage multibanded(attr);
-			sliceMB = attr._z/multiband;
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		irtkRealImage multibanded(attr);
+		sliceMB = attr._z/multiband;
 
-			for (int m = 0; m < multiband; m++) {
-				chunck  = image.GetRegion(0,0,m*sliceMB,attr._x,attr._y,(m+1)*sliceMB);
-				chuncks.push_back(chunck);
-				pack_num_chucks.push_back(pack_num[dyn]);
+		for (int m = 0; m < multiband; m++) {
+			chunck  = image.GetRegion(0,0,m*sliceMB,attr._x,attr._y,(m+1)*sliceMB);
+			chuncks.push_back(chunck);
+			pack_num_chucks.push_back(pack_num[dyn]);
+		}
+
+		flexibleSplitImage(chuncks, chuncks_separated, pack_num_chucks, sliceNum, order, step, rewinder);
+
+		stepFactor = sliceMB/sliceNum;
+		if (sliceMB > stepFactor*sliceNum)
+			stepFactor++;
+
+		// reordering chuncks_separated
+		counter1 = 0;
+		counter2 = 0;
+		counter3 = 0;
+		while (counter1 < chuncks_separated.size()) {
+
+			chuncks_separated_reordered.push_back(chuncks_separated[counter2]);
+
+			counter2 = counter2 + stepFactor;
+			if (counter2 > (chuncks_separated.size() - 1))	{
+				counter3++;
+				counter2 = counter3;
 			}
+			counter1++;
+		}
 
-			flexibleSplitImage(chuncks, chuncks_separated, pack_num_chucks, sliceNum, order, step, rewinder);
-
-			stepFactor = sliceMB/sliceNum;
-			if (sliceMB > stepFactor*sliceNum)
-				stepFactor++;
-
-			// reordering chuncks_separated
-			counter1 = 0;
-			counter2 = 0;
-			counter3 = 0;
-			while (counter1 < chuncks_separated.size()) {
-
-				chuncks_separated_reordered.push_back(chuncks_separated[counter2]);
-
-				counter2 = counter2 + stepFactor;
-				if (counter2 > (chuncks_separated.size() - 1))	{
-					counter3++;
-					counter2 = counter3;
-				}
-				counter1++;
-			}
-
-			// riassembling multiband slices
-			counter1 = 0;
-			double tempx = 0;
-			double tempy = 0;
-			while (counter1 < chuncks_separated_reordered.size())	 {
-
-				for (int s = 0; s < stepFactor; s++)	{
-
+		// riassembling multiband slices
+		counter1 = 0;
+		counter2 = 0;
+		while (counter1 < chuncks_separated_reordered.size())	 {
+				for (int m = 0; m < multiband; m++)	{
 					toAdd = chuncks_separated_reordered[counter1];
-					cout<<"counter1 = "<<counter1<<endl;
-					for (int z = 1; z < multibanded.GetZ(); z++) 	{
-						zw = z;
-						multibanded.ImageToWorld(tempx,tempy,zw);
-						for (int ztoAdd = 1; ztoAdd < toAdd.GetZ(); ztoAdd++) 	{
-							ztoAddw = ztoAdd;
-							toAdd.ImageToWorld(tempx,tempy,ztoAddw);
-							if(ztoAddw == zw)	{
-								for(int j=0; j<multibanded.GetY();j++)
-									for(int i=0; i<multibanded.GetX();i++)
-										multibanded.Put(i,j,z,toAdd(i,j,ztoAdd));
-							}
+					for (int k = 0; k < toAdd.GetZ(); k++)	{
 
-						}
+						for(int j=0; j<toAdd.GetY();j++)
+							for(int i=0; i<toAdd.GetX();i++)
+								multibanded.Put(i,j,counter2,toAdd(i,j,k));
+
+						counter2++;
+
 					}
 					counter1++;
 				}
 				sliceStacks.push_back(multibanded);
+				// clean
 				for(int k=0; k<multibanded.GetZ();k++)
 					for(int j=0; j<multibanded.GetY();j++)
 						for(int i=0; i<multibanded.GetX();i++)
 							multibanded.Put(i,j,k,0);
+				counter2 = 0;
 			}
-
-			/*counter1 = 0;
-			counter2 = 0;
-			counter3 = 0;
-			for(int iter = 0; iter < chuncks_separated.size(); iter++)	{
-
-				toAdd = chuncks_separated[counter1];
-				cout<<"mutlibanded: "<<multibanded.GetZ()<<endl;
-
-				for(int k=0; k<toAdd.GetZ();k++)	{
-
-					for(int j=0; j<multibanded.GetY();j++) {
-						for(int i=0; i<multibanded.GetX();i++) {
-							multibanded.Put(i,j,counter3,toAdd(i,j,k));
-						}
-					}
-					cout<<"counter3: "<<counter3<<endl;
-					counter3++;
-
-					if (counter3 == multibanded.GetZ())
-					{
-						counter3 = 0;
-						sliceStacks.push_back(multibanded);
-						//for(int k=0; k<multibanded.GetZ();k++)
-						//	for(int j=0; j<multibanded.GetY();j++)
-						//		for(int i=0; i<multibanded.GetX();i++)
-						//			multibanded.Put(i,j,k,0);
-					}
-
-				}
-				counter1 = counter1 + stepFactor;
-				if (counter1 > (chuncks_separated.size() - 1))	{
-					counter2++;
-					counter1 = counter2;
-				}
-			}*/
 		}
+
+		// save stuff for debugging
+		/*for (int i=0; i<chuncks_separated.size(); i++)
+		{
+		  //sprintf(buffer,"mask%i.nii.gz",i);
+		  //m.Write(buffer);
+		  sprintf(buffer,"chuncks_separated%i.nii.gz",i);
+		  chuncks_separated[i].Write(buffer);
+		}
+
 
 		for (int i=0; i<chuncks_separated_reordered.size(); i++)
 		{
@@ -4455,7 +4418,7 @@ void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks,
 		  //m.Write(buffer);
 		  sprintf(buffer,"multibanded%i.nii.gz",i);
 		  sliceStacks[i].Write(buffer);
-		}
+		}*/
 
 		chuncks.clear();
 		chuncks_separated.clear();
@@ -4464,7 +4427,6 @@ void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks,
 
 void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder)
 {
-
 	irtkRealImage image;
 	irtkImageAttributes attr;
 	int pkg_z, internalIterations;
@@ -4507,9 +4469,6 @@ void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int
 			// copying
 			irtkRealImage stack(attr);
 			for(int sl = counter3; sl < internalIterations + counter3; sl++) {
-
-				//cout<<z_internal_slice_order[sl]<<endl;
-
 				for(int j=0; j<stack.GetY();j++)
 					for(int i=0; i<stack.GetX();i++)
 					{
@@ -4517,7 +4476,6 @@ void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int
 					}
 
 			}
-
 			// pushing package
 			packageStacks.push_back(stack);
 			// updating varialbles for next package
@@ -4537,11 +4495,116 @@ void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int
 
 void irtkReconstruction::splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband, char order, int step, int rewinder)
 {
-	//vector<irtkRealImage>& chuncks;
-	//splitPackages(stacks,pack_num,packageStacks);
-	/*for (int m = 0; m < multiband; m++) {
-		splitPackages(stacks,pack_num,packageStacks);
+	irtkRealImage chunck;
+	vector<irtkRealImage> chuncks, chuncks_separated, chuncks_separated_reordered;
+	vector<int> pack_num_chucks;
+	irtkRealImage image;
+	irtkRealImage multibanded, toAdd;
+	irtkImageAttributes attr;
+	int sliceMB;
+	int stepFactor;
+	int counter1, counter2, counter3;
+
+	char buffer[256];
+
+	// Dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		irtkRealImage multibanded(attr);
+		sliceMB = attr._z/multiband;
+
+		for (int m = 0; m < multiband; m++) {
+			chunck  = image.GetRegion(0,0,m*sliceMB,attr._x,attr._y,(m+1)*sliceMB);
+			chuncks.push_back(chunck);
+			pack_num_chucks.push_back(pack_num[dyn]);
+		}
+
+		splitPackages(chuncks, pack_num_chucks, chuncks_separated, order, step, rewinder);
+
+		stepFactor = pack_num[dyn];
+
+		// reordering chuncks_separated
+		counter1 = 0;
+		counter2 = 0;
+		counter3 = 0;
+		while (counter1 < chuncks_separated.size()) {
+
+			chuncks_separated_reordered.push_back(chuncks_separated[counter2]);
+
+			counter2 = counter2 + stepFactor;
+			if (counter2 > (chuncks_separated.size() - 1))	{
+				counter3++;
+				counter2 = counter3;
+			}
+			counter1++;
+		}
+
+		// riassembling multiband slices
+		counter1 = 0;
+		counter2 = 0;
+		while (counter1 < chuncks_separated_reordered.size())	 {
+			for (int m = 0; m < multiband; m++)	{
+				toAdd = chuncks_separated_reordered[counter1];
+				for (int k = 0; k < toAdd.GetZ(); k++)	{
+
+					for(int j=0; j<toAdd.GetY();j++)
+						for(int i=0; i<toAdd.GetX();i++)
+							multibanded.Put(i,j,counter2,toAdd(i,j,k));
+
+					counter2++;
+
+				}
+				counter1++;
+			}
+			packageStacks.push_back(multibanded);
+			// clean
+			for(int k=0; k<multibanded.GetZ();k++)
+				for(int j=0; j<multibanded.GetY();j++)
+					for(int i=0; i<multibanded.GetX();i++)
+						multibanded.Put(i,j,k,0);
+			counter2 = 0;
+		}
+	}
+
+	// save stuff for debugging
+	/*for (int i=0; i<chuncks_separated.size(); i++)
+	{
+	  //sprintf(buffer,"mask%i.nii.gz",i);
+	  //m.Write(buffer);
+	  sprintf(buffer,"chuncks_separated%i.nii.gz",i);
+	  chuncks_separated[i].Write(buffer);
+	}
+
+
+	for (int i=0; i<chuncks_separated_reordered.size(); i++)
+	{
+	  //sprintf(buffer,"mask%i.nii.gz",i);
+	  //m.Write(buffer);
+	  sprintf(buffer,"chuncks_separated_reordered%i.nii.gz",i);
+	  chuncks_separated_reordered[i].Write(buffer);
+	}
+
+	for (int i=0; i<chuncks.size(); i++)
+	{
+	  //sprintf(buffer,"mask%i.nii.gz",i);
+	  //m.Write(buffer);
+	  sprintf(buffer,"chuncks%i.nii.gz",i);
+	  chuncks[i].Write(buffer);
+	}
+
+	for (int i=0; i<packageStacks.size(); i++)
+	{
+	  //sprintf(buffer,"mask%i.nii.gz",i);
+	  //m.Write(buffer);
+	  sprintf(buffer,"multibanded%i.nii.gz",i);
+	  packageStacks[i].Write(buffer);
 	}*/
+
+	chuncks.clear();
+	chuncks_separated.clear();
+	pack_num_chucks.clear();
 
 }
 

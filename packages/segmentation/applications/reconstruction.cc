@@ -695,7 +695,9 @@ int main(int argc, char **argv)
   vector<irtkRealImage> out;
   vector<irtkRealImage> packs;
 
-	reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 10, multiband_factor, *order, step, rewinder);
+	//reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 3, multiband_factor, *order, step, rewinder);
+	//splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
+  	  reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
 
 	/*for (i=0; i<out.size(); i++)
 	{
