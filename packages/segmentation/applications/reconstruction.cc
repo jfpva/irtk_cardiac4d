@@ -106,7 +106,6 @@ int main(int argc, char **argv)
   int step = 1;
   int rewinder = 1;
 
-    
   // Default values.
   int templateNumber=-1;
   irtkRealImage *mask=NULL;
@@ -130,7 +129,6 @@ int main(int argc, char **argv)
   //flag to swich the intensity matching on and off
   bool intensity_matching = true;
   bool rescale_stacks = false;
-
 
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
@@ -281,7 +279,7 @@ int main(int argc, char **argv)
     }
 
     // GF 2504
-    // Foward slice jump for arbitrary slice ordering
+    // Forward slice jump for arbitrary slice ordering
 	if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
 	  argc--;
 	  argv++;
@@ -695,25 +693,30 @@ int main(int argc, char **argv)
   vector<irtkRealImage> out;
   vector<irtkRealImage> packs;
 
-	//reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 3, multiband_factor, *order, step, rewinder);
-	//splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
-  	  reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
+  // GIULIO STUFF
+  //reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 5, multiband_factor, *order, step, rewinder);
+  //splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
+  //reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
 
-	/*for (i=0; i<out.size(); i++)
-	{
-		sprintf(buffer,"flexible%i.nii.gz",i);
-		out[i].Write(buffer);
-	}
+  //reconstruction.newPackageToVolume(stacks,packages,1,multiband_factor,*order,step,rewinder);
+  // reconstruction. PackageToVolume(stacks, packages, 1);
 
-	reconstruction.splitPackages(stacks, packages, packs, *order, step, rewinder);
+  //PackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, int iter, bool evenodd, bool half, int half_iter)
 
-	for (i=0; i<packs.size(); i++)
-	{
+  /*for (i=0; i<out.size(); i++)
+  {
+	sprintf(buffer,"flexible%i.nii.gz",i);
+	out[i].Write(buffer);
+  }
 
-		sprintf(buffer,"package%i.nii.gz",i);
-		packs[i].Write(buffer);
-	}*/
+  reconstruction.splitPackages(stacks, packages, packs, *order, step, rewinder);
 
+  for (i=0; i<packs.size(); i++)
+  {
+
+   sprintf(buffer,"package%i.nii.gz",i);
+   packs[i].Write(buffer);
+  }*/
 
   // we remove stacks of size 1 voxel (no intersection with ROI)
   vector<irtkRealImage> selected_stacks;
@@ -801,98 +804,84 @@ int main(int argc, char **argv)
     
   //Initialise data structures for EM
   reconstruction.InitializeEM();
-  
-  
+
   //interleaved registration-reconstruction iterations
-  for (int iter=0;iter<iterations;iter++)
-  {
-    //Print iteration number on the screen
+    for (int iter=0;iter<iterations;iter++)
+    {
+      //Print iteration number on the screen
       if ( ! no_log ) {
           cout.rdbuf (strm_buffer);
       }
-    cout<<"Iteration "<<iter<<". "<<endl;
+      cout<<"Iteration A"<<iter<<". "<<endl;
 
-    //perform slice-to-volume registrations - skip the first iteration 
-    if (iter>0)
-    {
-        if ( ! no_log ) {
-            cerr.rdbuf(file_e.rdbuf());
-            cout.rdbuf (file.rdbuf());
+      //perform slice-to-volume registrations - skip the first iteration
+      if (iter>0)
+      {
+
+    	  cout<<"Iteration B"<<iter<<": "<<endl;
+
+    	   /*if ( ! no_log ) {
+              cerr.rdbuf(file_e.rdbuf());
+              cout.rdbuf (file.rdbuf());
+          }*/
+    	  //reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);
+    	  reconstruction.ChunkToVolume(stacks, packages, 39, multiband_factor, *order, step, rewinder);
+          //if((packages.size()>0)&&(iter<(iterations-1)))
+          if((packages.size()>0)&&(iter<=iterations*(levels-1)/levels)&&(iter<(iterations-1)))
+          {
+  	      if(iter==1){
+            //reconstruction.PackageToVolume(stacks,packages,iter);
+  	    	 cout<<"Iteration C"<<iter<<": "<<endl;
+  	      	reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);}
+  	      else
+  	      {
+  	    	  if(iter==2) {}
+  	    		  //reconstruction.PackageToVolume(stacks,packages,iter,true);
+  	    	  else
+  	    	  {
+  	    		  if(iter==3) {}
+  	    			  //reconstruction.PackageToVolume(stacks,packages,iter,true,true);
+  	    		  else
+  	    		  {
+  	    			  if(iter>=4) {}
+  	    				 // reconstruction.PackageToVolume(stacks,packages,iter,true,true,iter-2);
+  	    			  else {}
+  	    				  //reconstruction.SliceToVolumeRegistration();
+  	    		  }
+  	    	  }
+  	      }
         }
-      cout<<"Iteration "<<iter<<": "<<endl;
+        else {
+          //reconstruction.SliceToVolumeRegistration();
+        }
 
-      if(iter == 1) {
-		if(multiband_factor>1)
-		   reconstruction.PackageToVolume(stacks,multiband_packages,iter);
-		else
-		  reconstruction.SliceToVolumeRegistration();
+        cout<<endl;
+        if ( ! no_log ) {
+            cerr.rdbuf (strm_buffer_e);
+        }
       }
-
-      /*if(iter==1)
-           reconstruction.PackageToVolume(stacks,packages,iter);
-      if(iter==2)
-      {
-    	  if(multiband_factor>1)
-             reconstruction.PackageToVolume(stacks,multiband_packages,iter);
-    	  else
-    		  reconstruction.SliceToVolumeRegistration();
-      }
-
-      /*
-      //if((packages.size()>0)&&(iter<(iterations-1)))
-      if((packages.size()>0)&&(iter<=iterations*(levels-1)/levels)&&(iter<(iterations-1)))
-      {
-	if(iter==1)
-          reconstruction.PackageToVolume(stacks,packages,iter);
-	else
-	{
-	  if(iter==2)
-            reconstruction.PackageToVolume(stacks,packages,iter,true);
-	  else
-	  {
-            if(iter==3)
-	      reconstruction.PackageToVolume(stacks,packages,iter,true,true);
-	    else
-	    {
-	      if(iter>=4)
-                reconstruction.PackageToVolume(stacks,packages,iter,true,true,iter-2);
-	      else
-	        reconstruction.SliceToVolumeRegistration();
-	    }
-	  }
-	}
-      }
-      else
-        reconstruction.SliceToVolumeRegistration();
-      */
-      cout<<endl;
-      if ( ! no_log ) {
-          cerr.rdbuf (strm_buffer_e);
-      }
-    }
-
     
-    //Write to file
-    if ( ! no_log ) {
-        cout.rdbuf (file2.rdbuf());
-    }
-    cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
-    
-    //Set smoothing parameters 
-    //amount of smoothing (given by lambda) is decreased with improving alignment
-    //delta (to determine edges) stays constant throughout
-    if(iter==(iterations-1))
-      reconstruction.SetSmoothingParameters(delta,lastIterLambda);
-    else
-    {
-      double l=lambda;
-      for (i=0;i<levels;i++)
-      {
-        if (iter==iterations*(levels-i-1)/levels)
-          reconstruction.SetSmoothingParameters(delta, l);
-        l*=2;
-      }
-    }
+      //Write to file
+        if ( ! no_log ) {
+            cout.rdbuf (file2.rdbuf());
+        }
+        cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
+
+        //Set smoothing parameters
+        //amount of smoothing (given by lambda) is decreased with improving alignment
+        //delta (to determine edges) stays constant throughout
+        if(iter==(iterations-1))
+          reconstruction.SetSmoothingParameters(delta,lastIterLambda);
+        else
+        {
+          double l=lambda;
+          for (i=0;i<levels;i++)
+          {
+            if (iter==iterations*(levels-i-1)/levels)
+              reconstruction.SetSmoothingParameters(delta, l);
+            l*=2;
+          }
+        }
     
     //Use faster reconstruction during iterations and slower for final reconstruction
     if ( iter<(iterations-1) )
@@ -918,8 +907,11 @@ int main(int argc, char **argv)
     else
       reconstruction.GaussianReconstruction();
 
+    cout<<"Iteration E"<<iter<<". "<<endl;
+
     //Simulate slices (needs to be done after Gaussian reconstruction)
     reconstruction.SimulateSlices();
+    cout<<"Iteration F"<<iter<<". "<<endl;
         
     //Initialize robust statistics parameters
     reconstruction.InitializeRobustStatistics();
@@ -985,6 +977,7 @@ int main(int argc, char **argv)
       reconstructed.Write(buffer);
     }
 
+    cout<<"Iteration G"<<iter<<". "<<endl;
       
     }//end of reconstruction iterations
     
@@ -1019,7 +1012,7 @@ int main(int argc, char **argv)
   reconstruction.ScaleVolume();
   reconstructed=reconstruction.GetReconstructed();
   reconstructed.Write(output_name); 
-  reconstruction.SaveTransformations();
+  //reconstruction.SaveTransformations();
   reconstruction.SaveSlices();
 
   if ( info_filename.length() > 0 )

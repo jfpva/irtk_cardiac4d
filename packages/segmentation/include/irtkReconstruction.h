@@ -438,12 +438,8 @@ class irtkReconstruction : public irtkObject
     void ResetOrigin( irtkGreyImage &image,
                       irtkRigidTransformation& transformation);
   
-    void newPackageToVolume( vector<irtkRealImage>& stacks,
-                              vector<int> &pack_num,
-                              int iter,
-                              bool evenodd=false,
-                              bool half=false,
-                              int half_iter=1);
+    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, char order, int step, int rewinder);
+    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder);
 
     ///Packages to volume registrations
     void PackageToVolume( vector<irtkRealImage>& stacks,
@@ -460,7 +456,6 @@ class irtkReconstruction : public irtkObject
     void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder);
     void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
     void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband, char order, int step, int rewinder);
-    void newSplitImage( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order);
 
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
