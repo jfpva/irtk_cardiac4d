@@ -4698,12 +4698,11 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 			 t = target;
 			 s = _reconstructed;
 
-			 rigidregistration.SetInput(&t, &s);
-			 rigidregistration.SetOutput(&internal_transformations[j]);
-			 rigidregistration.GuessParameterSliceToVolume();
-			 rigidregistration.SetTargetPadding(0);
+			 sprintf(buffer,"target%i-%i-%i.nii.gz",1,i,j);
+			 t.Write(buffer);
 
-			 rigidregistration.Run();
+			 sprintf(buffer,"source%i-%i-%i.nii.gz",1,i,j);
+			 s.Write(buffer);
 
 			 irtkRigidTransformation offset;
 			 ResetOrigin(t,offset);
@@ -4712,10 +4711,25 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 			 m=m*mo;
 			 internal_transformations[j].PutMatrix(m);
 
+			 rigidregistration.SetInput(&t, &s);
+			 rigidregistration.SetOutput(&internal_transformations[j]);
+			 rigidregistration.GuessParameterPackageToVolume();
+			 rigidregistration.SetTargetPadding(0);
+
+
+			 if(_debug)
+				                 rigidregistration.Write("par-packages.rreg");
+			 rigidregistration.Run();
+
+
+
 			 mo.Invert();
 			 m = internal_transformations[j].GetMatrix();
 			 m=m*mo;
 			 internal_transformations[j].PutMatrix(m);
+
+			 sprintf(buffer,"transformation%i-%i-%i.dof",1,i,j);
+			 internal_transformations[j].irtkTransformation::Write(buffer);
 
 			 iterations = (firstPackage.GetZ()/multiband)/(pack_num[i]);
 			 if (extra > 0) {
@@ -4799,24 +4813,41 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 			 t = target;
 			 s = _reconstructed;
 
-			 rigidregistration.SetInput(&t, &s);
-			 rigidregistration.SetOutput(&internal_transformations[j]);
-			 rigidregistration.GuessParameterSliceToVolume();
-			 rigidregistration.SetTargetPadding(0);
 
-			 rigidregistration.Run();
+			sprintf(buffer,"target%i-%i-%i.nii.gz",1,i,j);
+			t.Write(buffer);
 
-			 irtkRigidTransformation offset;
+			sprintf(buffer,"source%i-%i-%i.nii.gz",1,i,j);
+			s.Write(buffer);
+
+
+			irtkRigidTransformation offset;
 			 ResetOrigin(t,offset);
 			 irtkMatrix mo = offset.GetMatrix();
 			 irtkMatrix m = internal_transformations[j].GetMatrix();
 			 m=m*mo;
 			 internal_transformations[j].PutMatrix(m);
 
+			 rigidregistration.SetInput(&t, &s);
+			 rigidregistration.SetOutput(&internal_transformations[j]);
+			 rigidregistration.GuessParameterPackageToVolume();
+
+			 rigidregistration.SetTargetPadding(0);
+
+			 if(_debug)
+				                 rigidregistration.Write("par-packages.rreg");
+
+			 rigidregistration.Run();
+
 			 mo.Invert();
 			 m = internal_transformations[j].GetMatrix();
 			 m=m*mo;
 			 internal_transformations[j].PutMatrix(m);
+
+
+			 sprintf(buffer,"transformation%i-%i-%i.dof",1,i,j);
+			 internal_transformations[j].irtkTransformation::Write(buffer);
+
 
 			 iterations = (firstChunk.GetZ()/multiband)/(fakePkg);
 			 if (extra > 0) {
@@ -4887,14 +4918,20 @@ void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<i
             irtkResampling<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz);         
 
             target=packages[j];
-
+ /*
 	    resampling.SetInput(&packages[j]);
             resampling.SetOutput(&target);
 	    resampling.SetInterpolator(&interpolator);
             resampling.Run();
-
+*/
 	    t=target;
             s=_reconstructed;
+
+    		sprintf(buffer,"target%i-%i-%i.nii.gz",1,i,j);
+    			t.Write(buffer);
+
+    			sprintf(buffer,"source%i-%i-%i.nii.gz",1,i,j);
+    			s.Write(buffer);
       
             //find existing transformation
             double x,y,z;
@@ -4916,7 +4953,7 @@ void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<i
 
             rigidregistration.SetInput(&t, &s);
             rigidregistration.SetOutput(&_transformations[firstSliceIndex]);
-            rigidregistration.GuessParameterSliceToVolume();
+            rigidregistration.GuessParameterPackageToVolume();
             if(_debug)
                 rigidregistration.Write("par-packages.rreg");
             rigidregistration.Run();
@@ -4931,6 +4968,9 @@ void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<i
                 sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
                 _transformations[firstSliceIndex].irtkTransformation::Write(buffer);
             }
+
+			 sprintf(buffer,"transformation%i-%i-%i.dof",1,i,j);
+			 _transformations[firstSliceIndex].irtkTransformation::Write(buffer);
 
       
             //set the transformation to all slices of the package
@@ -4965,6 +5005,7 @@ void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<i
     
         firstSlice += stacks[i].GetZ();
     }
+    SaveTransformations();
 }
 
 /* end Package specific functions */
