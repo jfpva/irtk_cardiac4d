@@ -391,8 +391,8 @@ template <class VoxelType> void irtkResamplingWithPadding<VoxelType>::Run()
               (v+1 >= 0) && (v+1 < this->_input->GetY()) &&
               (w+1 >= 0) && (w+1 < this->_input->GetZ())) {
             if (this->_input->Get(u+1, v+1, w+1, l) != this->_PaddingValue) {
-              pad += w8;
               val += this->_input->Get(u+1, v+1, w+1, l) * w8;
+              pad += w8;
               sum += w8;
             }
           } else {

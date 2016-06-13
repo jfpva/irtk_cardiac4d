@@ -694,9 +694,11 @@ int main(int argc, char **argv)
   vector<irtkRealImage> packs;
 
   // GIULIO STUFF
-  //reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 5, multiband_factor, *order, step, rewinder);
-  //splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
-  //reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
+
+  //reconstruction.flexibleSplitImagewithMB(stacks, out, packages, 4, multiband_factor, *order, step, rewinder);
+  //reconstruction.splitPackages(stacks, packages, out, *order, step, rewinder);
+  reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
+  //reconstruction.flexibleSplitImage(stacks, out, packages, 59, *order, step, rewinder);
 
   //reconstruction.newPackageToVolume(stacks,packages,1,multiband_factor,*order,step,rewinder);
   // reconstruction. PackageToVolume(stacks, packages, 1);
@@ -824,15 +826,18 @@ int main(int argc, char **argv)
               cerr.rdbuf(file_e.rdbuf());
               cout.rdbuf (file.rdbuf());
           }*/
-    	  //reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);
-    	  reconstruction.ChunkToVolume(stacks, packages, 39, multiband_factor, *order, step, rewinder);
+    	  //reconstruction.PackageToVolume(stacks,packages,1);
+    	  reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);
+
+    	  //reconstruction.ChunkToVolume(stacks, packages, 10, multiband_factor, *order, step, rewinder);
+    	  exit(1);
           //if((packages.size()>0)&&(iter<(iterations-1)))
           if((packages.size()>0)&&(iter<=iterations*(levels-1)/levels)&&(iter<(iterations-1)))
           {
   	      if(iter==1){
             //reconstruction.PackageToVolume(stacks,packages,iter);
-  	    	 cout<<"Iteration C"<<iter<<": "<<endl;
-  	      	reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);}
+  	    	 cout<<"Iteration C"<<iter<<": "<<endl;}
+  	      	///reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);}
   	      else
   	      {
   	    	  if(iter==2) {}
