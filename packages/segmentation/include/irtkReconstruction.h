@@ -360,7 +360,9 @@ class irtkReconstruction : public irtkObject
   
     ///Save weights
     void SaveWeights();
-  
+
+    void SaveRegistrationStep(int step);
+
     ///Save transformations
     void SaveTransformations();
     void GetTransformations( vector<irtkRigidTransformation> &transformations );
@@ -438,8 +440,8 @@ class irtkReconstruction : public irtkObject
     void ResetOrigin( irtkGreyImage &image,
                       irtkRigidTransformation& transformation);
   
-    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, char order, int step, int rewinder);
-    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder);
+    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, char order, int step, int rewinder, int iter);
+    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder, int iter);
 
     ///Packages to volume registrations
     void PackageToVolume( vector<irtkRealImage>& stacks,
@@ -449,11 +451,11 @@ class irtkReconstruction : public irtkObject
                           bool half=false,
                           int half_iter=1);
   
-    /// GF2604 Splits stacks into packages looking at the slice acquisition order vector
-    /* GF 260416 Package specific functions */
     void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder);
+    void flexibleSplitImage2(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, char order, int step, int rewinder);
     void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, int sliceNum, char order, int step, int rewinder);
     void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder);
+    void flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, vector<int> sliceNums, int multiband, char order, int step, int rewinder);
     void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
     void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband, char order, int step, int rewinder);
 
