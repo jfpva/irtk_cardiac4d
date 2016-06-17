@@ -694,25 +694,28 @@ int main(int argc, char **argv)
   vector<irtkRealImage> packs;
 
   vector<int> test;
-  test.push_back(16);
-  test.push_back(16);
-  test.push_back(16);
+  test.push_back(10);
+  test.push_back(5);
+  test.push_back(5);
+  test.push_back(10);
+  test.push_back(6);
+
   //test.push_back(8);
   //test.push_back(8);
   //test.push_back(8);
   //test.push_back(16);
-  test.push_back(30);
-  test.push_back(30);
+
+
 
   // GIULIO STUFF
   //reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,1);
   //reconstruction.ChunkToVolume(stacks, packages, 10, multiband_factor, *order, step, rewinder,1);
-  //reconstruction.flexibleSplitImagewithMB2(stacks, out, packages, test, multiband_factor, *order, step, rewinder);
+  reconstruction.flexibleSplitImagewithMB2(stacks, out, packages, test, multiband_factor, *order, step, rewinder);
   //reconstruction.splitPackages(stacks, packages, out, *order, step, rewinder);
   //reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
 
-  //reconstruction.flexibleSplitImage(stacks, out, packages, 8, *order, step, rewinder);
-  reconstruction.flexibleSplitImage2(stacks, out, packages, test, *order, step, rewinder);
+  //reconstruction.flexibleSplitImage(stacks, out, packages, 23, *order, step, rewinder);
+  //reconstruction.flexibleSplitImage2(stacks, out, packages, test, *order, step, rewinder);
   exit(1);
 
   //reconstruction.newPackageToVolume(stacks,packages,1,multiband_factor,*order,step,rewinder);

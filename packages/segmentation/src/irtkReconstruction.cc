@@ -4364,12 +4364,14 @@ void irtkReconstruction::flexibleSplitImage2(vector<irtkRealImage>& stacks, vect
 		sum = 0;
 		startIterations = endIterations;
 	}
+
 	char buffer[256];
 	for (int i=0; i<sliceStacks.size(); i++)
 	{
 	  sprintf(buffer,"chunk_package%i.nii.gz",i);
 	  sliceStacks[i].Write(buffer);
 	}
+
 }
 
 void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder)
@@ -4483,7 +4485,6 @@ void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks,
 
 void irtkReconstruction::flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, int multiband, char order, int step, int rewinder)
 {
-	// initializing variables
 	irtkRealImage chunck;
 	vector<irtkRealImage> chuncks, chuncks_separated, chuncks_separated_reordered, chunksAll;
 	vector<int> pack_num_chucks;
@@ -4491,15 +4492,14 @@ void irtkReconstruction::flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks
 	irtkRealImage multibanded, toAdd;
 	irtkImageAttributes attr;
 	int sliceMB;
-	int stepFactor;
-	int counter1, counter2, counter3, counter4;
+	int stepFactor, startFactor, endFactor;
+	int counter1, counter2, counter3, counter4, counter5;
 
 	int sum = 0;
     vector<int> sliceNumsChunks;
-    int start = 0;
 
-	// dynamic loop
-    stepFactor = 0;
+    startFactor = 0;
+    endFactor = 0;
 	for (int dyn = 0; dyn < stacks.size(); dyn++) {
 
 		image  = stacks[dyn];
@@ -4514,42 +4514,23 @@ void irtkReconstruction::flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks
 		}
 
 		while (sum < sliceMB)	{
-			cout<<"sum "<<sum<<endl;
-			sum = sum + sliceNums[stepFactor];
-			stepFactor++;
+			sum = sum + sliceNums[endFactor];
+			endFactor++;
 		}
 
-		cout<<"stepFactor "<<stepFactor<<endl;
-		cout<<"start "<<start<<endl;
-
 		for (int m = 0; m < multiband; m++) {
-			for (int iter = start; iter < stepFactor; iter++)	{
+			for (int iter = startFactor; iter < endFactor; iter++)	{
 				sliceNumsChunks.push_back(sliceNums[iter]);
 			}
 		}
-		start = stepFactor;
+		startFactor = endFactor;
 		sum = 0;
 	}
 
-	for (int temp = 0; temp < sliceNumsChunks.size(); temp++) {
-		cout<<sliceNumsChunks[temp]<<endl;
-	}
-
-	cout<<"Ok I get here"<<endl;
-
-
-	// splitting each multiband subgroup
 	flexibleSplitImage2(chuncks, chunksAll, pack_num_chucks, sliceNumsChunks, order, step, rewinder);
 
-
-	cout<<"But this time I got through"<<endl;
-
-	exit(1);
-
-
-	// new dynamic loop
 	counter4 = 0;
-	sum = 0;
+	counter5 = 0;
 	stepFactor = 0;
 	for (int dyn = 0; dyn < stacks.size(); dyn++) {
 
@@ -4559,7 +4540,7 @@ void irtkReconstruction::flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks
 		sliceMB = attr._z/multiband;
 
 		while (sum < sliceMB)	{
-			sum = sum + sliceNums[stepFactor];
+			sum = sum + sliceNums[counter5 + stepFactor];
 			stepFactor++;
 		}
 
@@ -4613,14 +4594,17 @@ void irtkReconstruction::flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks
 		chuncks_separated.clear();
 		chuncks_separated_reordered.clear();
 		sum = 0;
-	}
+		counter5 = counter5 + stepFactor;
+		stepFactor = 0;
 
-	// saving
-	char buffer[256];
-	for (int i=0; i<sliceStacks.size(); i++)
-	{
-	  sprintf(buffer,"chunk_multibanded%i.nii.gz",i);
-	  sliceStacks[i].Write(buffer);
+		// saving
+		char buffer[256];
+		for (int i=0; i<sliceStacks.size(); i++)
+		{
+		  sprintf(buffer,"chunk_multibanded%i.nii.gz",i);
+		  sliceStacks[i].Write(buffer);
+		}
+
 	}
 
 	/*for (int temp = 0; temp < _z_slice_order.size(); temp++)	{
