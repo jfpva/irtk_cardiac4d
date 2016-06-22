@@ -44,8 +44,8 @@ void usage()
   cerr << "\t                          and then into odd and even slices within each package during "<<endl;
   cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
   cerr << "\t                          volume approach. [Default: slice to volume registration only]"<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
-  cerr << "\t                          Possible values: D (descending), I (interleaved) and C (Customized)."<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (AS)]"<<endl;
+  cerr << "\t                          Possible values: DS (descending), DE (default) I (interleaved) and CU (Customized)."<<endl;
   cerr << "\t-step      		       Forward slice jump for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	               Rewinder for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: 9]"<<endl;
@@ -100,7 +100,6 @@ int main(int argc, char **argv)
   int nStacks;
   /// number of packages for each stack
   vector<int> packages;
-  vector<int> multiband_packages;
   // GF 200416
   char * order = NULL;
   int step = 1;
@@ -109,7 +108,7 @@ int main(int argc, char **argv)
   // Default values.
   int templateNumber=-1;
   irtkRealImage *mask=NULL;
-  int iterations = 13;
+  int iterations = 13; // this will be rewritten
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
@@ -262,6 +261,9 @@ int main(int argc, char **argv)
     	}
     	else if ((temp == 'D')) {
     			cout<<"Slice acquisition order is descending"<<endl;
+    	}
+    	else if ((temp == 'F')) {
+				cout<<"Slice acquisition order is default"<<endl;
     	}
     	else if ((temp == 'I')) {
     			cout<<"Slice acquisition order is interleaved"<<endl;
@@ -569,13 +571,6 @@ int main(int argc, char **argv)
     cout<<"."<<endl;
   }
 
-  //create multiband packages
-  cout<<"multiband packages: ";
-  for(i=0;i<stacks.size();i++)
-  {
-	  multiband_packages.push_back(stacks[i].GetZ()/multiband_factor);
-	  cout<<multiband_packages[i]<<" ";
-  }
   //Output volume
   irtkRealImage reconstructed;
 
@@ -685,58 +680,8 @@ int main(int argc, char **argv)
       sprintf(buffer,"mask%i.nii.gz",i);
       m.Write(buffer); 
       sprintf(buffer,"cropped%i.nii.gz",i);
-      stacks[i].Write(buffer);
     }
   }
-
-  // Getting acquisition slice order
-  vector<irtkRealImage> out;
-  vector<irtkRealImage> packs;
-
-  vector<int> test;
-  test.push_back(10);
-  test.push_back(5);
-  test.push_back(5);
-  test.push_back(10);
-  test.push_back(6);
-
-  //test.push_back(8);
-  //test.push_back(8);
-  //test.push_back(8);
-  //test.push_back(16);
-
-
-
-  // GIULIO STUFF
-  //reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,1);
-  //reconstruction.ChunkToVolume(stacks, packages, 10, multiband_factor, *order, step, rewinder,1);
-  reconstruction.flexibleSplitImagewithMB2(stacks, out, packages, test, multiband_factor, *order, step, rewinder);
-  //reconstruction.splitPackages(stacks, packages, out, *order, step, rewinder);
-  //reconstruction.splitPackageswithMB(stacks, packages, out, multiband_factor, *order, step, rewinder);
-
-  //reconstruction.flexibleSplitImage(stacks, out, packages, 23, *order, step, rewinder);
-  //reconstruction.flexibleSplitImage2(stacks, out, packages, test, *order, step, rewinder);
-  exit(1);
-
-  //reconstruction.newPackageToVolume(stacks,packages,1,multiband_factor,*order,step,rewinder);
-  // reconstruction. PackageToVolume(stacks, packages, 1);
-
-  //PackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, int iter, bool evenodd, bool half, int half_iter)
-
-  /*for (i=0; i<out.size(); i++)
-  {
-	sprintf(buffer,"flexible%i.nii.gz",i);
-	out[i].Write(buffer);
-  }
-
-  reconstruction.splitPackages(stacks, packages, packs, *order, step, rewinder);
-
-  for (i=0; i<packs.size(); i++)
-  {
-
-   sprintf(buffer,"package%i.nii.gz",i);
-   packs[i].Write(buffer);
-  }*/
 
   // we remove stacks of size 1 voxel (no intersection with ROI)
   vector<irtkRealImage> selected_stacks;
@@ -826,157 +771,62 @@ int main(int argc, char **argv)
   reconstruction.InitializeEM();
 
     //interleaved registration-reconstruction iterations
-    for (int iter=0;iter<iterations;iter++)
+    iterations = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
+    cout<<"Number of iterations is:"<<iterations<<endl;
+    for (int iter=1;iter<=iterations;iter++)
     {
       //Print iteration number on the screen
       if ( ! no_log ) {
           cout.rdbuf (strm_buffer);
       }
-      cout<<"Iteration A"<<iter<<". "<<endl;
+      cout<<"Iteration A "<<iter<<". "<<endl;
 
       //perform slice-to-volume registrations - skip the first iteration
-      if (iter>0)
+      if (iter>1)
       {
-    	  /*if ( ! no_log ) {
-              cerr.rdbuf(file_e.rdbuf());
-              cout.rdbuf (file.rdbuf());
-          }*/
-
-    	  //reconstruction.PackageToVolume(stacks,packages,1);
-    	  //reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder);
-    	  //reconstruction.ChunkToVolume(stacks, packages, 10, multiband_factor, *order, step, rewinder);
-    	  //exit(1);
-          //if((packages.size()>0)&&(iter<(iterations-1)))
-
-			if(iter==1){
-			 //reconstruction.PackageToVolume(stacks,packages,iter);
-			  cout<<"Iteration"<<iter<<": "<<endl;
-			  reconstruction.ChunkToVolume(stacks, packages, 10, multiband_factor, *order, step, rewinder,iter);
-			  cout<<"Saving Registration step = "<<iter<<endl;
-			  reconstruction.SaveRegistrationStep(iter);
+			if ( ! no_log ) {
+			  cerr.rdbuf(file_e.rdbuf());
+			  cout.rdbuf (file.rdbuf());
 			}
 
-			if(iter==2){
-				 //reconstruction.PackageToVolume(stacks,packages,iter);
-				  cout<<"Iteration"<<iter<<": "<<endl;
-				  reconstruction.ChunkToVolume(stacks, packages, 9, multiband_factor, *order, step, rewinder,iter);
-				  cout<<"Saving Registration step = "<<iter<<endl;
-				  reconstruction.SaveRegistrationStep(iter);
-				}
-
-			if(iter==3){
-				 //reconstruction.PackageToVolume(stacks,packages,iter);
-				  cout<<"Iteration"<<iter<<": "<<endl;
-				  reconstruction.ChunkToVolume(stacks, packages, 8, multiband_factor, *order, step, rewinder,iter);
-				  cout<<"Saving Registration step = "<<iter<<endl;
-				  reconstruction.SaveRegistrationStep(iter);
-				}
-
-			if(iter==4){
-				 //reconstruction.PackageToVolume(stacks,packages,iter);
-				  cout<<"Iteration"<<iter<<": "<<endl;
-				  reconstruction.ChunkToVolume(stacks, packages, 7, multiband_factor, *order, step, rewinder,iter);
-				  cout<<"Saving Registration step = "<<iter<<endl;
-				  reconstruction.SaveRegistrationStep(iter);
-				}
-
-			if(iter==5){
-				 //reconstruction.PackageToVolume(stacks,packages,iter);
-				  cout<<"Iteration"<<iter<<": "<<endl;
-				  reconstruction.ChunkToVolume(stacks, packages, 6, multiband_factor, *order, step, rewinder,iter);
-				  cout<<"Saving Registration step = "<<iter<<endl;
-				  reconstruction.SaveRegistrationStep(iter);
-				}
-
-			if(iter==6){
-				 //reconstruction.PackageToVolume(stacks,packages,iter);
-				  cout<<"Iteration"<<iter<<": "<<endl;
-				  reconstruction.ChunkToVolume(stacks, packages, 5, multiband_factor, *order, step, rewinder,iter);
-				  cout<<"Saving Registration step = "<<iter<<endl;
-				  reconstruction.SaveRegistrationStep(iter);
-				}
-
-			if(iter==7){
-			 //reconstruction.PackageToVolume(stacks,packages,iter);
-			  cout<<"Iteration"<<iter<<": "<<endl;
-			  reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
-			  cout<<"Saving Registration step = "<<iter<<endl;
-			  reconstruction.SaveRegistrationStep(iter);
+			vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
+			for (int temp = 0; temp < level.size(); temp++) {
+				cout<<level[temp]<<endl;
 			}
 
-			if(iter==8){
-			 //reconstruction.PackageToVolume(stacks,packages,iter);
-			  cout<<"Iteration"<<iter<<": "<<endl;
-			  reconstruction.ChunkToVolume(stacks, packages, 4, multiband_factor, *order, step, rewinder,iter);
-			  cout<<"Saving Registration step = "<<iter<<endl;
-			  reconstruction.SaveRegistrationStep(iter);
+			if(iter == 2) {
+				cout<<"Iteration B"<<iter<<": "<<endl;
+				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
+				cout<<"Saving Registration step = "<<iter<<endl;
+				reconstruction.SaveRegistrationStep(iter);
 			}
 
-			if(iter==9){
-			 //reconstruction.PackageToVolume(stacks,packages,iter);
-			  cout<<"Iteration"<<iter<<": "<<endl;
-			  reconstruction.ChunkToVolume(stacks, packages, 3, multiband_factor, *order, step, rewinder,iter);
-			  cout<<"Saving Registration step = "<<iter<<endl;
-			  reconstruction.SaveRegistrationStep(iter);
+			else if((iter > 2) && (iter < iterations)){
+				cout<<"Iteration C"<<iter<<": "<<endl;
+				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+				cout<<"Saving Registration step = "<<iter<<endl;
+				reconstruction.SaveRegistrationStep(iter);
 			}
 
-			if(iter==11){
-						 //reconstruction.PackageToVolume(stacks,packages,iter);
-						  cout<<"Iteration"<<iter<<": "<<endl;
-						  reconstruction.ChunkToVolume(stacks, packages, 2, multiband_factor, *order, step, rewinder,iter);
-						  cout<<"Saving Registration step = "<<iter<<endl;
-						  reconstruction.SaveRegistrationStep(iter);
-						}
-
-			if(iter==12){
-				 //reconstruction.PackageToVolume(stacks,packages,iter);
-				  cout<<"Iteration"<<iter<<": "<<endl;
-				  reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
-				  cout<<"Saving Registration step = "<<iter<<endl;
-				  reconstruction.SaveRegistrationStep(iter);
+			else {
+				if (multiband_factor == 1) {
+					cout<<"Iteration D"<<iter<<": "<<endl;
+					reconstruction.SliceToVolumeRegistration();
+					cout<<"Saving Registration step = "<<iter<<endl;
+					reconstruction.SaveRegistrationStep(iter);
 				}
+				else {
+					cout<<"Iteration E"<<iter<<": "<<endl;
+					reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
+					cout<<"Saving Registration step = "<<iter<<endl;
+					reconstruction.SaveRegistrationStep(iter);
+				}
+			}
 
-
-			/*if(iter==5){
-			 //reconstruction.PackageToVolume(stacks,packages,iter);
-			  cout<<"Iteration E"<<iter<<": "<<endl;
-			  reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder);
-			}*/
-
-
-			/*if(iter==4){
-			 //reconstruction.PackageToVolume(stacks,packages,iter);
-			  cout<<"Iteration E"<<iter<<": "<<endl;
-			  reconstruction.SliceToVolumeRegistration();
-			}*/
-
-			/*else
-			{
-			  if(iter==2) {
-				  //reconstruction.PackageToVolume(stacks,packages,iter,true);
-				reconstruction.ChunkToVolume(stacks, packages, 10, multiband_factor, *order, step, rewinder);
-			  }
-			  else
-			  {
-				  if(iter==3) {
-					  reconstruction.ChunkToVolume(stacks, packages, 5, multiband_factor, *order, step, rewinder);
-				  }
-				  else
-				  {
-					  if(iter>=4) {
-						  reconstruction.ChunkToVolume(stacks, packages, 3, multiband_factor, *order, step, rewinder); }
-					  else {
-						  reconstruction.SliceToVolumeRegistration();
-					  }
-				  }
-			  }
-			}*/
-
-        cout<<endl;
         if ( ! no_log ) {
             cerr.rdbuf (strm_buffer_e);
         }
-      }
+       }
     
       //Write to file
         if ( ! no_log ) {
