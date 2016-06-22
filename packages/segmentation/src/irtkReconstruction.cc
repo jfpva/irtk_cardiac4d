@@ -4214,6 +4214,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		else {
 
 			int index, restart;
+			counter = 0;
 
 			if (order == 'I')
 			{
@@ -4233,6 +4234,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 						// getting step size, from PPE
 						if((attr._z - counter) > slicesPerPackage*pack_num[dyn])		{
 							stepFactor = round(sqrt(double(slicesPerPackage + 1)));
+							counter++;
 						}
 						else
 							stepFactor = round(sqrt(double(slicesPerPackage)));
@@ -4880,6 +4882,7 @@ int irtkReconstruction::giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &
 vector<int> irtkReconstruction::giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, int iterations) {
 
 	// initializing variables
+	iterations++;
 	vector<int> old_vector, new_vector;
 	int counter = 0;
 
@@ -4936,116 +4939,117 @@ vector<int> irtkReconstruction::giveMeSplittingVector(vector<irtkRealImage>& sta
 /* Package specific functions */
 void irtkReconstruction::SplitImage(irtkRealImage image, int packages, vector<irtkRealImage>& stacks)
 {
-    irtkImageAttributes attr = image.GetImageAttributes();
+	irtkImageAttributes attr = image.GetImageAttributes();
 
-    //slices in package
-    int pkg_z = attr._z/packages;
-    double pkg_dz = attr._dz*packages;
-    //cout<<"packages: "<<packages<<"; slices: "<<attr._z<<"; slices in package: "<<pkg_z<<endl;
-    //cout<<"slice thickness "<<attr._dz<<"; slickess thickness in package: "<<pkg_dz<<endl;
+	//slices in package
+	int pkg_z = attr._z/packages;
+	double pkg_dz = attr._dz*packages;
+	//cout<<"packages: "<<packages<<"; slices: "<<attr._z<<"; slices in package: "<<pkg_z<<endl;
+	//cout<<"slice thickness "<<attr._dz<<"; slickess thickness in package: "<<pkg_dz<<endl;
 
-    char buffer[256];
-    int i,j,k,l;
-    double x,y,z,sx,sy,sz,ox,oy,oz;
-    for(l=0;l<packages;l++) {
-        attr = image.GetImageAttributes();
-        if((pkg_z*packages+l)<attr._z)
-            attr._z = pkg_z+1;
-        else
-            attr._z = pkg_z;
-        attr._dz = pkg_dz;
+	char buffer[256];
+	int i,j,k,l;
+	double x,y,z,sx,sy,sz,ox,oy,oz;
+	for(l=0;l<packages;l++) {
+		attr = image.GetImageAttributes();
+		if((pkg_z*packages+l)<attr._z)
+			attr._z = pkg_z+1;
+		else
+			attr._z = pkg_z;
+		attr._dz = pkg_dz;
 
-        cout<<"split image "<<l<<" has "<<attr._z<<" slices."<<endl;
+		cout<<"split image "<<l<<" has "<<attr._z<<" slices."<<endl;
 
-        //fill values in each stack
-        irtkRealImage stack(attr);
-        stack.GetOrigin(ox,oy,oz);
+		//fill values in each stack
+		irtkRealImage stack(attr);
+		stack.GetOrigin(ox,oy,oz);
 
-        cout<<"Stack "<<l<<":"<<endl;
-        for(k=0; k<stack.GetZ();k++)
-            for(j=0; j<stack.GetY();j++)
-                for(i=0; i<stack.GetX();i++)
-                    stack.Put(i,j,k,image(i,j,k*packages+l));
+		cout<<"Stack "<<l<<":"<<endl;
+		for(k=0; k<stack.GetZ();k++)
+			for(j=0; j<stack.GetY();j++)
+				for(i=0; i<stack.GetX();i++)
+					stack.Put(i,j,k,image(i,j,k*packages+l));
 
-        //adjust origin
+		//adjust origin
 
-        //original image coordinates
-        x=0;y=0;z=l;
-        image.ImageToWorld(x,y,z);
-        cout<<"image: "<<x<<" "<<y<<" "<<z<<endl;
-        //stack coordinates
-        sx=0;sy=0;sz=0;
-        stack.PutOrigin(ox,oy,oz); //adjust to original value
-        stack.ImageToWorld(sx,sy,sz);
-        cout<<"stack: "<<sx<<" "<<sy<<" "<<sz<<endl;
-        //adjust origin
-        cout<<"adjustment needed: "<<x-sx<<" "<<y-sy<<" "<<z-sz<<endl;
-        stack.PutOrigin(ox + (x-sx), oy + (y-sy), oz + (z-sz));
-        sx=0;sy=0;sz=0;
-        stack.ImageToWorld(sx,sy,sz);
-        cout<<"adjusted: "<<sx<<" "<<sy<<" "<<sz<<endl;
+		//original image coordinates
+		x=0;y=0;z=l;
+		image.ImageToWorld(x,y,z);
+		cout<<"image: "<<x<<" "<<y<<" "<<z<<endl;
+		//stack coordinates
+		sx=0;sy=0;sz=0;
+		stack.PutOrigin(ox,oy,oz); //adjust to original value
+		stack.ImageToWorld(sx,sy,sz);
+		cout<<"stack: "<<sx<<" "<<sy<<" "<<sz<<endl;
+		//adjust origin
+		cout<<"adjustment needed: "<<x-sx<<" "<<y-sy<<" "<<z-sz<<endl;
+		stack.PutOrigin(ox + (x-sx), oy + (y-sy), oz + (z-sz));
+		sx=0;sy=0;sz=0;
+		stack.ImageToWorld(sx,sy,sz);
+		cout<<"adjusted: "<<sx<<" "<<sy<<" "<<sz<<endl;
 
-        //sprintf(buffer,"stack%i.nii.gz",l);
-        //stack.Write(buffer);
-        stacks.push_back(stack);
-    }
-    cout<<"done."<<endl;
+		//sprintf(buffer,"stack%i.nii.gz",l);
+		//stack.Write(buffer);
+		stacks.push_back(stack);
+	}
+	cout<<"done."<<endl;
+
 }
 
 void irtkReconstruction::SplitImageEvenOdd(irtkRealImage image, int packages, vector<irtkRealImage>& stacks)
 {
-    vector<irtkRealImage> packs;
-    vector<irtkRealImage> packs2;
-    cout<<"Split Image Even Odd: "<<packages<<" packages."<<endl;
+	vector<irtkRealImage> packs;
+	vector<irtkRealImage> packs2;
+	cout<<"Split Image Even Odd: "<<packages<<" packages."<<endl;
 
-    stacks.clear();
-    SplitImage(image,packages,packs);
-    for (int i=0;i<packs.size();i++) {
-        cout<<"Package "<<i<<": "<<endl;
-        packs2.clear();
-        SplitImage(packs[i],2,packs2);
-        stacks.push_back(packs2[0]);
-        stacks.push_back(packs2[1]);
-    }
+	stacks.clear();
+	SplitImage(image,packages,packs);
+	for (int i=0;i<packs.size();i++) {
+		cout<<"Package "<<i<<": "<<endl;
+		packs2.clear();
+		SplitImage(packs[i],2,packs2);
+		stacks.push_back(packs2[0]);
+		stacks.push_back(packs2[1]);
+	}
 
-    cout<<"done."<<endl;
-}
+	cout<<"done."<<endl;
+	}
 
 void irtkReconstruction::SplitImageEvenOddHalf(irtkRealImage image, int packages, vector<irtkRealImage>& stacks, int iter)
 {
-    vector<irtkRealImage> packs;
-    vector<irtkRealImage> packs2;
-   
-    cout<<"Split Image Even Odd Half "<<iter<<endl;
-    stacks.clear();
-    if (iter>1)
-        SplitImageEvenOddHalf(image,packages,packs,iter-1);
-    else
-        SplitImageEvenOdd(image,packages,packs);
-    for (int i=0;i<packs.size();i++) {
-        packs2.clear();
-        HalfImage(packs[i],packs2);
-        for (int j=0; j<packs2.size(); j++)
-            stacks.push_back(packs2[j]);
-    }     
+	vector<irtkRealImage> packs;
+	vector<irtkRealImage> packs2;
+
+	cout<<"Split Image Even Odd Half "<<iter<<endl;
+	stacks.clear();
+	if (iter>1)
+		SplitImageEvenOddHalf(image,packages,packs,iter-1);
+	else
+		SplitImageEvenOdd(image,packages,packs);
+	for (int i=0;i<packs.size();i++) {
+		packs2.clear();
+		HalfImage(packs[i],packs2);
+		for (int j=0; j<packs2.size(); j++)
+			stacks.push_back(packs2[j]);
+	}
 }
 
 
 void irtkReconstruction::HalfImage(irtkRealImage image, vector<irtkRealImage>& stacks)
 {
-    irtkRealImage tmp;
-    irtkImageAttributes attr = image.GetImageAttributes();
-    stacks.clear();
-  
-    //We would not like single slices - that is reserved for slice-to-volume
-    if(attr._z>=4) {
-        tmp = image.GetRegion(0,0,0,attr._x,attr._y,attr._z/2);
-        stacks.push_back(tmp);
-        tmp = image.GetRegion(0,0,attr._z/2,attr._x,attr._y,attr._z);
-        stacks.push_back(tmp);
-    }
-    else
-        stacks.push_back(image);
+	irtkRealImage tmp;
+	irtkImageAttributes attr = image.GetImageAttributes();
+	stacks.clear();
+
+	//We would not like single slices - that is reserved for slice-to-volume
+	if(attr._z>=4) {
+		tmp = image.GetRegion(0,0,0,attr._x,attr._y,attr._z/2);
+		stacks.push_back(tmp);
+		tmp = image.GetRegion(0,0,attr._z/2,attr._x,attr._y,attr._z);
+		stacks.push_back(tmp);
+	}
+	else
+		stacks.push_back(image);
 }
 
 void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, char order, int step, int rewinder, int iter)
@@ -5404,129 +5408,118 @@ void irtkReconstruction::ChunkToVolume2(vector<irtkRealImage>& stacks, vector<in
 
 void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, int iter, bool evenodd, bool half, int half_iter)
 {
-    irtkImageRigidRegistrationWithPadding rigidregistration;
-    irtkGreyImage t,s;
-    irtkRealImage target;
-    vector<irtkRealImage> packages;
-    char buffer[256];
-    irtkImageAttributes attr, attr2;
-    irtkLinearInterpolateImageFunction interpolator;
 
-    int firstSlice = 0;
-    cout<<"Package to volume: "<<endl;
-    for (unsigned int i = 0; i < stacks.size(); i++) {
-        cout<<"Stack "<<i<<": First slice index is "<<firstSlice<<endl;
+	irtkImageRigidRegistrationWithPadding rigidregistration;
+	irtkGreyImage t,s;
+	irtkRealImage target;
+	vector<irtkRealImage> packages;
+	char buffer[256];
+	irtkImageAttributes attr, attr2;
+	irtkLinearInterpolateImageFunction interpolator;
 
-        packages.clear();
-        if (evenodd) {
-            if(half)
-                SplitImageEvenOddHalf(stacks[i],pack_num[i],packages,half_iter);
-            else
-                SplitImageEvenOdd(stacks[i],pack_num[i],packages);
-        }
-        else
-            SplitImage(stacks[i],pack_num[i],packages);
-    
-        for (unsigned int j = 0; j < packages.size(); j++) {
-            cout<<"Package "<<j<<" of stack "<<i<<endl;
-            if (_debug) {
-                sprintf(buffer,"package%i-%i-%i.nii.gz",iter,i,j);
-                packages[j].Write(buffer);
-            }
-      
-            attr2=packages[j].GetImageAttributes();
-	    //packages are not masked at present
-            irtkResampling<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz);         
+	int firstSlice = 0;
+	cout<<"Package to volume: "<<endl;
+	for (unsigned int i = 0; i < stacks.size(); i++) {
+	cout<<"Stack "<<i<<": First slice index is "<<firstSlice<<endl;
 
-            target=packages[j];
- /*
-	    resampling.SetInput(&packages[j]);
-            resampling.SetOutput(&target);
-	    resampling.SetInterpolator(&interpolator);
-            resampling.Run();
-*/
-	    t=target;
-            s=_reconstructed;
+	packages.clear();
+	if (evenodd) {
+	if(half)
+		SplitImageEvenOddHalf(stacks[i],pack_num[i],packages,half_iter);
+	else
+		SplitImageEvenOdd(stacks[i],pack_num[i],packages);
+	}
+	else
+	SplitImage(stacks[i],pack_num[i],packages);
 
-    		sprintf(buffer,"target%i-%i-%i.nii.gz",1,i,j);
-    			t.Write(buffer);
+	for (unsigned int j = 0; j < packages.size(); j++) {
+	cout<<"Package "<<j<<" of stack "<<i<<endl;
+	if (_debug) {
+		sprintf(buffer,"package%i-%i-%i.nii.gz",iter,i,j);
+		packages[j].Write(buffer);
+	}
 
-    			sprintf(buffer,"source%i-%i-%i.nii.gz",1,i,j);
-    			s.Write(buffer);
-      
-            //find existing transformation
-            double x,y,z;
-            x=0;y=0;z=0;
-            packages[j].ImageToWorld(x,y,z);
-            stacks[i].WorldToImage(x,y,z);
-      
-            int firstSliceIndex = round(z)+firstSlice;
-            cout<<"First slice index for package "<<j<<" of stack "<<i<<" is "<<firstSliceIndex<<endl;
-            //transformation = _transformations[sliceIndex];
+	attr2=packages[j].GetImageAttributes();
+	//packages are not masked at present
+	irtkResampling<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz);
 
-            //put origin in target to zero
-            irtkRigidTransformation offset;
-            ResetOrigin(t,offset);
-            irtkMatrix mo = offset.GetMatrix();
-            irtkMatrix m = _transformations[firstSliceIndex].GetMatrix();
-            m=m*mo;
-            _transformations[firstSliceIndex].PutMatrix(m);
+	target=packages[j];
 
-            rigidregistration.SetInput(&t, &s);
-            rigidregistration.SetOutput(&_transformations[firstSliceIndex]);
-            rigidregistration.GuessParameterPackageToVolume();
-            if(_debug)
-                rigidregistration.Write("par-packages.rreg");
-            rigidregistration.Run();
-      
-            //undo the offset
-            mo.Invert();
-            m = _transformations[firstSliceIndex].GetMatrix();
-            m=m*mo;
-            _transformations[firstSliceIndex].PutMatrix(m);
-      
-            if (_debug) {
-                sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
-                _transformations[firstSliceIndex].irtkTransformation::Write(buffer);
-            }
+	resampling.SetInput(&packages[j]);
+	resampling.SetOutput(&target);
+	resampling.SetInterpolator(&interpolator);
+	resampling.Run();
 
-			 sprintf(buffer,"transformation%i-%i-%i.dof",1,i,j);
-			 _transformations[firstSliceIndex].irtkTransformation::Write(buffer);
+	t=target;
+	s=_reconstructed;
 
-      
-            //set the transformation to all slices of the package
-            cout<<"Slices of the package "<<j<<" of the stack "<<i<<" are: ";
-            for (int k = 0; k < packages[j].GetZ(); k++) {
-                x=0;y=0;z=k;
-                packages[j].ImageToWorld(x,y,z);
-                stacks[i].WorldToImage(x,y,z);
-                int sliceIndex = round(z)+firstSlice;
-                cout<<sliceIndex<<" "<<endl;
-    
-                if(sliceIndex>=_transformations.size()) {
-                    cerr<<"irtkRecnstruction::PackageToVolume: sliceIndex out of range."<<endl;
-                    cerr<<sliceIndex<<" "<<_transformations.size()<<endl;
-                    exit(1);
-                }
-    
-                if(sliceIndex!=firstSliceIndex) {
-                    _transformations[sliceIndex].PutTranslationX(_transformations[firstSliceIndex].GetTranslationX());
-                    _transformations[sliceIndex].PutTranslationY(_transformations[firstSliceIndex].GetTranslationY());
-                    _transformations[sliceIndex].PutTranslationZ(_transformations[firstSliceIndex].GetTranslationZ());
-                    _transformations[sliceIndex].PutRotationX(_transformations[firstSliceIndex].GetRotationX());
-                    _transformations[sliceIndex].PutRotationY(_transformations[firstSliceIndex].GetRotationY());
-                    _transformations[sliceIndex].PutRotationZ(_transformations[firstSliceIndex].GetRotationZ());
-                    _transformations[sliceIndex].UpdateMatrix();
-                }
-            }
-      
-      
-        }
-        cout<<"End of stack "<<i<<endl<<endl;
-    
-        firstSlice += stacks[i].GetZ();
-    }
-    SaveTransformations();
+	//find existing transformation
+	double x,y,z;
+	x=0;y=0;z=0;
+	packages[j].ImageToWorld(x,y,z);
+	stacks[i].WorldToImage(x,y,z);
+
+	int firstSliceIndex = round(z)+firstSlice;
+	cout<<"First slice index for package "<<j<<" of stack "<<i<<" is "<<firstSliceIndex<<endl;
+	//transformation = _transformations[sliceIndex];
+
+	//put origin in target to zero
+	irtkRigidTransformation offset;
+	ResetOrigin(t,offset);
+	irtkMatrix mo = offset.GetMatrix();
+	irtkMatrix m = _transformations[firstSliceIndex].GetMatrix();
+	m=m*mo;
+	_transformations[firstSliceIndex].PutMatrix(m);
+
+	rigidregistration.SetInput(&t, &s);
+	rigidregistration.SetOutput(&_transformations[firstSliceIndex]);
+	rigidregistration.GuessParameterPackageToVolume();
+	if(_debug)
+		rigidregistration.Write("par-packages.rreg");
+	rigidregistration.Run();
+
+	//undo the offset
+	mo.Invert();
+	m = _transformations[firstSliceIndex].GetMatrix();
+	m=m*mo;
+	_transformations[firstSliceIndex].PutMatrix(m);
+
+	if (_debug) {
+		sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
+		_transformations[firstSliceIndex].irtkTransformation::Write(buffer);
+	}
+
+	//set the transformation to all slices of the package
+	cout<<"Slices of the package "<<j<<" of the stack "<<i<<" are: ";
+	for (int k = 0; k < packages[j].GetZ(); k++) {
+		x=0;y=0;z=k;
+		packages[j].ImageToWorld(x,y,z);
+		stacks[i].WorldToImage(x,y,z);
+		int sliceIndex = round(z)+firstSlice;
+		cout<<sliceIndex<<" "<<endl;
+
+		if(sliceIndex>=_transformations.size()) {
+			cerr<<"irtkRecnstruction::PackageToVolume: sliceIndex out of range."<<endl;
+			cerr<<sliceIndex<<" "<<_transformations.size()<<endl;
+			exit(1);
+		}
+		if(sliceIndex!=firstSliceIndex) {
+					_transformations[sliceIndex].PutTranslationX(_transformations[firstSliceIndex].GetTranslationX());
+					_transformations[sliceIndex].PutTranslationY(_transformations[firstSliceIndex].GetTranslationY());
+					_transformations[sliceIndex].PutTranslationZ(_transformations[firstSliceIndex].GetTranslationZ());
+					_transformations[sliceIndex].PutRotationX(_transformations[firstSliceIndex].GetRotationX());
+					_transformations[sliceIndex].PutRotationY(_transformations[firstSliceIndex].GetRotationY());
+					_transformations[sliceIndex].PutRotationZ(_transformations[firstSliceIndex].GetRotationZ());
+					_transformations[sliceIndex].UpdateMatrix();
+				}
+			}
+
+
+		}
+		cout<<"End of stack "<<i<<endl<<endl;
+
+		firstSlice += stacks[i].GetZ();
+	}
 }
 
 /* end Package specific functions */
@@ -5535,115 +5528,114 @@ void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<i
 
 void irtkReconstruction::CropImage(irtkRealImage& image, irtkRealImage& mask)
 {
-    //Crops the image according to the mask
+	//Crops the image according to the mask
 
-    int i, j, k;
-    //ROI boundaries
-    int x1, x2, y1, y2, z1, z2;
+	int i, j, k;
+	//ROI boundaries
+	int x1, x2, y1, y2, z1, z2;
 
-    //Original ROI
-    x1 = 0;
-    y1 = 0;
-    z1 = 0;
-    x2 = image.GetX();
-    y2 = image.GetY();
-    z2 = image.GetZ();
+	//Original ROI
+	x1 = 0;
+	y1 = 0;
+	z1 = 0;
+	x2 = image.GetX();
+	y2 = image.GetY();
+	z2 = image.GetZ();
 
-    //upper boundary for z coordinate
-    int sum = 0;
-    for (k = image.GetZ() - 1; k >= 0; k--) {
-        sum = 0;
-        for (j = image.GetY() - 1; j >= 0; j--)
-            for (i = image.GetX() - 1; i >= 0; i--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    z2 = k;
+	//upper boundary for z coordinate
+	int sum = 0;
+	for (k = image.GetZ() - 1; k >= 0; k--) {
+		sum = 0;
+		for (j = image.GetY() - 1; j >= 0; j--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	z2 = k;
 
-    //lower boundary for z coordinate
-    sum = 0;
-    for (k = 0; k <= image.GetZ() - 1; k++) {
-        sum = 0;
-        for (j = image.GetY() - 1; j >= 0; j--)
-            for (i = image.GetX() - 1; i >= 0; i--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    z1 = k;
+	//lower boundary for z coordinate
+	sum = 0;
+	for (k = 0; k <= image.GetZ() - 1; k++) {
+		sum = 0;
+		for (j = image.GetY() - 1; j >= 0; j--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	z1 = k;
 
-    //upper boundary for y coordinate
-    sum = 0;
-    for (j = image.GetY() - 1; j >= 0; j--) {
-        sum = 0;
-        for (k = image.GetZ() - 1; k >= 0; k--)
-            for (i = image.GetX() - 1; i >= 0; i--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    y2 = j;
+	//upper boundary for y coordinate
+	sum = 0;
+	for (j = image.GetY() - 1; j >= 0; j--) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	y2 = j;
 
-    //lower boundary for y coordinate
-    sum = 0;
-    for (j = 0; j <= image.GetY() - 1; j++) {
-        sum = 0;
-        for (k = image.GetZ() - 1; k >= 0; k--)
-            for (i = image.GetX() - 1; i >= 0; i--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    y1 = j;
+	//lower boundary for y coordinate
+	sum = 0;
+	for (j = 0; j <= image.GetY() - 1; j++) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	y1 = j;
 
-    //upper boundary for x coordinate
-    sum = 0;
-    for (i = image.GetX() - 1; i >= 0; i--) {
-        sum = 0;
-        for (k = image.GetZ() - 1; k >= 0; k--)
-            for (j = image.GetY() - 1; j >= 0; j--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    x2 = i;
+	//upper boundary for x coordinate
+	sum = 0;
+	for (i = image.GetX() - 1; i >= 0; i--) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (j = image.GetY() - 1; j >= 0; j--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	x2 = i;
 
-    //lower boundary for x coordinate
-    sum = 0;
-    for (i = 0; i <= image.GetX() - 1; i++) {
-        sum = 0;
-        for (k = image.GetZ() - 1; k >= 0; k--)
-            for (j = image.GetY() - 1; j >= 0; j--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
+	//lower boundary for x coordinate
+	sum = 0;
+	for (i = 0; i <= image.GetX() - 1; i++) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (j = image.GetY() - 1; j >= 0; j--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	x1 = i;
 
-    x1 = i;
+	if (_debug)
+		cout << "Region of interest is " << x1 << " " << y1 << " " << z1 << " " << x2 << " " << y2
+			 << " " << z2 << endl;
 
-    if (_debug)
-        cout << "Region of interest is " << x1 << " " << y1 << " " << z1 << " " << x2 << " " << y2
-             << " " << z2 << endl;
+	// if no intersection with mask, force exclude
+	if ((x2 < x1) || (y2 < y1) || (z2 < z1) ) {
+		x1 = 0;
+		y1 = 0;
+		z1 = 0;
+		x2 = 0;
+		y2 = 0;
+		z2 = 0;
+	}
 
-    // if no intersection with mask, force exclude
-    if ((x2 < x1) || (y2 < y1) || (z2 < z1) ) {
-        x1 = 0;
-        y1 = 0;
-        z1 = 0;
-        x2 = 0;
-        y2 = 0;
-        z2 = 0;
-    }
-    
-    //Cut region of interest
-    image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
+	//Cut region of interest
+	image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
 }
 
 // GF 190416, useful for handling different slice orders

@@ -773,7 +773,7 @@ int main(int argc, char **argv)
     //interleaved registration-reconstruction iterations
     iterations = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
     cout<<"Number of iterations is:"<<iterations<<endl;
-    for (int iter=1;iter<=iterations;iter++)
+    for (int iter=0;iter<iterations;iter++)
     {
       //Print iteration number on the screen
       if ( ! no_log ) {
@@ -781,8 +781,11 @@ int main(int argc, char **argv)
       }
       cout<<"Iteration A "<<iter<<". "<<endl;
 
+      cout<<"Saving Registration step = "<<iter<<endl;
+      reconstruction.SaveRegistrationStep(iter);
+
       //perform slice-to-volume registrations - skip the first iteration
-      if (iter>1)
+      if (iter>0)
       {
 			if ( ! no_log ) {
 			  cerr.rdbuf(file_e.rdbuf());
@@ -794,14 +797,14 @@ int main(int argc, char **argv)
 				cout<<level[temp]<<endl;
 			}
 
-			if(iter == 2) {
+			if(iter == 1) {
 				cout<<"Iteration B"<<iter<<": "<<endl;
 				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
 				cout<<"Saving Registration step = "<<iter<<endl;
 				reconstruction.SaveRegistrationStep(iter);
 			}
 
-			else if((iter > 2) && (iter < iterations)){
+			else if((iter > 1) && (iter < iterations-1)){
 				cout<<"Iteration C"<<iter<<": "<<endl;
 				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
 				cout<<"Saving Registration step = "<<iter<<endl;
