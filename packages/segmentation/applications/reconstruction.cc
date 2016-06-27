@@ -772,6 +772,7 @@ int main(int argc, char **argv)
 
     //interleaved registration-reconstruction iterations
     iterations = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
+    iterations = iterations + 6;
     cout<<"Number of iterations is:"<<iterations<<endl;
     for (int iter=0;iter<iterations;iter++)
     {
@@ -792,7 +793,7 @@ int main(int argc, char **argv)
 			  cout.rdbuf (file.rdbuf());
 			}
 
-			vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
+			/*vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
 			for (int temp = 0; temp < level.size(); temp++) {
 				cout<<level[temp]<<endl;
 			}
@@ -812,6 +813,40 @@ int main(int argc, char **argv)
 			}
 
 			else {
+				if (multiband_factor == 1) {
+					cout<<"Iteration D"<<iter<<": "<<endl;
+					reconstruction.SliceToVolumeRegistration();
+					cout<<"Saving Registration step = "<<iter<<endl;
+					reconstruction.SaveRegistrationStep(iter);
+				}
+				else {
+					cout<<"Iteration E"<<iter<<": "<<endl;
+					reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
+					cout<<"Saving Registration step = "<<iter<<endl;
+					reconstruction.SaveRegistrationStep(iter);
+				}
+			}*/
+
+			vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
+			for (int temp = 0; temp < level.size(); temp++) {
+				cout<<level[temp]<<endl;
+			}
+
+			if(iter == 1) {
+				cout<<"Iteration B"<<iter<<": "<<endl;
+				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
+				cout<<"Saving Registration step = "<<iter<<endl;
+				reconstruction.SaveRegistrationStep(iter);
+			}
+
+			else if((iter > 1) && (iter < 5)){
+				cout<<"Iteration C"<<iter<<": "<<endl;
+				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+				cout<<"Saving Registration step = "<<iter<<endl;
+				reconstruction.SaveRegistrationStep(iter);
+			}
+
+			else if (iter >= 5) {
 				if (multiband_factor == 1) {
 					cout<<"Iteration D"<<iter<<": "<<endl;
 					reconstruction.SliceToVolumeRegistration();
