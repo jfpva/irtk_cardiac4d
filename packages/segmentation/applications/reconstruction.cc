@@ -36,19 +36,19 @@ void usage()
   cerr << "\t                          Use \'id\' for an identity transformation for at least" << endl;
   cerr << "\t                          one stack. The first stack with \'id\' transformation" << endl;
   cerr << "\t                          will be resampled as template." << endl;
-  cerr << "\t-thickness [th_1] .. [th_N] Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
+  cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
-  cerr << "\t-multiband 		       Multiband factor used at acquisition."<<endl;
-  cerr << "\t-packages [num_1] .. [num_N] Give number of packages used during acquisition for each stack."<<endl;
+  cerr << "\t-multiband 		       Multiband factor."<<endl;
+  cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack."<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
-  cerr << "\t                          and then into odd and even slices within each package during "<<endl;
+  cerr << "\t                          and then again according to the specific slice order. "<<endl;
   cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
-  cerr << "\t                          volume approach. [Default: slice to volume registration only]"<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (AS)]"<<endl;
-  cerr << "\t                          Possible values: DS (descending), DE (default) I (interleaved) and CU (Customized)."<<endl;
-  cerr << "\t-step      		       Forward slice jump for customized slice ordering [Default: 1]"<<endl;
+  cerr << "\t                          volume approach or multiband registration. [Default: slice to volume registration]"<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
+  cerr << "\t                          Possible values: D (descending), F (default) I (interleaved) and C (Customized)."<<endl;
+  cerr << "\t-step      		       Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	               Rewinder for customized slice ordering [Default: 1]"<<endl;
-  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: 9]"<<endl;
+  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default is calculated internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
   // Default values.
   int templateNumber=-1;
   irtkRealImage *mask=NULL;
-  int iterations = 13; // this will be rewritten
+  int iterations = 0;
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
@@ -245,7 +245,6 @@ int main(int argc, char **argv)
        ok = true;
     }
 
-    // GF 200416
     // Input slice ordering
     if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
 
@@ -280,7 +279,6 @@ int main(int argc, char **argv)
         argv++;
     }
 
-    // GF 2504
     // Forward slice jump for arbitrary slice ordering
 	if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
 	  argc--;
@@ -291,7 +289,6 @@ int main(int argc, char **argv)
 	  argv++;
 	}
 
-	// GF 2504
 	// Rewinder slice jump for arbitrary slice ordering
 	if ((ok == false) && (strcmp(argv[1], "-rewinder") == 0)){
 	  argc--;
@@ -770,272 +767,237 @@ int main(int argc, char **argv)
   //Initialise data structures for EM
   reconstruction.InitializeEM();
 
-    //interleaved registration-reconstruction iterations
-    iterations = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
-    iterations = iterations + 6;
-    cout<<"Number of iterations is:"<<iterations<<endl;
-    for (int iter=0;iter<iterations;iter++)
-    {
-      //Print iteration number on the screen
-      if ( ! no_log ) {
-          cout.rdbuf (strm_buffer);
-      }
-      cout<<"Iteration A "<<iter<<". "<<endl;
+  //interleaved registration-reconstruction iterations
+  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
+  
+  if (iterations == 0)	{
+	  iterations = internal*2;
+	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
+  }
+  else if (iterations <= internal)	{
+	  iterations = internal+1;
+	  cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
+  }
+  else {
+	  cout<<"Number of iterations is :"<<iterations<<endl;
+  }
+ 
+  for (int iter=0;iter<iterations;iter++)
+  {
+	  //Print iteration number on the screen
+	  if ( ! no_log ) {
+		  cout.rdbuf (strm_buffer);
+	  }
+	  
+	  cout<<"Iteration"<<iter<<". "<<endl;
+	  
+	  // calculate and print mean displacement between iterations
+	  /*reconstruction.SaveRegistrationStep(iter);
+	  if (iter>1)	{
+		  double toPrint = reconstruction.calculateResidual(0);
+		  cout<<"Saving Registration step = "<<toPrint<<" in iteration = "<<iter-1<<endl;
+	  }*/
 
-      cout<<"Saving Registration step = "<<iter<<endl;
-      reconstruction.SaveRegistrationStep(iter);
-
-      //perform slice-to-volume registrations - skip the first iteration
-      if (iter>0)
-      {
+	  //perform rest of the registration pipeline
+	  if (iter>0)
+	  {
 			if ( ! no_log ) {
 			  cerr.rdbuf(file_e.rdbuf());
 			  cout.rdbuf (file.rdbuf());
 			}
-
-			/*vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
-			for (int temp = 0; temp < level.size(); temp++) {
-				cout<<level[temp]<<endl;
-			}
-
-			if(iter == 1) {
-				cout<<"Iteration B"<<iter<<": "<<endl;
-				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
-				cout<<"Saving Registration step = "<<iter<<endl;
-				reconstruction.SaveRegistrationStep(iter);
-			}
-
-			else if((iter > 1) && (iter < iterations-1)){
-				cout<<"Iteration C"<<iter<<": "<<endl;
-				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
-				cout<<"Saving Registration step = "<<iter<<endl;
-				reconstruction.SaveRegistrationStep(iter);
-			}
-
-			else {
-				if (multiband_factor == 1) {
-					cout<<"Iteration D"<<iter<<": "<<endl;
-					reconstruction.SliceToVolumeRegistration();
-					cout<<"Saving Registration step = "<<iter<<endl;
-					reconstruction.SaveRegistrationStep(iter);
-				}
-				else {
-					cout<<"Iteration E"<<iter<<": "<<endl;
-					reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
-					cout<<"Saving Registration step = "<<iter<<endl;
-					reconstruction.SaveRegistrationStep(iter);
-				}
-			}*/
-
+	
 			vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
-			for (int temp = 0; temp < level.size(); temp++) {
-				cout<<level[temp]<<endl;
-			}
-
 			if(iter == 1) {
-				cout<<"Iteration B"<<iter<<": "<<endl;
 				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
-				cout<<"Saving Registration step = "<<iter<<endl;
-				reconstruction.SaveRegistrationStep(iter);
 			}
-
-			else if((iter > 1) && (iter < 5)){
-				cout<<"Iteration C"<<iter<<": "<<endl;
+	
+			else if((iter > 1) && (iter < internal-1)){
 				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
-				cout<<"Saving Registration step = "<<iter<<endl;
-				reconstruction.SaveRegistrationStep(iter);
 			}
-
-			else if (iter >= 5) {
+	
+			else {
+				
 				if (multiband_factor == 1) {
-					cout<<"Iteration D"<<iter<<": "<<endl;
 					reconstruction.SliceToVolumeRegistration();
-					cout<<"Saving Registration step = "<<iter<<endl;
-					reconstruction.SaveRegistrationStep(iter);
 				}
 				else {
-					cout<<"Iteration E"<<iter<<": "<<endl;
 					reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
-					cout<<"Saving Registration step = "<<iter<<endl;
-					reconstruction.SaveRegistrationStep(iter);
 				}
+				
 			}
-
-        if ( ! no_log ) {
-            cerr.rdbuf (strm_buffer_e);
-        }
-       }
-    
-      //Write to file
-        if ( ! no_log ) {
-            cout.rdbuf (file2.rdbuf());
-        }
-        cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
-
-        //Set smoothing parameters
-        //amount of smoothing (given by lambda) is decreased with improving alignment
-        //delta (to determine edges) stays constant throughout
-        if(iter==(iterations-1))
-          reconstruction.SetSmoothingParameters(delta,lastIterLambda);
-        else
-        {
-          double l=lambda;
-          for (i=0;i<levels;i++)
-          {
-            if (iter==iterations*(levels-i-1)/levels)
-              reconstruction.SetSmoothingParameters(delta, l);
-            l*=2;
-          }
-        }
-    
-    //Use faster reconstruction during iterations and slower for final reconstruction
-    if ( iter<(iterations-1) )
-      reconstruction.SpeedupOn();
-    else 
-      reconstruction.SpeedupOff();
-    
-    if(robust_slices_only)
-      reconstruction.ExcludeWholeSlicesOnly();
-    
-    //Initialise values of weights, scales and bias fields
-    reconstruction.InitializeEMValues();
-    
-    //Calculate matrix of transformation between voxels of slices and volume
-    if (bspline)
-      reconstruction.CoeffInitBSpline();
-    else
-      reconstruction.CoeffInit();
-    
-    //Initialize reconstructed image with Gaussian weighted reconstruction
-    if (bspline)
-      reconstruction.BSplineReconstruction();
-    else
-      reconstruction.GaussianReconstruction();
-
-    cout<<"Iteration E"<<iter<<". "<<endl;
-
-    //Simulate slices (needs to be done after Gaussian reconstruction)
-    reconstruction.SimulateSlices();
-    cout<<"Iteration F"<<iter<<". "<<endl;
-        
-    //Initialize robust statistics parameters
-    reconstruction.InitializeRobustStatistics();
-    
-    //EStep
-    if(robust_statistics)
-      reconstruction.EStep();
-
-    //number of reconstruction iterations
-    if ( iter==(iterations-1) ) 
-    {
-      rec_iterations = 30;      
-    }
-    else 
-      rec_iterations = 10;
-    
-    if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
-      rec_iterations=0;
-        
-    //reconstruction iterations
-    i=0;
-    for (i=0;i<rec_iterations;i++)
-    {
-      cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
-      
-      if (intensity_matching)
-      {
-        //calculate bias fields
-        if (sigma>0)
-          reconstruction.Bias();
-        //calculate scales
-        reconstruction.Scale();
+	
+		if ( ! no_log ) {
+			cerr.rdbuf (strm_buffer_e);
+		}
+	  }
+	
+	  //Write to file
+	  if ( ! no_log ) {
+		 cout.rdbuf (file2.rdbuf());
       }
-      
-      //Update reconstructed volume
-      if (bspline)
-        reconstruction.BSplineReconstruction();
-      else
-        reconstruction.Superresolution(i+1);
-      
-      if (intensity_matching)
-      {
-        if((sigma>0)&&(!global_bias_correction))
-          reconstruction.NormaliseBias(i);
-      }
-
-      // Simulate slices (needs to be done
-      // after the update of the reconstructed volume)
-      reconstruction.SimulateSlices();
-            
-      if(robust_statistics)
-        reconstruction.MStep(i+1);
-      
-      //E-step
-      if(robust_statistics)
-        reconstruction.EStep();
-      
-    //Save intermediate reconstructed image
-    if (debug)
-    {
-      reconstructed=reconstruction.GetReconstructed();
-      sprintf(buffer,"super%i.nii.gz",i);
-      reconstructed.Write(buffer);
-    }
-
-    cout<<"Iteration G"<<iter<<". "<<endl;
-      
-    }//end of reconstruction iterations
-    
-    //Mask reconstructed image to ROI given by the mask
-    if(!bspline)
-      reconstruction.MaskVolume();
-
-    //Save reconstructed image
-    //if (debug)
-    //{
-      reconstructed=reconstruction.GetReconstructed();
-      sprintf(buffer,"image%i.nii.gz",iter);
-      reconstructed.Write(buffer);
-      //reconstruction.SaveConfidenceMap();
-    //}
-
-   //Evaluate - write number of included/excluded/outside/zero slices in each iteration in the file
-    if ( ! no_log ) {
-        cout.rdbuf (fileEv.rdbuf());
-    }
-   reconstruction.Evaluate(iter);
-   cout<<endl;
-
-   if ( ! no_log ) {
-       cout.rdbuf (strm_buffer);
-   }
-   
-  }// end of interleaved registration-reconstruction iterations
-
-  //save final result
-  reconstruction.RestoreSliceIntensities();
-  reconstruction.ScaleVolume();
-  reconstructed=reconstruction.GetReconstructed();
-  reconstructed.Write(output_name); 
-  //reconstruction.SaveTransformations();
-  reconstruction.SaveSlices();
-
-  if ( info_filename.length() > 0 )
-      reconstruction.SlicesInfo( info_filename.c_str(),
-                                 stack_files );
- 
-  if(debug)
-  {
-    reconstruction.SaveWeights();
-    reconstruction.SaveBiasFields();
-    //reconstruction.SaveConfidenceMap();
-    reconstruction.SimulateStacks(stacks);
-    for (unsigned int i=0;i<stacks.size();i++)
-    {
-      sprintf(buffer,"simulated%i.nii.gz",i);
-      stacks[i].Write(buffer);
-    }
+	  cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
+	
+	  //Set smoothing parameters
+	  //amount of smoothing (given by lambda) is decreased with improving alignment
+	  //delta (to determine edges) stays constant throughout
+	  if(iter==(iterations-1))
+		 reconstruction.SetSmoothingParameters(delta,lastIterLambda);
+	  else
+	  {
+		double l=lambda;
+		for (i=0;i<levels;i++)
+		{
+			if (iter==iterations*(levels-i-1)/levels)
+			  reconstruction.SetSmoothingParameters(delta, l);
+			l*=2;
+		}
+	  }
+		
+	  //Use faster reconstruction during iterations and slower for final reconstruction
+	  if ( iter<(iterations-1) )
+		  reconstruction.SpeedupOn();
+	  else 
+		  reconstruction.SpeedupOff();
+	
+	  if(robust_slices_only)
+		  reconstruction.ExcludeWholeSlicesOnly();
+	
+	  //Initialise values of weights, scales and bias fields
+	  reconstruction.InitializeEMValues();
+	
+	  //Calculate matrix of transformation between voxels of slices and volume
+	  if (bspline)
+		  reconstruction.CoeffInitBSpline();
+	  else
+		  reconstruction.CoeffInit();
+	
+	  //Initialize reconstructed image with Gaussian weighted reconstruction
+	  if (bspline)
+		  reconstruction.BSplineReconstruction();
+	  else
+		  reconstruction.GaussianReconstruction();
+	
+	
+	  //Simulate slices (needs to be done after Gaussian reconstruction)
+	  reconstruction.SimulateSlices();
+		
+	  //Initialize robust statistics parameters
+	  reconstruction.InitializeRobustStatistics();
+	
+	  //EStep
+	  if(robust_statistics)
+		  reconstruction.EStep();
+	
+	  //number of reconstruction iterations
+	  if ( iter==(iterations-1) ) 
+	  {
+		  rec_iterations = 30;      
+	  }
+	  else 
+		  rec_iterations = 10;
+	
+	  if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
+		  rec_iterations=0;
+		
+	  //reconstruction iterations
+	  i=0;
+	  for (i=0;i<rec_iterations;i++)
+	  {
+		  cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
+	  
+	  if (intensity_matching)
+	  {
+		  //calculate bias fields
+		  if (sigma>0)
+			  reconstruction.Bias();
+		  //calculate scales
+		  reconstruction.Scale();
+	  }
+	  
+	  //Update reconstructed volume
+	  if (bspline)
+		  reconstruction.BSplineReconstruction();
+	  else
+		  reconstruction.Superresolution(i+1);
+	  
+	  if (intensity_matching)
+	  {
+		if((sigma>0)&&(!global_bias_correction))
+			reconstruction.NormaliseBias(i);
+	  }
+	
+	  // Simulate slices (needs to be done
+	  // after the update of the reconstructed volume)
+	  reconstruction.SimulateSlices();
+			
+	  if(robust_statistics)
+		  reconstruction.MStep(i+1);
+	  
+	  //E-step
+	  if(robust_statistics)
+		  reconstruction.EStep();
+	  
+	  //Save intermediate reconstructed image
+	  if (debug)
+	  {
+		  reconstructed=reconstruction.GetReconstructed();
+		  sprintf(buffer,"super%i.nii.gz",i);
+		  reconstructed.Write(buffer);
+	  }
+	
+	  cout<<"Iteration G"<<iter<<". "<<endl;
+	  
+	}//end of reconstruction iterations
+	
+	//Mask reconstructed image to ROI given by the mask
+	if(!bspline)
+		reconstruction.MaskVolume();
+	
+	//Save reconstructed image
+	//if (debug)
+	//{
+	reconstructed=reconstruction.GetReconstructed();
+	sprintf(buffer,"image%i.nii.gz",iter);
+	reconstructed.Write(buffer);
+	//reconstruction.SaveConfidenceMap();
+	//}
+	
+	//Evaluate - write number of included/excluded/outside/zero slices in each iteration in the file
+	if ( ! no_log ) {
+		cout.rdbuf (fileEv.rdbuf());
+	}
+	reconstruction.Evaluate(iter);
+	cout<<endl;
+	
+	if ( ! no_log ) {
+	    cout.rdbuf (strm_buffer);
+	}
+	
+	}// end of interleaved registration-reconstruction iterations
+	
+	//save final result
+	reconstruction.RestoreSliceIntensities();
+	reconstruction.ScaleVolume();
+	reconstructed=reconstruction.GetReconstructed();
+	reconstructed.Write(output_name); 
+	//reconstruction.SaveTransformations();
+	reconstruction.SaveSlices();
+	
+	if ( info_filename.length() > 0 )
+	  reconstruction.SlicesInfo( info_filename.c_str(),
+								 stack_files );
+	
+	if(debug)
+	{
+	reconstruction.SaveWeights();
+	reconstruction.SaveBiasFields();
+	//reconstruction.SaveConfidenceMap();
+	reconstruction.SimulateStacks(stacks);
+	for (unsigned int i=0;i<stacks.size();i++)
+	{
+	  sprintf(buffer,"simulated%i.nii.gz",i);
+	  stacks[i].Write(buffer);
+	}
   }
-  
   //The end of main()
 }  

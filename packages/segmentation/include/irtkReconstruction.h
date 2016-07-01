@@ -60,6 +60,7 @@ class irtkReconstruction : public irtkObject
   
     /// Transformations
     vector<irtkRigidTransformation> _transformations;
+    vector<irtkRigidTransformation> _previous_transformations;
     /// Indicator whether slice has an overlap with volumetric mask
     vector<bool> _slice_inside;
   
@@ -440,11 +441,6 @@ class irtkReconstruction : public irtkObject
     void ResetOrigin( irtkGreyImage &image,
                       irtkRigidTransformation& transformation);
   
-    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, char order, int step, int rewinder, int iter);
-    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder, int iter);
-    void ChunkToVolume2( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, int multiband, char order, int step, int rewinder, int iter);
-
-
     ///Packages to volume registrations
     void PackageToVolume( vector<irtkRealImage>& stacks,
                           vector<int> &pack_num,
@@ -453,16 +449,33 @@ class irtkReconstruction : public irtkObject
                           bool half=false,
                           int half_iter=1);
   
+    // Calculate Slice acquisition order
     void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder);
+    // Split images into subpackages formed by a number of slices that follows a tree like structure
+	// Split images into subpackages formed by a chosen number slices
+	void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, int sliceNum, char order, int step, int rewinder);
     void flexibleSplitImage2(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, char order, int step, int rewinder);
-    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, int sliceNum, char order, int step, int rewinder);
+    // Create Multiband replica for flexibleSplitImage
     void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder);
+    // Create Multiband replica for flexibleSplitImage2
     void flexibleSplitImagewithMB2(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, vector<int> sliceNums, int multiband, char order, int step, int rewinder);
+    // Split images into packages
     void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
+    // Create Multiband replica for splitPackages
     void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, int multiband, char order, int step, int rewinder);
+    // Performs package registration
+    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, char order, int step, int rewinder, int iter);
+    // Perform subpackage registration for flexibleSplitImage 
+    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, int sliceNum, int multiband, char order, int step, int rewinder, int iter);
+    // Perform subpackage registration for flexibleSplitImage2
+    void ChunkToVolume2( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, int multiband, char order, int step, int rewinder, int iter);
+    // Calculate number of iterations needed for subpacking stages
     int giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband);
+    // Calculate subpacking needed for tree like structure
     vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, int iterations);
 
+    double calculateResidual(int padding);
+    
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
                      int packages,
