@@ -4903,6 +4903,8 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 
  		 // package look
     	 for (int j = 0; j < pack_num[i]; j++) {
+    		 
+    		 cout<<"Starting dyn "<<i<<  " package"<<j<< " iteration"<<iter<<endl;
 
     		 // performing registration
 			 target = packages[counter1];
@@ -5027,6 +5029,8 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 
 		 // fake package loop
 		 for (int j = 0; j < fakePkg; j++) {
+			 
+			 cout<<"Starting dyn "<<i<<  " package"<<j<< " iteration"<<iter<<endl;
 
 			// performing registration
 			target = sliceStacks[counter1];
@@ -5153,6 +5157,8 @@ void irtkReconstruction::ChunkToVolume2(vector<irtkRealImage>& stacks, vector<in
 		 // fake package loop
 		 for (int j = 0; j < fakePkg; j++) {
 
+			 cout<<"Starting dyn "<<i<<  " package"<<j<< " iteration"<<iter<<endl;
+			 
 			// performing registration
 			target = sliceStacks[counter1];
 			t = target;

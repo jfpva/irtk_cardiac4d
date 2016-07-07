@@ -14,6 +14,8 @@
 #include <irtkImage.h>
 #include <irtkTransformation.h>
 #include <irtkReconstruction.h>
+#include <irtkReconstructionb0.h>
+#include <irtkReconstructionfMRI.h>
 
 using namespace std;
 
@@ -147,7 +149,7 @@ int main(int argc, char **argv)
   vector<int> force_excluded;
 
   //Create reconstruction object
-  irtkReconstruction reconstruction;
+  irtkReconstructionfMRI reconstruction;
     
   //if not enough arguments print help
   if (argc < 3)
@@ -649,7 +651,7 @@ int main(int argc, char **argv)
   }
   
   //volumetric registration
-  reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
+  reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
 
   //if remove_black_background flag is set, create mask from black background of the stacks
   if (remove_black_background)
@@ -667,7 +669,7 @@ int main(int argc, char **argv)
     average.Write("average1.nii.gz");
 
   //Mask is transformed to the all other stacks and they are cropped
-  for (i=0; i<nStacks; i++)
+  /*for (i=0; i<nStacks; i++)
   {
     //template stack has been cropped already
     if ((i==templateNumber)&&(!remove_black_background)) continue;
@@ -723,8 +725,8 @@ int main(int argc, char **argv)
       cout.rdbuf (file.rdbuf());
   }
   //volumetric registration
-  reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
-  cout<<endl;
+  reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
+  cout<<endl;*/
 
   //redirect output back to screen
   if ( ! no_log ) {
@@ -794,13 +796,16 @@ int main(int argc, char **argv)
 	  }
 	  
 	  cout<<"Iteration"<<iter<<". "<<endl;
+	 
+	  if (iter > 0)
+		  reconstruction.InterpolateGaussian(stacks,iter);
 	  
 	  // calculate and print mean displacement between iterations
-	  reconstruction.SaveRegistrationStep(iter);
+	  /*reconstruction.SaveRegistrationStep(iter);
 	  if (iter>1)	{
 		  double toPrint = reconstruction.calculateResidual(0);
 		  cout<<"Saving Registration step = "<<toPrint<<" in iteration = "<<iter-1<<endl;
-	  }
+	  }*/
 
 	  //perform rest of the registration pipeline
 	  if (iter>0)
@@ -949,7 +954,6 @@ int main(int argc, char **argv)
 		  sprintf(buffer,"super%i.nii.gz",i);
 		  reconstructed.Write(buffer);
 	  }
-	
 	}//end of reconstruction iterations
 	
 	//Mask reconstructed image to ROI given by the mask
@@ -991,7 +995,6 @@ int main(int argc, char **argv)
 	  reconstruction.SlicesInfo( info_filename.c_str(),
 								 stack_files );*/
 
-	
 	if(debug)
 	{
 	reconstruction.SaveWeights();

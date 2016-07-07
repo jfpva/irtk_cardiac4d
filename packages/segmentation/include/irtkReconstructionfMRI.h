@@ -30,13 +30,15 @@ class irtkReconstructionfMRI : public irtkReconstructionb0
 
 protected:
  
-	vector<irtkRealImage> timeseries;
+	vector<irtkRealImage> _timeserie;
 	
 public:
   
 	irtkReconstructionfMRI();
 	
-	void Interpolate( vector<irtkRealImage>& stacks, vector<irtkRigidTransformation>& stack_transformations);
+	void InterpolateBSpline(vector<irtkRealImage>& stacks, int iter);
+	
+	void InterpolateGaussian(vector<irtkRealImage>& stacks, int iter);
 	  
 };
 
