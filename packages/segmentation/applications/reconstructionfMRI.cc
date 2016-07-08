@@ -35,8 +35,8 @@ void usage()
   cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
   cerr << "\t                          some overlap is needed." << endl;
-  cerr << "\t                          Use \'id\' for an identity transformation for at least" << endl;
-  cerr << "\t                          one stack. The first stack with \'id\' transformation" << endl;
+  cerr << "\t                          First introduce the total number of transformations needed. Then, consecutevely," << endl;
+  cerr << "\t                          the frame number they refer to and then the transformation file. " << endl;
   cerr << "\t                          will be resampled as template." << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
   bool rescale_stacks = false;
 
   //flag to swich the robust statistics on and off
-  bool robust_statistics = false;
+  bool robust_statistics = true;
   bool robust_slices_only = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
@@ -187,38 +187,66 @@ int main(int argc, char **argv)
   // Parse options.
   while (argc > 1){
     ok = false;
-    
+
     //Read stack transformations
-    if ((ok == false) && (strcmp(argv[1], "-dofin") == 0)){
-      argc--;
-      argv++;
-      
-      for (i=0;i<nStacks;i++)
-      {
-        irtkTransformation *transformation;
-        cout<<"Reading transformation ... "<<argv[1]<<" ... ";
-        cout.flush();
-        if (strcmp(argv[1], "id") == 0)
-        {
-          transformation = new irtkRigidTransformation;
-          if ( templateNumber < 0) templateNumber = i;
-        }
-        else
-        {
-          transformation = irtkTransformation::New(argv[1]);
-        }
-        cout<<" done."<<endl;
-
-        argc--;
-        argv++;
-        irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
-        stack_transformations.push_back(*rigidTransf);
-        delete rigidTransf;
-      }
-      reconstruction.InvertStackTransformations(stack_transformations);
-      have_stack_transformations = true;
-    }
-
+	if ((ok == false) && (strcmp(argv[1], "-dofin") == 0)){
+		
+		argc--;
+		argv++;
+		bool done = false;
+		
+		int quantity = atof(argv[1]);
+		argc--;
+		argv++;
+		
+		irtkTransformation *transformation;
+		
+		int q = 0;
+		int minimum = 0;
+		while(q < quantity) {
+			
+			int position = atof(argv[1]);
+			argc--;
+			argv++;
+			
+			for (int p = minimum; p < position; p++) {
+				// id transformations 
+				transformation = new irtkRigidTransformation;
+				if ( templateNumber < 0) templateNumber = i;
+				irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+				stack_transformations.push_back(*rigidTransf);
+				delete rigidTransf;
+			}
+			
+			transformation = irtkTransformation::New(argv[1]);
+			argc--;
+			argv++;
+						
+			// actual transformation inserted by user
+			irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+			stack_transformations.push_back(*rigidTransf);
+			delete rigidTransf;
+			
+			minimum = position+1;
+			q++;
+			
+			if (q == quantity)	{
+				
+				for (int p = minimum; p < nStacks; p++) {
+					// id transformations 
+					transformation = new irtkRigidTransformation;
+					if ( templateNumber < 0) templateNumber = i;
+					irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+					stack_transformations.push_back(*rigidTransf);
+					delete rigidTransf;
+				}
+			}
+			
+		}
+		reconstruction.InvertStackTransformations(stack_transformations);
+		have_stack_transformations = true;	
+	}
+    
     //Read slice thickness
     if ((ok == false) && (strcmp(argv[1], "-thickness") == 0)){
       argc--;
@@ -669,7 +697,7 @@ int main(int argc, char **argv)
     average.Write("average1.nii.gz");
 
   //Mask is transformed to the all other stacks and they are cropped
-  /*for (i=0; i<nStacks; i++)
+  for (i=0; i<nStacks; i++)
   {
     //template stack has been cropped already
     if ((i==templateNumber)&&(!remove_black_background)) continue;
@@ -726,7 +754,7 @@ int main(int argc, char **argv)
   }
   //volumetric registration
   reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
-  cout<<endl;*/
+  cout<<endl;
 
   //redirect output back to screen
   if ( ! no_log ) {
@@ -797,8 +825,9 @@ int main(int argc, char **argv)
 	  
 	  cout<<"Iteration"<<iter<<". "<<endl;
 	 
-	  if (iter > 0)
+	  if (iter > 0) {
 		  reconstruction.InterpolateGaussian(stacks,iter);
+	  }
 	  
 	  // calculate and print mean displacement between iterations
 	  /*reconstruction.SaveRegistrationStep(iter);
@@ -874,6 +903,7 @@ int main(int argc, char **argv)
 	  reconstruction.InitializeEMValues();
 	  
 	  //Calculate matrix of transformation between voxels of slices and volume
+	  reconstruction.SetInterpolationRecon();
 	  if (bspline) {
 		  reconstruction.CoeffInitBSpline();
 	  }
@@ -907,6 +937,9 @@ int main(int argc, char **argv)
 	
 	  if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
 		  rec_iterations=0;
+	  
+	  // super resolution not needed for fMRI
+	  rec_iterations = 0;
 	  
 	  //reconstruction iterations
 	  i=0;
@@ -954,6 +987,7 @@ int main(int argc, char **argv)
 		  sprintf(buffer,"super%i.nii.gz",i);
 		  reconstructed.Write(buffer);
 	  }
+	  
 	}//end of reconstruction iterations
 	
 	//Mask reconstructed image to ROI given by the mask
@@ -994,7 +1028,6 @@ int main(int argc, char **argv)
 	/*if ( info_filename.length() > 0 )
 	  reconstruction.SlicesInfo( info_filename.c_str(),
 								 stack_files );*/
-
 	if(debug)
 	{
 	reconstruction.SaveWeights();

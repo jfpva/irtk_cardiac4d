@@ -21,7 +21,9 @@ irtkReconstructionfMRI::irtkReconstructionfMRI()
 
 void irtkReconstructionfMRI::InterpolateBSpline(vector<irtkRealImage>& stacks, int iter) {
 
-	char buffer[256];
+	// clear timeserie from previous iterations
+	_timeserie.clear();
+	
 	vector<irtkRigidTransformation> currentTransformations;
 	vector<irtkRealImage> currentSlices;
 	irtkRealImage interpolated;
@@ -38,20 +40,27 @@ void irtkReconstructionfMRI::InterpolateBSpline(vector<irtkRealImage>& stacks, i
 			currentSlices.push_back(_slices[counter + slice]);
 		}
 		
-		_bSplineReconstruction.Reconstruct(6,1,interpolated,currentSlices,currentTransformations);	
+		_bSplineReconstruction.Reconstruct(6,1,interpolated,currentSlices,currentTransformations); // to be tuned 	
 		_timeserie.push_back(interpolated);
 		counter = counter + attr._z;
 		currentTransformations.clear();
 		currentSlices.clear();
-		
-		sprintf(buffer, "Iter%04iVolume%04i.nii.gz",iter,dyn);
-		interpolated.Write(buffer);	
+	}
+	
+	if (_debug) {
+		char buffer[256];
+		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
+			sprintf(buffer, "Iter%04iVolume%04i.nii.gz",iter,dyn);
+			_timeserie[dyn].Write(buffer);	
+		}
 	}
 }
 
 void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, int iter) {
 
-	char buffer[256];
+	// clear timeserie from previous iterations
+	_timeserie.clear();
+	
 	vector<irtkRigidTransformation> currentTransformations;
 	vector<irtkRealImage> currentSlices;
 	vector<double> currentScales;
@@ -65,12 +74,11 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 	double scale;
 	int n;
 	POINT3D p;
-	vector<int> voxel_num;  
-	int slice_vox_num;
+	int slice_vox_num = 0;
     
 	int counter = 0;
-	interpolated = _reconstructed;
-	volumeWeights = interpolated;
+	interpolated  = _reconstructed;
+	volumeWeights = _reconstructed;
 	
     for (int dyn = 0; dyn < stacks.size(); dyn++)  {
 	
@@ -142,16 +150,20 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 						}
 					}
 		}
-		
 		counter = counter + attr._z;
 		currentSlices.clear();
 		currentBiases.clear();
 		currentTransformations.clear();
 		currentScales.clear();
-		
 		interpolated /= volumeWeights;
-		
-		sprintf(buffer, "Iter%04iaVolume%04i.nii.gz",iter,dyn);
-		interpolated.Write(buffer);
+		_timeserie.push_back(interpolated);
     }
+    
+    if (_debug) {
+		char buffer[256];
+		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
+			sprintf(buffer, "Iter%04iVolume%04i.nii.gz",iter,dyn);
+			_timeserie[dyn].Write(buffer);	
+		}
+	}
 }
