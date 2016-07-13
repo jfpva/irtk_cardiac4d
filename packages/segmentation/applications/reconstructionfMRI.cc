@@ -803,7 +803,10 @@ int main(int argc, char **argv)
   int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
   
   if (iterations == 0)	{
-	  iterations = internal*2;
+      if (multiband_factor>1)
+	    iterations = internal*2;
+      else
+	    iterations = internal+1;
 	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
   }
   else if (iterations <= internal)	{
