@@ -36,8 +36,7 @@ void usage()
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
   cerr << "\t                          some overlap is needed." << endl;
   cerr << "\t                          First introduce the total number of transformations needed. Then, consecutevely," << endl;
-  cerr << "\t                          the frame number they refer to and then the transformation file. " << endl;
-  cerr << "\t                          will be resampled as template." << endl;
+  cerr << "\t                          the frame number they refer to and the dof file. " << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
   cerr << "\t-multiband 		       Multiband factor."<<endl;
@@ -50,7 +49,7 @@ void usage()
   cerr << "\t                          Possible values: D (descending), F (default) I (interleaved) and C (Customized)."<<endl;
   cerr << "\t-step      		       Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	               Rewinder for customized slice ordering [Default: 1]"<<endl;
-  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default is calculated internally]"<<endl;
+  cerr << "\t-iterations [iter]        Number of registration iterations. [Default is calculated internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
@@ -132,11 +131,11 @@ int main(int argc, char **argv)
   bool rescale_stacks = false;
 
   //flag to swich the robust statistics on and off
-  bool robust_statistics = true;
+  bool robust_statistics = false;
   bool robust_slices_only = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
-  int multiband_factor=1;
+  int multiband_factor = 1;
   
   irtkRealImage average;
 
@@ -231,7 +230,6 @@ int main(int argc, char **argv)
 			q++;
 			
 			if (q == quantity)	{
-				
 				for (int p = minimum; p < nStacks; p++) {
 					// id transformations 
 					transformation = new irtkRigidTransformation;
@@ -255,12 +253,12 @@ int main(int argc, char **argv)
       for (i=0;i<nStacks;i++)
       {
         thickness.push_back(atof(argv[1]));
-        cout<<thickness[i]<<" ";
-        argc--;
-        argv++;
-       }
-       cout<<"."<<endl;
-       ok = true;
+        cout<<thickness[i]<<" ";        
+      }
+      argc--;
+      argv++;
+      cout<<"."<<endl;
+      ok = true;
     }
     
     //Read number of packages for each stack
@@ -826,7 +824,10 @@ int main(int argc, char **argv)
 	  cout<<"Iteration"<<iter<<". "<<endl;
 	 
 	  if (iter > 0) {
+		  //reconstruction.InterpolateBSpline(stacks,iter);
+		  //reconstruction.InterpolateBSplineReordered(stacks,multiband_factor,iter);
 		  reconstruction.InterpolateGaussian(stacks,iter);
+		  reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
 	  }
 	  
 	  // calculate and print mean displacement between iterations
@@ -1041,4 +1042,4 @@ int main(int argc, char **argv)
 	}
   }
   //The end of main()
-}  
+}

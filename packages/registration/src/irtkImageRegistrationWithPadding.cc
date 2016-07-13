@@ -40,10 +40,10 @@ void irtkImageRegistrationWithPadding::Initialize(int level)
   swap(tmp_target, _target);
   swap(tmp_source, _source);
 
-  sprintf(buffer,"_otarget%i.nii.gz",level);
+  /*sprintf(buffer,"_otarget%i.nii.gz",level);
   _target->Write(buffer);
   sprintf(buffer,"_osource%i.nii.gz",level);
-  _source->Write(buffer);
+  _source->Write(buffer);*/
 
 
   // Blur images if necessary
@@ -64,10 +64,11 @@ void irtkImageRegistrationWithPadding::Initialize(int level)
     blurring.Run();
     cout << "done" << endl;
   }
-  sprintf(buffer,"_btarget%i.nii.gz",level);
+  
+  /*sprintf(buffer,"_btarget%i.nii.gz",level);
   _target->Write(buffer);
   sprintf(buffer,"_bsource%i.nii.gz",level);
-  _source->Write(buffer);
+  _source->Write(buffer);*/
 
   _target->GetPixelSize(&dx, &dy, &dz);
   temp = fabs(_TargetResolution[0][0]-dx) + fabs(_TargetResolution[0][1]-dy) + fabs(_TargetResolution[0][2]-dz);
@@ -101,10 +102,10 @@ void irtkImageRegistrationWithPadding::Initialize(int level)
     cout << "done" << endl;
   }
 
-  sprintf(buffer,"_rtarget%i.nii.gz",level);
+  /*sprintf(buffer,"_rtarget%i.nii.gz",level);
   _target->Write(buffer);
   sprintf(buffer,"_rsource%i.nii.gz",level);
-  _source->Write(buffer);
+  _source->Write(buffer);*/
 
   // Find out the min and max values in target image, ignoring padding
   target_max = MIN_GREY;
@@ -346,9 +347,9 @@ void irtkImageRegistrationWithPadding::Initialize(int level)
   _transformation->Print();
 
 
-  sprintf(buffer,"_target%i.nii.gz",level);
+  /*sprintf(buffer,"_target%i.nii.gz",level);
   _target->Write(buffer);
   sprintf(buffer,"_source%i.nii.gz",level);
-  _source->Write(buffer);
+  _source->Write(buffer);*/
 
 }

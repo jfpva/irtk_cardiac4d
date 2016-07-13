@@ -39,6 +39,10 @@ public:
 	void InterpolateBSpline(vector<irtkRealImage>& stacks, int iter);
 	
 	void InterpolateGaussian(vector<irtkRealImage>& stacks, int iter);
+	
+	void InterpolateBSplineReordered(vector<irtkRealImage>& stacks, int multiband , int iter);
+		
+	void InterpolateGaussianReordered(vector<irtkRealImage>& stacks, int multiband , int iter);
 	  
 };
 
