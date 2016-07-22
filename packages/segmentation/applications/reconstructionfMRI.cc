@@ -27,7 +27,7 @@ void usage()
   cerr << endl;
 
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
-  cerr << "\t-target	             Volume to be used as target (starts from 0)"<<endl;
+  cerr << "\t-target	             Volume to be used as target (starts from 0)."<<endl;
   cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
@@ -107,7 +107,6 @@ int main(int argc, char **argv)
   int nStacks;
   /// number of packages for each stack
   vector<int> packages;
-  // GF 200416
   char * order = NULL;
   int step = 1;
   int rewinder = 1;
@@ -414,7 +413,7 @@ int main(int argc, char **argv)
       argv++;
     } 
     
-    //Variance of Gaussian kernel to smooth the bias field.
+    //Multiband factor
 	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
 	  argc--;
 	  argv++;
