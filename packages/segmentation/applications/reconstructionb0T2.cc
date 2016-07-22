@@ -14,7 +14,6 @@
 #include <irtkTransformation.h>
 #include <irtkReconstruction.h>
 #include <irtkReconstructionb0.h>
-#include <irtkLaplacianSmoothing.h>
 #include <vector>
 #include <string>
 using namespace std;
@@ -48,7 +47,7 @@ void usage()
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: 9]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
-  cerr << "\t-levels [levels]          Multiresolution levels for B-spline fieldmap. [Default: 3]"<<endl;
+  cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
   cerr << "\t-average [average]        Average intensity value for stacks [Default: 700]"<<endl;
   cerr << "\t-delta [delta]            Parameter to define what is an edge. [Default: 150]"<<endl;
   cerr << "\t-lambda [lambda]          Smoothing parameter. [Default: 0.02]"<<endl;
@@ -60,7 +59,7 @@ void usage()
   cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
   cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
   cerr << "\t-no_intensity_matching    Switch off intensity matching."<<endl;
-  cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl;  
+  cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl; 
   cerr << "\t-group [group1] ... [groupN]  Give group numbers for distortion correction. [Default: all in one group]"<<endl;
   cerr << "\t-phase [axis1] ... [axisG]  For each group give phase encoding axis in image coordinates [x or y]"<<endl;
   cerr << "\t-fieldMapSpacing [spacing]  B-spline control point spacing for field map"<<endl;
@@ -74,44 +73,11 @@ void usage()
   exit(1);
 }
 
-irtkRealImage MakeSequence(vector<irtkRealImage> stacks)
-{
-  irtkImageAttributes attr = stacks[0].GetImageAttributes();
-  attr._t = stacks.size();
-  irtkRealImage image(attr);
-  for(int t=0;t<attr._t;t++)
-    for(int z=0;z<attr._z;z++)
-      for(int y=0;y<attr._y;y++)
-        for(int x=0;x<attr._x;x++)
-	{
-	  image(x,y,z,t)=stacks[t](x,y,z);
-	}
-  return image;
-}
-
-irtkRealImage CreateMask(irtkRealImage image)
-{
-  irtkImageAttributes attr = image.GetImageAttributes();
-  int _t = attr._t;
-  attr._t = 1;
-  irtkRealImage mask(attr);
-  mask=0;
-  for(int t=0;t<_t;t++)
-    for(int z=0;z<attr._z;z++)
-      for(int y=0;y<attr._y;y++)
-        for(int x=0;x<attr._x;x++)
-	{
-	  if(image(x,y,z,t)>0)
-	    mask(x,y,z)=1;
-	}
-  return mask;  
-}
-
 int main(int argc, char **argv)
 {
   
   //utility variables
-  int i,j,k,t,index, iter, ok;
+  int i, iter, ok;
   char buffer[256];
   irtkRealImage stack; 
   
@@ -119,7 +85,7 @@ int main(int argc, char **argv)
   /// Name for output volume
   char * output_name = NULL;
   /// Slice stacks
-  vector<irtkRealImage> stacks, corrected_stacks, simulated;
+  vector<irtkRealImage> stacks, corrected_stacks;
   vector<string> stack_files;
   /// Stack transformation
   vector<irtkRigidTransformation> stack_transformations;
@@ -158,11 +124,10 @@ int main(int argc, char **argv)
   //flag to swich the intensity matching on and off
   bool intensity_matching = true;
   bool alignT2 = false;
-  double fieldMapSpacing = 10;
-  double penalty = 0.1;
+  double fieldMapSpacing = 5;
+  double penalty = 0;
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
-  bool smooth = false;
 
   //Create reconstruction object
   irtkReconstructionb0 reconstruction;
@@ -289,7 +254,7 @@ int main(int argc, char **argv)
     if ((ok == false) && (strcmp(argv[1], "-mask") == 0)){
       argc--;
       argv++;
-      mask = new irtkRealImage(argv[1]);
+      mask= new irtkRealImage(argv[1]);
       ok = true;
       argc--;
       argv++;
@@ -376,7 +341,7 @@ int main(int argc, char **argv)
     }
 
     //Number of resolution levels
-    if ((ok == false) && (strcmp(argv[1], "-levels") == 0)){
+    if ((ok == false) && (strcmp(argv[1], "-multires") == 0)){
       argc--;
       argv++;
       levels=atoi(argv[1]);
@@ -410,6 +375,7 @@ int main(int argc, char **argv)
       robust_statistics=false;
       ok = true;
     }
+
 
     //Perform bias correction of the reconstructed image agains the GW image in the same motion correction iteration
     if ((ok == false) && (strcmp(argv[1], "-global_bias_correction") == 0)){
@@ -511,7 +477,7 @@ int main(int argc, char **argv)
        cout.flush();
        
        bool group_exists;
-      for (i=0;i<stack_group.size();i++)
+      for (int i=0;i<stack_group.size();i++)
       {
         //check whether we already have this group
         group_exists=false;
@@ -524,7 +490,7 @@ int main(int argc, char **argv)
       //sort the group numbers
       sort(groups.begin(),groups.end());
       cout<<"We have "<<groups.size()<<" groups:";
-      for (j=0;j<groups.size();j++) cout<<" "<<groups[j];
+      for (int j=0;j<groups.size();j++) cout<<" "<<groups[j];
       cout<<endl;
     
       ok = true;
@@ -605,7 +571,7 @@ int main(int argc, char **argv)
   else reconstruction.DebugOff();
   
   //Set B-spline control point spacing for field map
-  reconstruction.SetFieldMapSpacing(fieldMapSpacing/2);
+  reconstruction.SetFieldMapSpacing(fieldMapSpacing);
   
   //Set B-spline control point spacing for field map
   reconstruction.SetSmoothnessPenalty(penalty);
@@ -624,7 +590,7 @@ int main(int argc, char **argv)
   cout<<"Resolution is "<<resolution<<endl;
   
   //Set mask to reconstruction object. 
-  reconstruction.SetMask(mask,0);   
+  reconstruction.SetMask(mask,smooth_mask);   
   //to redirect output from screen to text files
   
   //to remember cout and cerr buffer
@@ -674,10 +640,10 @@ int main(int argc, char **argv)
     average.Write("average1.nii.gz");
 
   //Rescale intensities of the stacks to have the same average
-  //if (intensity_matching)
-  //  reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue);
-  //else
-  //  reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue,true);
+  if (intensity_matching)
+    reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue);
+  else
+    reconstruction.MatchStackIntensities(stacks,stack_transformations,averageValue,true);
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average2.nii.gz");
@@ -736,199 +702,78 @@ int main(int argc, char **argv)
     cout<<"Iteration "<<iter<<". "<<endl;
     cout.flush();
     
-    //Step one: simulate stacks
-     reconstruction.SetT2Template(t2);
-    reconstruction.CoeffInit();
-    cout<<"Going to simulate stacks ...";
-    cout.flush();
-    simulated.clear();
-    for(i=0;i<stacks.size();i++)
-      simulated.push_back(stacks[i]);
-    //reconstruction.MaskSlices();
-    reconstruction.SimulateStacks(simulated);
-    //reconstruction.UpdateSlices(stacks,thickness);
-    //reconstruction.SaveSlices();
-    cout<<"done."<<endl;
-  
-    for (i=0;i<stacks.size();i++)
-    {
-      sprintf(buffer,"simulated%i.nii.gz",i);
-      simulated[i].Write(buffer);
-    }
-    
-    
-    //Step 2: create 4D images from stacks and simulated
-    
-    irtkRealImage original = MakeSequence(stacks);
-    irtkRealImage simul = MakeSequence(simulated);
-    original.Write("original.nii.gz");
-    simul.Write("simulated.nii.gz");
-    
-    //Step 3: calculate distortion
-    
-    irtkRealImage fieldmap = stacks[0]; //reconstruction.GetReconstructed();
-    irtkMultiLevelFreeFormTransformation _fieldMap;
-    cout<<"entering fieldmap distortion"<<endl;
-    cout.flush();
-    //cout<<levels<<endl;
-    //reconstruction.SetSmoothnessPenalty(penalty);
-    //reconstruction.SetFieldMapSpacing(spacing);
-    reconstruction.FieldMapDistortion(original,simul,_fieldMap,swap[0],step,0, levels);
-  
-    cout<<"done with fieldmap distortion"<<endl;
-    cout.flush();
-
-    _fieldMap.irtkTransformation::Write("distortion_transformation.dof.gz");
-    
-    double x,y,z,xx,yy,zz;
-    irtkImageAttributes attr = original.GetImageAttributes();
-    //irtkRealImage jacobian(fieldmap);
-    //jacobian=0;
-  
-    for(k=0; k<fieldmap.GetZ();k++)
-    for(j=0; j<fieldmap.GetY();j++)
-    for(i=0; i<fieldmap.GetX();i++)
-    {
-      //transforming to the coordinates of the stack group
-      //to get displacement in PE direction
-    
-      //origin
-      xx=i;yy=j;zz=k;
-      fieldmap.ImageToWorld(xx,yy,zz);
-      original.WorldToImage(xx,yy,zz);
-
-      //transformed
-      x=i;y=j;z=k;
-      fieldmap.ImageToWorld(x,y,z);
-      //jacobian(i,j,k)=_fieldMap.irtkTransformation::Jacobian(x,y,z);
-      _fieldMap.Transform(x,y,z);
-      original.WorldToImage(x,y,z);
-    
-      if (swap[0])
-        fieldmap(i,j,k)=(y-yy)*attr._dy;
-      else
-        fieldmap(i,j,k)=(x-xx)*attr._dx;
-     }
-   
-    sprintf(buffer,"fieldmap-bspline-%i.nii.gz",iter);
-    fieldmap.Write(buffer);
-    //sprintf(buffer,"jacobian-fieldmap-bspline-%i.nii.gz",iter);
-    //jacobian.Write(buffer);
-
-  
-    //Step 4: Smooth fieldmap
-    double padding;
-    if(smooth)
-    {   
-      irtkRealImage fieldmap_mask = CreateMask(simul) ;
-      fieldmap_mask.Write("fieldmap_mask.nii.gz");
-      fieldmap_mask = reconstruction.CreateLargerMask(fieldmap_mask);
-      fieldmap_mask.Write("fieldmap_mask_larger.nii.gz");
-      irtkLaplacianSmoothing smoothing;
-      smoothing.SetInput(fieldmap);
-      smoothing.SetMask(fieldmap_mask);
-      irtkRealImage fieldmap_smooth = smoothing.RunGD();
-      sprintf(buffer,"fieldmap-smooth-%i.nii.gz",iter);
-      fieldmap_smooth.Write(buffer);
-      fieldmap = fieldmap_smooth;
-      fieldmap_mask = smoothing.GetMask();
-      fieldmap_mask.Write("fieldmap_mask_new.nii.gz");
-   
-    
-      //introduce padding in fieldmap
-      irtkRealPixel mn,mx;
-      fieldmap.GetMinMax(&mn,&mx);
-      padding = round(mn-2);
-      cout<<"padding = "<<padding<<endl;
-    
-      irtkRealPixel *pf = fieldmap.GetPointerToVoxels();
-      irtkRealPixel *pm = fieldmap_mask.GetPointerToVoxels();
-      for (j=0; j<fieldmap.GetNumberOfVoxels();j++)
-      {
-        if(*pm!=1)
-          *pf = padding;
-        pm++;
-        pf++;
-      }
-
-      fieldmap.Write("fieldmap-pad.nii.gz");
-    }
-    else
-    {
-      irtkRealPixel mn,mx;
-      fieldmap.GetMinMax(&mn,&mx);
-      padding = round(mn-2);
-      cout<<"padding = "<<padding<<endl;
-    }
-    
-    
-    //Step 5: Correct stacks by smooth fieldmap
-
-    //resample fieldmap 
-    irtkRealImage resfieldmap = fieldmap; //not needed - both on the same grid
-    
-    //correct stacks
+    /*change 1: do not uncorrect stack before distortion estimation
     corrected_stacks.clear();
-    for (index = 0; index<stacks.size();index++)
+    for(i=0;i<stacks.size();i++)
+      corrected_stacks.push_back(stacks[i]);
+    */
+    /*
+    if(corrected_stacks.size()==0)
+    for(i=0;i<stacks.size();i++)
+      corrected_stacks.push_back(stacks[i]);
+    
+    sprintf(buffer,"test-%i.nii.gz",iter);
+    corrected_stacks[0].Write(buffer);
+    
+    //distortion
+    if((iter>=2)||(iterations==1))
     {
-      irtkRealImage image = stacks[index];
-      irtkRealImage output = stacks[index];
-      output=0;
+      //redirect output to files
+      cerr.rdbuf(filed_e.rdbuf());
+      cout.rdbuf (filed.rdbuf());
       
-      irtkImageFunction *interpolator;
-      interpolator = new irtkLinearInterpolateImageFunction;
-  
-      interpolator->SetInput(&image);
-      interpolator->Initialize();
-  
-      attr = image.GetImageAttributes();
-      for (t = 0; t < image.GetT(); t++) {
-        for (k = 0; k < image.GetZ(); k++) {
-          for (j = 0; j < image.GetY(); j++) {
-            for (i = 0; i < image.GetX(); i++) {
-	      if (resfieldmap(i,j,k)>padding)
-	      {
-                x = i;
-                y = j;
-                z = k;
-	        //move it by fieldmap converted to voxels (reconstructed reslution)
-	        if(swap[0])
-	        {
-	          y+=resfieldmap(i,j,k)/attr._dy;
-	        }
-	        else
-	        {
-	          x+=resfieldmap(i,j,k)/attr._dx;
-	        }
-	  
-	        if ((x > -0.5) && (x < image.GetX()-0.5) && 
-	            (y > -0.5) && (y < image.GetY()-0.5) &&
-                    (z > -0.5) && (z < image.GetZ()-0.5))
-	        {
-	          output(i,j,k,t) = interpolator->Evaluate(x,y,z,t); // * jacobian(i,j,k);
-	        }
-	        else
-		  output(i,j,k,t) = 0;
-	      }
-	      else
-		output(i,j,k,t) = 0;
-            }
-          }
-        }
-      }
+      reconstruction.SetT2Template(alignedT2);
+      reconstruction.PutMask(T2_mask);
+      reconstruction.CoeffInit();
 
-      sprintf(buffer,"cor%i-%i.nii.gz",iter,index);
-      output.Write(buffer);
-      corrected_stacks.push_back(output);
+      reconstruction.Shim(corrected_stacks,iter);
+      if((iter>2)||(iterations==1)||(iter==(iterations-1)))
+      {
+        reconstruction.FieldMap(corrected_stacks,step,iter);
+	step/=2;
+	reconstruction.SaveDistortionTransformations();
+      }
+        //change 2: Fieldmap is calculated even for affine only
+	reconstruction.SmoothFieldmap(iter);
+
+	corrected_stacks.clear();
+        for(i=0;i<stacks.size();i++)
+          corrected_stacks.push_back(stacks[i]);
+        reconstruction.CorrectStacksSmoothFieldmap(corrected_stacks);
+	/*
+      }
+      else
+      {
+        //clear corrected stacks
+        corrected_stacks.clear();
+        for(i=0;i<stacks.size();i++)
+          corrected_stacks.push_back(stacks[i]);
+        reconstruction.CorrectStacks(corrected_stacks);
+      }    
+      */
+	
+	/*
+      //set corrected slices
+      reconstruction.UpdateSlices(corrected_stacks,thickness);
+      cout<<"PutMask b0"<<endl;
+      cout.flush();
+      reconstruction.PutMask(b0_mask);
+      b0_mask.Write("b0mask.nii.gz");
+      cout<<"Mask slices"<<endl;
+      cout.flush();
+      reconstruction.MaskSlices();
+      cout<<" done."<<endl;
+      cout.flush();
+      
+
+      //redirect output back to screen
+      cout.rdbuf (strm_buffer);
+      cerr.rdbuf (strm_buffer_e);
 
     }
-
-    reconstruction.UpdateSlices(corrected_stacks,thickness);
-    reconstruction.MaskSlices();
-    
-   
+*/
     //perform slice-to-volume registrations - skip the first iteration 
-    if (iter>=0)
+    if (iter>0)
     {
       cerr.rdbuf(file_e.rdbuf());
       cout.rdbuf (file.rdbuf());
@@ -936,22 +781,22 @@ int main(int argc, char **argv)
       
       reconstruction.SetT2Template(t2);//SetReconstructed(t2);
       
-      if((packages.size()>0)&&(iter<2)&&(iter<(iterations-1)))
+      if((packages.size()>0)&&(iter<=5)&&(iter<(iterations-1)))
       {
-	if(iter==0)
-          reconstruction.PackageToVolume(corrected_stacks,packages,iter);
+	if(iter==1)
+          reconstruction.PackageToVolume(stacks,packages,iter);
 	else
 	{
-	  if(iter==1)
-            reconstruction.PackageToVolume(corrected_stacks,packages,iter,true);
+	  if(iter==2)
+            reconstruction.PackageToVolume(stacks,packages,iter,true);
 	  else
 	  {
-            if(iter==2)
-	      reconstruction.PackageToVolume(corrected_stacks,packages,iter,true,true);
+            if(iter==3)
+	      reconstruction.PackageToVolume(stacks,packages,iter,true,true);
 	    else
 	    {
-	      if(iter>=3)
-                reconstruction.PackageToVolume(corrected_stacks,packages,iter,true,true,iter-1);
+	      if(iter>=4)
+                reconstruction.PackageToVolume(stacks,packages,iter,true,true,iter-2);
 	      else
 	        reconstruction.SliceToVolumeRegistration();
 	    }
@@ -1044,7 +889,7 @@ int main(int argc, char **argv)
       
       //E-step
       if(robust_statistics)
-        reconstruction.EStep();
+	reconstruction.EStep();
       
     //Save intermediate reconstructed image
     if (debug)
@@ -1073,8 +918,8 @@ int main(int argc, char **argv)
 
   //save final result
   //reconstruction.SaveDistortionTransformations();
-  //reconstruction.RestoreSliceIntensities();
-  //reconstruction.ScaleVolume();
+  reconstruction.RestoreSliceIntensities();
+  reconstruction.ScaleVolume();
   reconstructed=reconstruction.GetReconstructed();
   reconstructed.Write(output_name); 
   reconstruction.SaveTransformations();

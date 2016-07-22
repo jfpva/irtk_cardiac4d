@@ -158,10 +158,11 @@ int main(int argc, char **argv)
   //flag to swich the intensity matching on and off
   bool intensity_matching = true;
   bool alignT2 = false;
-  double fieldMapSpacing = 5;
-  double penalty = 0;
+  double fieldMapSpacing = 10;
+  double penalty = 0.1;
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
+  bool smooth = false;
 
   //Create reconstruction object
   irtkReconstructionb0 reconstruction;
@@ -604,7 +605,7 @@ int main(int argc, char **argv)
   else reconstruction.DebugOff();
   
   //Set B-spline control point spacing for field map
-  reconstruction.SetFieldMapSpacing(fieldMapSpacing);
+  reconstruction.SetFieldMapSpacing(fieldMapSpacing/2);
   
   //Set B-spline control point spacing for field map
   reconstruction.SetSmoothnessPenalty(penalty);
@@ -770,6 +771,8 @@ int main(int argc, char **argv)
     cout<<"entering fieldmap distortion"<<endl;
     cout.flush();
     //cout<<levels<<endl;
+    //reconstruction.SetSmoothnessPenalty(penalty);
+    //reconstruction.SetFieldMapSpacing(spacing);
     reconstruction.FieldMapDistortion(original,simul,_fieldMap,swap[0],step,0, levels);
   
     cout<<"done with fieldmap distortion"<<endl;
@@ -779,6 +782,8 @@ int main(int argc, char **argv)
     
     double x,y,z,xx,yy,zz;
     irtkImageAttributes attr = original.GetImageAttributes();
+    //irtkRealImage jacobian(fieldmap);
+    //jacobian=0;
   
     for(k=0; k<fieldmap.GetZ();k++)
     for(j=0; j<fieldmap.GetY();j++)
@@ -795,6 +800,7 @@ int main(int argc, char **argv)
       //transformed
       x=i;y=j;z=k;
       fieldmap.ImageToWorld(x,y,z);
+      //jacobian(i,j,k)=_fieldMap.irtkTransformation::Jacobian(x,y,z);
       _fieldMap.Transform(x,y,z);
       original.WorldToImage(x,y,z);
     
@@ -806,77 +812,61 @@ int main(int argc, char **argv)
    
     sprintf(buffer,"fieldmap-bspline-%i.nii.gz",iter);
     fieldmap.Write(buffer);
+    //sprintf(buffer,"jacobian-fieldmap-bspline-%i.nii.gz",iter);
+    //jacobian.Write(buffer);
 
   
     //Step 4: Smooth fieldmap
-     
-    irtkRealImage fieldmap_mask = CreateMask(simul) ;
-    fieldmap_mask.Write("fieldmap_mask.nii.gz");
-    fieldmap_mask = reconstruction.CreateLargerMask(fieldmap_mask);
-    fieldmap_mask.Write("fieldmap_mask_larger.nii.gz");
-    irtkLaplacianSmoothing smoothing;
-    smoothing.SetInput(fieldmap);
-    smoothing.SetMask(fieldmap_mask);
-    irtkRealImage fieldmap_smooth = smoothing.RunGD();
-    sprintf(buffer,"fieldmap-smooth-%i.nii.gz",iter);
-    fieldmap_smooth.Write(buffer);
-    fieldmap = fieldmap_smooth;
-    fieldmap_mask = smoothing.GetMask();
-    fieldmap_mask.Write("fieldmap_mask_new.nii.gz");
+    double padding;
+    if(smooth)
+    {   
+      irtkRealImage fieldmap_mask = CreateMask(simul) ;
+      fieldmap_mask.Write("fieldmap_mask.nii.gz");
+      fieldmap_mask = reconstruction.CreateLargerMask(fieldmap_mask);
+      fieldmap_mask.Write("fieldmap_mask_larger.nii.gz");
+      irtkLaplacianSmoothing smoothing;
+      smoothing.SetInput(fieldmap);
+      smoothing.SetMask(fieldmap_mask);
+      irtkRealImage fieldmap_smooth = smoothing.RunGD();
+      sprintf(buffer,"fieldmap-smooth-%i.nii.gz",iter);
+      fieldmap_smooth.Write(buffer);
+      fieldmap = fieldmap_smooth;
+      fieldmap_mask = smoothing.GetMask();
+      fieldmap_mask.Write("fieldmap_mask_new.nii.gz");
+   
+    
+      //introduce padding in fieldmap
+      irtkRealPixel mn,mx;
+      fieldmap.GetMinMax(&mn,&mx);
+      padding = round(mn-2);
+      cout<<"padding = "<<padding<<endl;
+    
+      irtkRealPixel *pf = fieldmap.GetPointerToVoxels();
+      irtkRealPixel *pm = fieldmap_mask.GetPointerToVoxels();
+      for (j=0; j<fieldmap.GetNumberOfVoxels();j++)
+      {
+        if(*pm!=1)
+          *pf = padding;
+        pm++;
+        pf++;
+      }
+
+      fieldmap.Write("fieldmap-pad.nii.gz");
+    }
+    else
+    {
+      irtkRealPixel mn,mx;
+      fieldmap.GetMinMax(&mn,&mx);
+      padding = round(mn-2);
+      cout<<"padding = "<<padding<<endl;
+    }
+    
     
     //Step 5: Correct stacks by smooth fieldmap
-    
-    //introduce padding in fieldmap
-    irtkRealPixel mn,mx;
-    fieldmap.GetMinMax(&mn,&mx);
-    double padding = round(mn-2);
-    cout<<"padding = "<<padding<<endl;
-    irtkRealPixel *pf = fieldmap.GetPointerToVoxels();
-    irtkRealPixel *pm = fieldmap_mask.GetPointerToVoxels();
-    for (j=0; j<fieldmap.GetNumberOfVoxels();j++)
-    {
-      if(*pm!=1)
-        *pf = padding;
-      pm++;
-      pf++;
-    }
-
-    fieldmap.Write("fieldmap-pad.nii.gz");
 
     //resample fieldmap 
     irtkRealImage resfieldmap = fieldmap; //not needed - both on the same grid
-    /*
-    attr = stacks[0].GetImageAttributes();
-    irtkRealImage resfieldmap(attr);
-    resfieldmap=0;
-    irtkLinearInterpolateImageFunction *interpolatorLin = new irtkLinearInterpolateImageFunction;
-    interpolatorLin->SetInput(&fieldmap);
-    interpolatorLin->Initialize();
-
-    for (k = 0; k < resfieldmap.GetZ(); k++) {
-      for (j = 0; j < resfieldmap.GetY(); j++) {
-        for (i = 0; i < resfieldmap.GetX(); i++) {
-          x = i;
-          y = j;
-          z = k;
-
-	  resfieldmap.ImageToWorld(x, y, z);
-          fieldmap.WorldToImage(x,y,z);
-	
-	  if ((x > -0.5) && (x < fieldmap.GetX()-0.5) && 
-	      (y > -0.5) && (y < fieldmap.GetY()-0.5) &&
-              (z > -0.5) && (z < fieldmap.GetZ()-0.5))
-	    {
-	      resfieldmap(i,j,k) = interpolatorLin->EvaluateWithPadding(x,y,z,0,padding);
-	    }
-	    else
-	      resfieldmap(i,j,k) = padding;
-        }
-      }
-    }
     
-    resfieldmap.Write("resfieldmap.nii.gz");
-    */
     //correct stacks
     corrected_stacks.clear();
     for (index = 0; index<stacks.size();index++)
@@ -915,7 +905,7 @@ int main(int argc, char **argv)
 	            (y > -0.5) && (y < image.GetY()-0.5) &&
                     (z > -0.5) && (z < image.GetZ()-0.5))
 	        {
-	          output(i,j,k,t) = interpolator->Evaluate(x,y,z,t);
+	          output(i,j,k,t) = interpolator->Evaluate(x,y,z,t); // * jacobian(i,j,k);
 	        }
 	        else
 		  output(i,j,k,t) = 0;
