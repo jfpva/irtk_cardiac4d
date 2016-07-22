@@ -1012,9 +1012,9 @@ void  irtkReconstructionb0::FieldMapDistortion(irtkRealImage &stack,irtkRealImag
   }
   registration.SetTargetPadding(0);
   //if (_smoothnessPenalty>0)
-    registration.RunRelax();
+    //registration.RunRelax();
   //else
-    //registration.Run();
+    registration.Run();
   //distortion.irtkTransformation::Write("fmd.dof");
   
   //adjust lattice of Bspine transformation according to the original images
