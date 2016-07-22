@@ -362,7 +362,7 @@ class irtkReconstruction : public irtkObject
     ///Save weights
     void SaveWeights();
 
-    void SaveRegistrationStep(int step);
+    void SaveRegistrationStep(vector<irtkRealImage>& stacks,int step);
 
     ///Save transformations
     void SaveTransformations();

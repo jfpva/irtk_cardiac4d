@@ -818,7 +818,7 @@ int main(int argc, char **argv)
 			else {
 				
 				if (multiband_factor == 1) {
-					reconstruction.SliceToVolumeRegistration();
+					reconstruction.ChunkToVolume(stacks, packages, 1, 1, *order, step, rewinder,iter);
 				}
 				else {
 					reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
@@ -944,8 +944,6 @@ int main(int argc, char **argv)
 		  sprintf(buffer,"super%i.nii.gz",i);
 		  reconstructed.Write(buffer);
 	  }
-	
-	  cout<<"Iteration G"<<iter<<". "<<endl;
 	  
 	}//end of reconstruction iterations
 	
