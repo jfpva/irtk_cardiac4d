@@ -3995,10 +3995,17 @@ void irtkReconstruction::SaveWeights()
     }
 }
 
-void irtkReconstruction::SaveRegistrationStep(int step) {
+void irtkReconstruction::SaveRegistrationStep(vector<irtkRealImage>& stacks,int step) {
+
 	char buffer[256];
+	irtkImageAttributes attr = stacks[0].GetImageAttributes();
+	int stack;
+	int slice;
+	
 	for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
-		sprintf(buffer, "step%i_transformation%i.dof", step, inputIndex);
+		stack = inputIndex / attr._z;
+		slice = inputIndex % attr._z;
+		sprintf(buffer, "step%04i_travol%04islice%04i.dof", step, stack, slice);
 		_transformations[inputIndex].irtkTransformation::Write(buffer);
 	}
 }

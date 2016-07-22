@@ -31,15 +31,21 @@ void usage()
   cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
-  cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
+  cerr << "\t-dofin1 [dof_1] .. [dof_N] The transformations of the input stack to template" << endl;
   cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
   cerr << "\t                          some overlap is needed." << endl;
-  cerr << "\t                          First introduce the total number of transformations needed. Then, consecutevely," << endl;
-  cerr << "\t                          the frame number they refer to and the dof file. " << endl;
+  cerr << "\t                          Firsty, introduce the total number of transformations needed." << endl; 
+  cerr << "\t    	  	          Then, the frame number they refer to and dof file (frame by frame). " << endl;
+  cerr << "\t-dofin2 [dof_1] .. [dof_N] The transformations of the input stack to template" << endl;
+  cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
+  cerr << "\t                          Only rough alignment with correct orienation and " << endl;
+  cerr << "\t                          some overlap is needed." << endl;
+  cerr << "\t                          Firsty, introduce the total number of chunks needed." << endl; 
+  cerr << "\t    	  	          Then, first and last frames of each chunk followed by the relative dof file. " << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
-  cerr << "\t-multiband 		       Multiband factor."<<endl;
+  cerr << "\t-multiband 		  Multiband factor."<<endl;
   cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack."<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
   cerr << "\t                          and then again according to the specific slice order. "<<endl;
@@ -47,8 +53,8 @@ void usage()
   cerr << "\t                          volume approach or multiband registration. [Default: slice to volume registration]"<<endl;
   cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
   cerr << "\t                          Possible values: D (descending), F (default) I (interleaved) and C (Customized)."<<endl;
-  cerr << "\t-step      		       Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
-  cerr << "\t-rewinder	               Rewinder for customized slice ordering [Default: 1]"<<endl;
+  cerr << "\t-step      		  Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
+  cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-iterations [iter]        Number of registration iterations. [Default is calculated internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
@@ -188,11 +194,10 @@ int main(int argc, char **argv)
     ok = false;
 
     //Read stack transformations
-	if ((ok == false) && (strcmp(argv[1], "-dofin") == 0)){
+	if ((ok == false) && (strcmp(argv[1], "-dofin1") == 0)){
 		
 		argc--;
 		argv++;
-		bool done = false;
 		
 		int quantity = atof(argv[1]);
 		argc--;
@@ -241,10 +246,58 @@ int main(int argc, char **argv)
 			}
 			
 		}
-		reconstruction.InvertStackTransformations(stack_transformations);
 		have_stack_transformations = true;	
 	}
-    
+	
+	//Read stack transformations
+	if ((ok == false) && (strcmp(argv[1], "-dofin2") == 0)) {
+		
+		// if dofin1 has not been used, initialize all transformations as id
+		if (stack_transformations.size() == 0) {
+			for (i=0;i<nStacks;i++)
+			{
+			  irtkRigidTransformation *rigidTransf = new irtkRigidTransformation;
+			  stack_transformations.push_back(*rigidTransf);
+			  delete rigidTransf;
+			}
+		}
+		
+		argc--;
+		argv++;
+		
+		int quantity = atof(argv[1]);
+		argc--;
+		argv++;
+
+		int q = 0;
+		int min;
+		int max;
+		
+		while(q < quantity)	{
+			
+			min = atof(argv[1]);
+			argc--;
+			argv++;
+			
+			max = atof(argv[1]);
+			argc--;
+			argv++;
+				
+			irtkRigidTransformation *rigidTransf;
+			irtkTransformation *transformation;
+			
+			for (int p = min; p <= max; p++) {
+				transformation = irtkTransformation::New(argv[1]);
+				rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+				stack_transformations[p] = *rigidTransf;
+			}
+			q++;			
+			argc--;
+			argv++;
+		}
+		have_stack_transformations = true;			
+	}
+	
     //Read slice thickness
     if ((ok == false) && (strcmp(argv[1], "-thickness") == 0)){
       argc--;
@@ -568,6 +621,9 @@ int main(int argc, char **argv)
     }
   }
 
+ if (have_stack_transformations == true)
+	 reconstruction.InvertStackTransformations(stack_transformations);
+  
   if (rescale_stacks)
   {
       for (i=0;i<nStacks;i++)
@@ -583,7 +639,6 @@ int main(int argc, char **argv)
       stack_transformations.push_back(*rigidTransf);
       delete rigidTransf;
     }
-    templateNumber = 0;  
   }
 
   //Initialise 2*slice thickness if not given by user
@@ -829,8 +884,10 @@ int main(int argc, char **argv)
 	  if (iter > 0) {
 		  //reconstruction.InterpolateBSpline(stacks,iter);
 		  //reconstruction.InterpolateBSplineReordered(stacks,multiband_factor,iter);
-		  reconstruction.InterpolateGaussian(stacks,iter);
 		  reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
+		  reconstruction.SaveRegistrationStep(stacks,iter);
+		  
+		  //reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
 	  }
 	  
 	  // calculate and print mean displacement between iterations
