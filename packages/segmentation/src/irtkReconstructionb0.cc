@@ -29,7 +29,7 @@ irtkReconstructionb0::irtkReconstructionb0()
 void irtkReconstructionb0::StackRegistrations(vector<irtkRealImage>& stacks,
 		vector<irtkRigidTransformation>& stack_transformations)
 {
-      InvertStackTransformations(stack_transformations);
+    InvertStackTransformations(stack_transformations);
 	//rigid registration object
 	irtkImageRigidRegistrationWithPadding registration;
 	//buffer to create the name
@@ -75,18 +75,25 @@ void irtkReconstructionb0::StackRegistrations(vector<irtkRealImage>& stacks,
         irtkRigidTransformation offset;
 	ResetOrigin(target,offset);
 
+    cout<<"I get here 1"<<endl;
 	//register all stacks to the target
 	for (int i = 0; i < (int)stacks.size(); i++)
 	{
+	    cout<<"I get here 2"<<endl;
 		//set target and source (need to be converted to irtkGreyImage)
 		irtkGreyImage source = stacks[i];
 
-               //include offset in trasformation	
+	    cout<<"I get here 3"<<endl;
+        //include offset in trasformation	
 		irtkMatrix mo = offset.GetMatrix();
+	    cout<<"I get here A"<<endl;
 		irtkMatrix m = stack_transformations[i].GetMatrix();
+	    cout<<"I get here B"<<endl;
 		m=m*mo;
+	    cout<<"I get here C"<<endl;
 		stack_transformations[i].PutMatrix(m);
 
+	    cout<<"I get here 4"<<endl;
 		//perform rigid registration
 		registration.SetInput(&target, &source);
 		registration.SetOutput(&stack_transformations[i]);
@@ -94,12 +101,14 @@ void irtkReconstructionb0::StackRegistrations(vector<irtkRealImage>& stacks,
 		registration.SetTargetPadding(0);
 		registration.Run();
 		
+	    cout<<"I get here 5"<<endl;
 		mo.Invert();
 		m = stack_transformations[i].GetMatrix();
 		m=m*mo;
 		stack_transformations[i].PutMatrix(m);
 
 
+	    cout<<"I get here 6"<<endl;
 		//save volumetric registrations
 		if (_debug)
 		{
@@ -111,6 +120,7 @@ void irtkReconstructionb0::StackRegistrations(vector<irtkRealImage>& stacks,
 		}
 	}
 
+      cout<<"I get here 7"<<endl;
       InvertStackTransformations(stack_transformations);
 }
 

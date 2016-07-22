@@ -1245,8 +1245,11 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
     
     InvertStackTransformations(stack_transformations);
     
+    cout<<"I get here 1"<<endl;
+    
     //template is set as the target
     irtkGreyImage target = stacks[templateNumber];
+    cout<<"I get here 2"<<endl;
     //target needs to be masked before registration
     if (_have_mask) {
         double x, y, z;
@@ -1275,6 +1278,8 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
                 }
     }
     
+    cout<<"I get here 3"<<endl;
+    
     if(_debug)
     {
       target.Write("target.nii.gz");
@@ -1283,6 +1288,8 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
     irtkRigidTransformation offset;
     ResetOrigin(target,offset);
 
+    cout<<"I get here 4"<<endl;
+    
     //register all stacks to the target
     ParallelStackRegistrations registration( this,
                                              stacks,
@@ -1291,8 +1298,12 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
                                              target,
                                              offset );
     registration();
+    
+    cout<<"I get here 5"<<endl;
         
     InvertStackTransformations(stack_transformations);
+    
+    cout<<"I get here 6"<<endl;
 }
 
 void irtkReconstruction::RestoreSliceIntensities()
