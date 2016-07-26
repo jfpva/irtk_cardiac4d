@@ -472,7 +472,7 @@ class irtkReconstruction : public irtkObject
     // Calculate number of iterations needed for subpacking stages
     int giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband);
     // Calculate subpacking needed for tree like structure
-    vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, int iterations);
+    vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, int iterations, bool last);
 
     double calculateResidual(int padding);
     

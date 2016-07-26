@@ -5222,59 +5222,69 @@ int irtkReconstruction::giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &
 	return iterations;
 }
 
-vector<int> irtkReconstruction::giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, int iterations) {
+vector<int> irtkReconstruction::giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, int multiband, int iterations, bool last) {
 
-	// initializing variables
-	iterations++;
-	vector<int> old_vector, new_vector;
-	int counter = 0;
+	vector<int> new_vector;
+	if (!last) {
+		// initializing variables
+		iterations++;
+		vector<int> old_vector;
+		int counter = 0;
 
-	// start calculating vector
-	for (int iter = 0; iter < iterations; iter++) {
+		// start calculating vector
+		for (int iter = 0; iter < iterations; iter++) {
 
-		for (int dyn = 0; dyn < stacks.size(); dyn++)	{
+			for (int dyn = 0; dyn < stacks.size(); dyn++)	{
 
-			// rigid registration loop
-			if (iter == 0) {
-				new_vector.push_back((stacks[dyn].GetZ())/multiband);
-			}
-			// package registration loop
-			else if (iter == 1) {
+				// rigid registration loop
+				if (iter == 0) {
+					new_vector.push_back((stacks[dyn].GetZ())/multiband);
+				}
+				// package registration loop
+				else if (iter == 1) {
 
-				int extra = (old_vector[dyn])%(pack_num[dyn]);
-				for (int pkg = 0; pkg < pack_num[dyn]; pkg++)	{
-					int toPut = old_vector[dyn]/pack_num[dyn];
-					if (extra > 0)	{
-						toPut++;
-						extra--;
+					int extra = (old_vector[dyn])%(pack_num[dyn]);
+					for (int pkg = 0; pkg < pack_num[dyn]; pkg++)	{
+						int toPut = old_vector[dyn]/pack_num[dyn];
+						if (extra > 0)	{
+							toPut++;
+							extra--;
+						}
+						new_vector.push_back(toPut);
 					}
-					new_vector.push_back(toPut);
+				}
+				// intermediate steps
+				else {
+
+					int sum = 0;
+					int internalIter = 0;
+					while (sum < ((stacks[dyn].GetZ())/multiband))	{
+						sum = sum + old_vector[counter + internalIter];
+						internalIter++;
+					}
+
+					for (int iIter = 0; iIter < internalIter; iIter++) {
+						int toPut1 = old_vector[counter + iIter] / 2 + old_vector[counter + iIter] % 2;
+						int toPut2 = old_vector[counter + iIter] / 2;
+						new_vector.push_back(toPut1);
+						new_vector.push_back(toPut2);
+					}
+					counter = counter + internalIter;
 				}
 			}
-			// intermediate steps
-			else {
-
-				int sum = 0;
-				int internalIter = 0;
-				while (sum < ((stacks[dyn].GetZ())/multiband))	{
-					sum = sum + old_vector[counter + internalIter];
-					internalIter++;
-				}
-
-				for (int iIter = 0; iIter < internalIter; iIter++) {
-					int toPut1 = old_vector[counter + iIter] / 2 + old_vector[counter + iIter] % 2;
-					int toPut2 = old_vector[counter + iIter] / 2;
-					new_vector.push_back(toPut1);
-					new_vector.push_back(toPut2);
-				}
-				counter = counter + internalIter;
+			old_vector = new_vector;
+			counter = 0;
+			if (iter != iterations-1)	{
+				new_vector.clear();
 			}
-		}
-		old_vector = new_vector;
-		counter = 0;
-		if (iter != iterations-1)	{
-			new_vector.clear();
-		}
+		}	
+	}
+	else {
+		int totSlices = 0;
+		for (int dyn = 0; dyn < stacks.size(); dyn++)
+			totSlices += stacks[dyn].GetZ();
+		for (int iter = 0; iter < totSlices; iter++)
+			new_vector.push_back(1);
 	}
 	return new_vector;
 }
