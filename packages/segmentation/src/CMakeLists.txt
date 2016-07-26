@@ -10,7 +10,6 @@ SET(SEGMENTATION_INCLUDES
 ../include/irtkGaussian.h
 ../include/irtkIntensityMatching.h
 ../include/irtkLaplacianSmoothing.h
-../include/irtkLaplacianSmoothingMissingData.h
 ../include/irtkMultiChannelImage.h
 ../include/irtkMultiImageGraphCut.h
 ../include/irtkMeanShift.h
@@ -54,7 +53,6 @@ irtkGaussian.cc
 irtkIntensityMatching.cc
 irtkMultiChannelImage.cc
 irtkLaplacianSmoothing.cc
-irtkLaplacianSmoothingMissingData.cc
 irtkMeanShift.cc
 irtkProbabilisticAtlas.cc
 irtkPatchMatch.cc
