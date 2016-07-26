@@ -882,7 +882,7 @@ int main(int argc, char **argv)
   
 
   //interleaved registration-reconstruction iterations
-  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
+ // int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
 
   if (iterations == 0)	{
 	  if (multiband_factor>1)
@@ -1119,36 +1119,27 @@ int main(int argc, char **argv)
     	
     	reconstruction.SetT2Template(t2);//SetReconstructed(t2);
 	
-		vector<int> level = reconstruction.giveMeSplittingVector(corrected_stacks, packages, multiband_factor, iter);
-		if(iter == 1) {
-			cout<<"corrected_stacks = "<<corrected_stacks.size()<<endl;
-			cout<<"packages = "<<packages.size()<<endl;
-			cout<<"multiband = "<<multiband_factor<<endl;
-			cout<<"step = "<<step<<endl;
-			cout<<"rewinder = "<<step<<endl;
-			multiband_factor = 1;
-			step = 1;
-			rewinder = 1;
-			reconstruction.newPackageToVolume(corrected_stacks, packages, multiband_factor, *order, step, rewinder,iter);
-		}
-	
-		else if((iter > 1) && (iter < internal-1)){
-			cout<<"WTF2"<<endl;
-			reconstruction.ChunkToVolume2(corrected_stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
-		}
-	
-		else {
-			
-			if (multiband_factor == 1) {
-				cout<<"WTF3"<<endl;
-				reconstruction.ChunkToVolume(corrected_stacks, packages, 1, 1, *order, step, rewinder,iter);
-			}
-			else {
-				cout<<"WTF4"<<endl;
-				reconstruction.ChunkToVolume(corrected_stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
-			}
-			
-		}
+    	vector<int> level;
+    				if(iter == 1) {
+    					reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
+    				}
+    		
+    				else if((iter > 1) && (iter < internal-1)){
+    					//level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, false);
+    					reconstruction.ChunkToVolume(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+    				}
+    		
+    				else {
+    					
+    					//level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, true);
+    					if (multiband_factor == 1) {
+    						reconstruction.ChunkToVolume(stacks, packages, level, 1, *order, step, rewinder,iter);
+    					}
+    					else {
+    						reconstruction.ChunkToVolume(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+    					}
+    					
+    				}
 		
 		if (debug)
 		{

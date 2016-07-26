@@ -905,22 +905,24 @@ int main(int argc, char **argv)
 			  cout.rdbuf (file.rdbuf());
 			}
 	
-			vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
+			vector<int> level;
 			if(iter == 1) {
 				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
 			}
 	
 			else if((iter > 1) && (iter < internal-1)){
-				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, false);
+				reconstruction.ChunkToVolume(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
 			}
 	
 			else {
 				
+				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, true);
 				if (multiband_factor == 1) {
-					reconstruction.ChunkToVolume(stacks, packages, 1, 1, *order, step, rewinder,iter);
+					reconstruction.ChunkToVolume(stacks, packages, level, 1, *order, step, rewinder,iter);
 				}
 				else {
-					reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
+					reconstruction.ChunkToVolume(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
 				}
 				
 			}

@@ -38,8 +38,8 @@ void usage()
   cerr << "\t                          will be resampled as template." << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
-  cerr << "\t-multiband 		  Multiband factor. [Default: 1]"<<endl;
-  cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack."<<endl;
+  cerr << "\t-multiband [num_1] .. [num_N]  Multiband factor for each stack for each stack. [Default: 1]"<<endl;
+  cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
   cerr << "\t                          and then following the specific slice ordering "<<endl;
   cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
@@ -129,11 +129,14 @@ int main(int argc, char **argv)
   bool intensity_matching = true;
   bool rescale_stacks = false;
 
+  bool gaveOrder = false;
+  
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
   bool robust_slices_only = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
+  vector<int> multiband_vector;
   int multiband_factor=1;
   
   irtkRealImage average;
@@ -275,6 +278,7 @@ int main(int argc, char **argv)
     	}
 
         ok = true;
+        gaveOrder = true;
         argc--;
         argv++;
     }
@@ -331,14 +335,21 @@ int main(int argc, char **argv)
     
     //Variance of Gaussian kernel to smooth the bias field.
 	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
-	  argc--;
-	  argv++;
-	  multiband_factor=atof(argv[1]);
-	  ok = true;
-	  argc--;
-	  argv++;
+		argc--;
+	    argv++;
+	    cout<< "Multiband number is ";
+	    for (i=0;i<nStacks;i++)
+	    {
+		  multiband_vector.push_back(atoi(argv[1]));
+		  cout<<multiband_vector[i]<<" ";
+		  argc--;
+		  argv++;
+	    }
+	    cout<<"."<<endl;
+	    ok = true;
 	}
-    //Smoothing parameter
+    
+	//Smoothing parameter
     if ((ok == false) && (strcmp(argv[1], "-lambda") == 0)){
       argc--;
       argv++;
@@ -554,6 +565,18 @@ int main(int argc, char **argv)
     templateNumber = 0;  
   }
 
+  // Default Behaviour
+  if (packages.size() == 0)
+	  for (i=0;i<nStacks;i++)
+		  packages.push_back(1);
+  
+  if (multiband_vector.size() == 0)
+  	  for (i=0;i<nStacks;i++)
+  		  multiband_vector.push_back(1);
+   
+  if(!gaveOrder)
+	  *order = 'A';
+  
   //Initialise 2*slice thickness if not given by user
   if (thickness.size()==0)
   {
@@ -768,7 +791,7 @@ int main(int argc, char **argv)
   reconstruction.InitializeEM();
 
   //interleaved registration-reconstruction iterations
-  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
+  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_vector);
   if (iterations == 0)	{
 	  iterations = internal+1;
 	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
@@ -799,24 +822,17 @@ int main(int argc, char **argv)
 	
 			vector<int> level;
 			if(iter == 1) {
-				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
+				reconstruction.newPackageToVolume(stacks, packages, multiband_vector, *order, step, rewinder,iter);
 			}
 	
 			else if((iter > 1) && (iter < internal-1)){
-				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, false);
-				reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
+				reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
 			}
 	
-			else {
-				
-				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, true);
-				if (multiband_factor == 1) {
-					reconstruction.ChunkToVolume2(stacks, packages, level, 1, *order, step, rewinder,iter);
-				}
-				else {
-					reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
-				}
-				
+			else {	
+				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
+				reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
 			}
 	
 		if ( ! no_log ) {
