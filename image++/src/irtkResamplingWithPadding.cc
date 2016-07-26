@@ -257,8 +257,8 @@ template <class VoxelType> void irtkResamplingWithPadding<VoxelType>::Run()
 #ifdef HAS_TBB
   int l;
 #else
-  int i, j, k, l, u, v, w, pad;
-  double val, sum;
+  int i, j, k, l, u, v, w;
+  double val, sum, pad;
   double w1, w2, w3, w4, w5, w6, w7, w8, dx, dy, dz, x, y, z;
 #endif
 
@@ -308,97 +308,97 @@ template <class VoxelType> void irtkResamplingWithPadding<VoxelType>::Run()
 
           // Calculate trilinear interpolation, ignoring padded values
           val = 0;
-          pad = 8;
+          pad = 0;
           sum = 0;
           if ((u >= 0) && (u < this->_input->GetX()) &&
               (v >= 0) && (v < this->_input->GetY()) &&
               (w >= 0) && (w < this->_input->GetZ())) {
             if (this->_input->Get(u, v, w, l) != this->_PaddingValue) {
-              pad--;
+              pad += w1;
               val += this->_input->Get(u, v, w, l) * w1;
               sum += w1;
             }
           } else {
-            pad--;
+            pad += w1;
           }
           if ((u >= 0)   && (u < this->_input->GetX()) &&
               (v >= 0)   && (v < this->_input->GetY()) &&
               (w+1 >= 0) && (w+1 < this->_input->GetZ())) {
             if (this->_input->Get(u, v, w+1, l) != this->_PaddingValue) {
-              pad--;
+              pad += w2;
               val += this->_input->Get(u, v, w+1, l) * w2;
               sum += w2;
             }
           } else {
-            pad--;
+            pad += w2;
           }
           if ((u >= 0)   && (u < this->_input->GetX()) &&
               (v+1 >= 0) && (v+1 < this->_input->GetY()) &&
               (w >= 0)   && (w < this->_input->GetZ())) {
             if (this->_input->Get(u, v+1, w, l) != this->_PaddingValue) {
-              pad--;
+              pad += w3;
               val += this->_input->Get(u, v+1, w, l) * w3;
               sum += w3;
             }
           } else {
-            pad--;
+            pad += w3;
           }
           if ((u >= 0)   && (u < this->_input->GetX()) &&
               (v+1 >= 0) && (v+1 < this->_input->GetY()) &&
               (w+1 >= 0) && (w+1 < this->_input->GetZ())) {
             if (this->_input->Get(u, v+1, w+1, l) != this->_PaddingValue) {
-              pad--;
+              pad += w4;
               val += this->_input->Get(u, v+1, w+1, l) * w4;
               sum += w4;
             }
           } else {
-            pad--;
+            pad += w4;
           }
           if ((u+1 >= 0) && (u+1 < this->_input->GetX()) &&
               (v >= 0)   && (v < this->_input->GetY()) &&
               (w >= 0)   && (w < this->_input->GetZ())) {
             if (this->_input->Get(u+1, v, w, l) != this->_PaddingValue) {
-              pad--;
+              pad += w5;
               val += this->_input->Get(u+1, v, w, l) * w5;
               sum += w5;
             }
           } else {
-            pad--;
+            pad += w5;
           }
           if ((u+1 >= 0) && (u+1 < this->_input->GetX()) &&
               (v >= 0)   && (v < this->_input->GetY()) &&
               (w+1 >= 0) && (w+1 < this->_input->GetZ())) {
             if (this->_input->Get(u+1, v, w+1, l) != this->_PaddingValue) {
-              pad--;
+              pad += w6;
               val += this->_input->Get(u+1, v, w+1, l) * w6;
               sum += w6;
             }
           } else {
-            pad--;
+            pad += w6;
           }
           if ((u+1 >= 0) && (u+1 < this->_input->GetX()) &&
               (v+1 >= 0) && (v+1 < this->_input->GetY()) &&
               (w >= 0)   && (w < this->_input->GetZ())) {
             if (this->_input->Get(u+1, v+1, w, l) != this->_PaddingValue) {
-              pad--;
+              pad += w7;
               val += this->_input->Get(u+1, v+1, w, l) * w7;
               sum += w7;
             }
           } else {
-            pad--;
+            pad += w7;
           }
           if ((u+1 >= 0) && (u+1 < this->_input->GetX()) &&
               (v+1 >= 0) && (v+1 < this->_input->GetY()) &&
               (w+1 >= 0) && (w+1 < this->_input->GetZ())) {
             if (this->_input->Get(u+1, v+1, w+1, l) != this->_PaddingValue) {
-              pad--;
+              pad += w8;
               val += this->_input->Get(u+1, v+1, w+1, l) * w8;
               sum += w8;
             }
           } else {
-            pad--;
+            pad += w8;
           }
-          if (pad < 4) {
+          if (pad >= 0.5) {
             if (sum > 0) {
               this->_output->PutAsDouble(i, j, k, l, val / sum);
             } else {

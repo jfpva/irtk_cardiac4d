@@ -235,11 +235,7 @@ class irtkReconstruction : public irtkObject
     ///Crop image according to the mask
     void CropImage( irtkRealImage& image,
                     irtkRealImage& mask );
-
-    // GF 190416, retainin all slices along z direction
-    void CropImageIgnoreZ( irtkRealImage& image,
-                        irtkRealImage& mask );
-
+  
     /// Transform and resample mask to the space of the image
     void TransformMask( irtkRealImage& image,
                         irtkRealImage& mask,
@@ -286,6 +282,8 @@ class irtkReconstruction : public irtkObject
                                 vector<irtkRigidTransformation>& stack_transformations,
                                 double averageValue,
                                 bool together=false);
+    ///Mask all stacks
+    void MaskStacks(vector<irtkRealImage>& stacks,vector<irtkRigidTransformation>& stack_transformations);
  
     ///Mask all slices
     void MaskSlices();
@@ -353,6 +351,9 @@ class irtkReconstruction : public irtkObject
     void SaveSlices();
     void SlicesInfo( const char* filename, vector<string> &stack_filenames );
   
+    ///Save simulated slices
+    void SaveSimulatedSlices();
+
     ///Save weights
     void SaveWeights();
   
@@ -441,6 +442,13 @@ class irtkReconstruction : public irtkObject
                           bool half=false,
                           int half_iter=1);
   
+    void PackageToVolumeMasking( vector<irtkRealImage>& stacks,
+                          vector<int> &pack_num,
+  			   int iter,
+                          bool evenodd=false,
+                          bool half=false,
+                          int half_iter=1);
+  
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
                      int packages,
@@ -468,6 +476,7 @@ class irtkReconstruction : public irtkObject
     friend class ParallelScale;
     friend class ParallelNormaliseBias;
     friend class ParallelSimulateSlices;
+    friend class ParallelSimulateSlicesDTI;
     friend class ParallelAverage;
     friend class ParallelSliceAverage;
     friend class ParallelAdaptiveRegularization1;

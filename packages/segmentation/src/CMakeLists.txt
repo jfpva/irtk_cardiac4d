@@ -21,6 +21,10 @@ SET(SEGMENTATION_INCLUDES
 ../include/irtkMAPatchMatchSuperResolution.h
 ../include/irtkReconstruction.h
 ../include/irtkReconstructionb0.h
+../include/irtkReconstructionDTI.h
+../include/irtkDWImage.h
+../include/irtkTensor.h
+../include/irtkTensorField.h
 ../include/irtkRician.h
 ../include/irtkSubcorticalSegmentation_4D.h
 ../../../external/gco-v3.0/block.h
@@ -60,6 +64,11 @@ irtkMAPatchMatchSuperResolution.cc
 irtkRician.cc
 irtkReconstruction.cc
 irtkReconstructionb0.cc
+irtkReconstructionDTI.cc
+irtkDWImage.cc
+irtkTensor.cc
+irtkTensorField.cc
+
 irtkSubcorticalSegmentation_4D.cc
 irtkCRF.cc
 ../../../external/gco-v3.0/graph.cpp
@@ -73,7 +82,10 @@ irtkPatchBasedSegmentation.cc
 irtkSegmentationFunction.cc
 irtkEMClassification2ndOrderMRF.cc
 irtkBiasCorrectionMask.cc
-irtkPolynomialBiasField.cc)
+irtkPolynomialBiasField.cc
+irtkSphericalHarmonics.cc
+
+)
 
 
 IF (BUILD_GPU_SUPPORT_WITH_CUDA)
