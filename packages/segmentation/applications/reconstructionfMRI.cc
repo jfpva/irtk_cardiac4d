@@ -884,7 +884,8 @@ int main(int argc, char **argv)
 		  //reconstruction.InterpolateBSpline(stacks,iter);
 		  //reconstruction.InterpolateBSplineReordered(stacks,multiband_factor,iter);
 		  reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
-		  reconstruction.SaveRegistrationStep(stacks,iter);
+		  reconstruction.InterpolateGaussian(stacks,iter);
+		  //reconstruction.SaveRegistrationStep(stacks,iter);
 		  
 		  //reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
 	  }

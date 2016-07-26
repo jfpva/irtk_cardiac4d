@@ -143,7 +143,7 @@ int main(int argc, char **argv)
   int iterations = 9;
   bool debug = false;
   double sigma=20;
-  double resolution = 0.75;
+  double resolution = 2.5;
   double lambda = 0.02;
   double delta = 150;
   int levels = 3;
@@ -751,7 +751,7 @@ int main(int argc, char **argv)
     cout<<"."<<endl;
     cout.flush();
   }
-  
+ 
   //Output volume
   irtkRealImage reconstructed;
 
@@ -1103,6 +1103,7 @@ int main(int argc, char **argv)
     if (iter > 0) {
 	  //reconstruction.InterpolateBSpline(stacks,iter);
 	  //reconstruction.InterpolateBSplineReordered(stacks,multiband_factor,iter);
+    	reconstruction.SetT2Template(corrected_stacks[0]);//SetReconstructed(t2);
 	  reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
 	  reconstruction.SaveRegistrationStep(stacks,iter);
 	  
@@ -1115,25 +1116,45 @@ int main(int argc, char **argv)
 		  cerr.rdbuf(file_e.rdbuf());
 		  cout.rdbuf (file.rdbuf());
 		}*/
+    	
+    	reconstruction.SetT2Template(t2);//SetReconstructed(t2);
 	
-		vector<int> level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter);
+		vector<int> level = reconstruction.giveMeSplittingVector(corrected_stacks, packages, multiband_factor, iter);
 		if(iter == 1) {
-			reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
+			cout<<"corrected_stacks = "<<corrected_stacks.size()<<endl;
+			cout<<"packages = "<<packages.size()<<endl;
+			cout<<"multiband = "<<multiband_factor<<endl;
+			cout<<"step = "<<step<<endl;
+			cout<<"rewinder = "<<step<<endl;
+			multiband_factor = 1;
+			step = 1;
+			rewinder = 1;
+			reconstruction.newPackageToVolume(corrected_stacks, packages, multiband_factor, *order, step, rewinder,iter);
 		}
 	
 		else if((iter > 1) && (iter < internal-1)){
-			reconstruction.ChunkToVolume2(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
+			cout<<"WTF2"<<endl;
+			reconstruction.ChunkToVolume2(corrected_stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
 		}
 	
 		else {
 			
 			if (multiband_factor == 1) {
-				reconstruction.ChunkToVolume(stacks, packages, 1, 1, *order, step, rewinder,iter);
+				cout<<"WTF3"<<endl;
+				reconstruction.ChunkToVolume(corrected_stacks, packages, 1, 1, *order, step, rewinder,iter);
 			}
 			else {
-				reconstruction.ChunkToVolume(stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
+				cout<<"WTF4"<<endl;
+				reconstruction.ChunkToVolume(corrected_stacks, packages, 1, multiband_factor, *order, step, rewinder,iter);
 			}
 			
+		}
+		
+		if (debug)
+		{
+			reconstructed=reconstruction.GetReconstructed();
+			sprintf(buffer,"image%i.nii.gz",iter);
+			reconstructed.Write(buffer);
 		}
 	
 		/*if ( ! no_log ) {

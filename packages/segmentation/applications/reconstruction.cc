@@ -26,7 +26,7 @@ void usage()
 
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
   cerr << "\t[N]                     Number of stacks." << endl;
-  cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format." << endl;
+  cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format (first taken as reference)." << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
   cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
@@ -38,17 +38,18 @@ void usage()
   cerr << "\t                          will be resampled as template." << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
-  cerr << "\t-multiband 		       Multiband factor."<<endl;
+  cerr << "\t-multiband 		  Multiband factor. [Default: 1]"<<endl;
   cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack."<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
-  cerr << "\t                          and then again according to the specific slice order. "<<endl;
-  cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
-  cerr << "\t                          volume approach or multiband registration. [Default: slice to volume registration]"<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
-  cerr << "\t                          Possible values: D (descending), F (default) I (interleaved) and C (Customized)."<<endl;
-  cerr << "\t-step      		       Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
-  cerr << "\t-rewinder	               Rewinder for customized slice ordering [Default: 1]"<<endl;
-  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default is calculated internally]"<<endl;
+  cerr << "\t                          and then following the specific slice ordering "<<endl;
+  cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
+  cerr << "\t                          volume (or multiband registration)."<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: (A)]"<<endl;
+  cerr << "\t                          Possible values: A (ascending), D (descending), F (default), I (interleaved)"<<endl;
+  cerr << "\t                          and C (Customized)."<<endl;
+  cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
+  cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
+  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
@@ -100,7 +101,6 @@ int main(int argc, char **argv)
   int nStacks;
   /// number of packages for each stack
   vector<int> packages;
-  // GF 200416
   char * order = NULL;
   int step = 1;
   int rewinder = 1;
@@ -168,8 +168,8 @@ int main(int argc, char **argv)
   // Read stacks 
   for (i=0;i<nStacks;i++)
   {
-      //if ( i == 0 )
-          //log_id = argv[1];
+    //if ( i == 0 )
+    //log_id = argv[1];
     stack_files.push_back(argv[1]);
     stack.Read(argv[1]);
     cout<<"Reading stack ... "<<argv[1]<<endl;
@@ -769,9 +769,8 @@ int main(int argc, char **argv)
 
   //interleaved registration-reconstruction iterations
   int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
-  
   if (iterations == 0)	{
-	  iterations = internal*2;
+	  iterations = internal+1;
 	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
   }
   else if (iterations <= internal)	{
@@ -791,14 +790,6 @@ int main(int argc, char **argv)
 	  
 	  cout<<"Iteration"<<iter<<". "<<endl;
 	  
-	  // calculate and print mean displacement between iterations
-	  /*reconstruction.SaveRegistrationStep(iter);
-	  if (iter>1)	{
-		  double toPrint = reconstruction.calculateResidual(0);
-		  cout<<"Saving Registration step = "<<toPrint<<" in iteration = "<<iter-1<<endl;
-	  }*/
-
-	  //perform rest of the registration pipeline
 	  if (iter>0)
 	  {
 			if ( ! no_log ) {

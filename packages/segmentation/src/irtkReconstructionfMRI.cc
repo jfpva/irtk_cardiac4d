@@ -329,10 +329,11 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 		interpolated /= volumeWeights;
 		_timeserie.push_back(interpolated);		
     }
+    
     if (true) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
-			sprintf(buffer, "GuassianR%04iVolume%04i.nii.gz",iter,dyn);
+			sprintf(buffer, "BSplineR%04iVolume%04i.nii.gz",iter,dyn);
 			_timeserie[dyn].Write(buffer);	
 		}
 	}
