@@ -813,9 +813,6 @@ int main(int argc, char **argv)
 	  
 	  cout<<"Iteration"<<iter<<". "<<endl;
 	  
-	  if ((iter>0) && (debug))
-		  reconstruction.SaveRegistrationStep(stacks,iter); 
-	  
 	  if (iter>0)
 	  {
 		if ( ! no_log ) {
@@ -842,6 +839,9 @@ int main(int argc, char **argv)
 			cerr.rdbuf (strm_buffer_e);
 		}
 	  }
+	  
+	  if ((iter>0) && (debug))
+		  reconstruction.SaveRegistrationStep(stacks,iter); 
 	
 	  //Write to file
 	  if ( ! no_log ) {
