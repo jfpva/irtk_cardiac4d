@@ -129,8 +129,6 @@ int main(int argc, char **argv)
   bool intensity_matching = true;
   bool rescale_stacks = false;
 
-  bool gaveOrder = false;
-  
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
   bool robust_slices_only = false;
@@ -262,8 +260,23 @@ int main(int argc, char **argv)
 	    }
 	    cout<<"."<<endl;
         ok = true;
-        gaveOrder = true;
     }
+    
+    //Multiband factor for each stack
+	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
+		argc--;
+	    argv++;
+	    cout<< "Multiband number is ";
+	    for (i=0;i<nStacks;i++)
+	    {
+		  multiband_vector.push_back(atoi(argv[1]));
+		  cout<<multiband_vector[i]<<" ";
+		  argc--;
+		  argv++;
+	    }
+	    cout<<"."<<endl;
+	    ok = true;
+	}
 
     // Forward slice jump for arbitrary slice ordering
 	if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
@@ -314,22 +327,6 @@ int main(int argc, char **argv)
       argc--;
       argv++;
     } 
-    
-    //Variance of Gaussian kernel to smooth the bias field.
-	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
-		argc--;
-	    argv++;
-	    cout<< "Multiband number is ";
-	    for (i=0;i<nStacks;i++)
-	    {
-		  multiband_vector.push_back(atoi(argv[1]));
-		  cout<<multiband_vector[i]<<" ";
-		  argc--;
-		  argv++;
-	    }
-	    cout<<"."<<endl;
-	    ok = true;
-	}
     
 	//Smoothing parameter
     if ((ok == false) && (strcmp(argv[1], "-lambda") == 0)){
@@ -535,10 +532,26 @@ int main(int argc, char **argv)
           reconstruction.Rescale(stacks[i],1000);
   }
   
+  // set packages to 1 if not given by user
+  if (packages.size() == 0)
+  	  for (i=0;i<nStacks;i++)	{
+  		  packages.push_back(1);
+  		  cout<<"All packages set to 1"<<endl;
+  	  }
+  
+  // set multiband to 1 if not given by user
+  if (multiband_vector.size() == 0)
+	  for (i=0;i<nStacks;i++)	{
+		  multiband_vector.push_back(1);
+		  cout<<"Multiband set to 1 for all stacks"<<endl;
+	  }
+  
   // set ascending if not given by user
-  if (!gaveOrder)
-	  for (i=0;i<nStacks;i++)
-		  order_vector.push_back(1);		
+  if (order_vector.size() == 0)
+	  for (i=0;i<nStacks;i++)	{
+		  order_vector.push_back(1);	
+		  cout<<"Slice order set to ascending for all stacks"<<endl;
+	  }
   
   //If transformations were not defined by user, set them to identity
   if(!have_stack_transformations)

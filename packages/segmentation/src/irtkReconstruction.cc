@@ -4730,8 +4730,8 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 
 			 if (_debug) {
 				 rigidregistration.Write("par-packages.rreg");
-				 rigidregistration.Run();
 			 }
+			 rigidregistration.Run();
 
 			 mo.Invert();
 			 m = internal_transformations[j].GetMatrix();
@@ -4857,11 +4857,11 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 			rigidregistration.SetOutput(&internal_transformations[j]);
 			rigidregistration.GuessParameterPackageToVolume();
 			rigidregistration.SetTargetPadding(0);
-			rigidregistration.Run();
 
 			if (_debug) {
 			    rigidregistration.Write("par-packages.rreg");
 			}
+			rigidregistration.Run();
 			
 			mo.Invert();
 			m = internal_transformations[j].GetMatrix();
