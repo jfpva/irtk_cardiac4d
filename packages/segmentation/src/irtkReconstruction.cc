@@ -1219,10 +1219,10 @@ public:
                 //buffer to create the name
                 char buffer[256];
                 registration.irtkImageRegistration::Write((char *) "parout-volume.rreg");
-                sprintf(buffer, "stack-transformation%i.dof.gz", i);
-                stack_transformations[i].irtkTransformation::Write(buffer);
-                sprintf(buffer, "stack%i.nii.gz", i);
-                stacks[i].Write(buffer);
+                //sprintf(buffer, "stack-transformation%i.dof.gz", i);
+                //stack_transformations[i].irtkTransformation::Write(buffer);
+                //sprintf(buffer, "stack%i.nii.gz", i);
+                //stacks[i].Write(buffer);
             }            
         }
     }
@@ -4109,7 +4109,7 @@ void irtkReconstruction::SlicesInfo( const char* filename,
     info.close(); 
 }
 
-void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder)
+void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> order, int step, int rewinder)
 {
 	irtkImageAttributes attr;
 	int slicesPerPackage;
@@ -4125,7 +4125,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		int t_slice_order[attr._z];
 
 		// ascending
-		if (order == 'A') {
+		if (order[dyn] == 1) {
 
 			counter = 0;
 			slice_pos_counter = 0;
@@ -4153,7 +4153,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		}
 
 		// descending
-		else if (order== 'D') {
+		else if (order[dyn] == 2) {
 
 			counter = 0;
 			slice_pos_counter = attr._z - 1;
@@ -4181,7 +4181,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 		}
 
 		// default
-		else if (order== 'F') {
+		else if (order[dyn] == 3) {
 
 			int index, restart;
 			rewinderFactor = 1;
@@ -4240,7 +4240,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 			int index, restart;
 			counter = 0;
 
-			if (order == 'I')
+			if (order[dyn] == 4)
 			{
 				rewinderFactor = 1;
 			}
@@ -4253,7 +4253,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 			// pretending to do ascending within each package, and then shuffling according to interleaved acquisition
 			for(int p = 0; p < pack_num[dyn]; p++)
 				{
-					if (order == 'I')
+					if (order[dyn] == 4)
 					{
 						// getting step size, from PPE
 						if((attr._z - counter) > slicesPerPackage*pack_num[dyn])		{
@@ -4310,7 +4310,7 @@ void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks,
 	}
 }
 
-void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, char order, int step, int rewinder)
+void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> order, int step, int rewinder)
 {
 	irtkRealImage image;
 	irtkImageAttributes attr;
@@ -4374,7 +4374,7 @@ void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vecto
 	}
 }
 
-void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, char order, int step, int rewinder)
+void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, vector<int> order, int step, int rewinder)
 {
 	// initializing variables
 	irtkRealImage chunck;
@@ -4498,7 +4498,7 @@ void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks,
 	}
 }
 
-void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder)
+void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> order, int step, int rewinder)
 {
 	irtkRealImage image;
 	irtkImageAttributes attr;
@@ -4563,7 +4563,7 @@ void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int
 	}
 }
 
-void irtkReconstruction::splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> multiband_vector, char order, int step, int rewinder)
+void irtkReconstruction::splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> multiband_vector, vector<int> order, int step, int rewinder)
 {
 	// initializing variables
 	irtkRealImage chunck;
@@ -4658,7 +4658,7 @@ void irtkReconstruction::splitPackageswithMB(vector<irtkRealImage>& stacks, vect
 	}
 }
 
-void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband_vector, char order, int step, int rewinder, int iter)
+void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband_vector, vector<int> order, int step, int rewinder, int iter)
 {
 	// initializing variable
     irtkImageRigidRegistrationWithPadding rigidregistration;
@@ -4780,7 +4780,7 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
     _t_slice_order.clear();
 }
 
-void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, char order, int step, int rewinder, int iter) {
+void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, vector<int> order, int step, int rewinder, int iter) {
 
 	// initializing variable
 	irtkImageRigidRegistrationWithPadding rigidregistration;

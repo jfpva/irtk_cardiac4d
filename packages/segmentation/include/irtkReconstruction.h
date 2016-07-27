@@ -450,19 +450,19 @@ class irtkReconstruction : public irtkObject
                           int half_iter=1);
   
     // Calculate Slice acquisition order
-    void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, char order, int step, int rewinder);
+    void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> order, int step, int rewinder);
     // Split image in a flexible manner
-    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, char order, int step, int rewinder);
+    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> order, int step, int rewinder);
     // Create Multiband replica for flexibleSplitImage
-    void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband, char order, int step, int rewinder);
+    void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband, vector<int> order, int step, int rewinder);
     // Split images into packages
-    void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, char order, int step, int rewinder);
+    void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> order, int step, int rewinder);
     // Create Multiband replica for splitPackages
-    void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> multiband, char order, int step, int rewinder);
+    void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> multiband, vector<int> order, int step, int rewinder);
     // Performs package registration
-    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband, char order, int step, int rewinder, int iter);
+    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband, vector<int> order, int step, int rewinder, int iter);
     // Perform subpackage registration for flexibleSplitImage
-    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband, char order, int step, int rewinder, int iter);
+    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband, vector<int> order, int step, int rewinder, int iter);
     // Calculate number of iterations needed for subpacking stages
     int giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband);
     // Calculate subpacking needed for tree like structure

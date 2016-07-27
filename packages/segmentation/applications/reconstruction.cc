@@ -44,9 +44,9 @@ void usage()
   cerr << "\t                          and then following the specific slice ordering "<<endl;
   cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
   cerr << "\t                          volume (or multiband registration)."<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: (A)]"<<endl;
-  cerr << "\t                          Possible values: A (ascending), D (descending), F (default), I (interleaved)"<<endl;
-  cerr << "\t                          and C (Customized)."<<endl;
+  cerr << "\t-order                    Vector of slice acquisition orders used at acquisition. [Default: (1)]"<<endl;
+  cerr << "\t                          Possible values: 1 (ascending), 2 (descending), 3 (default), 4 (interleaved)"<<endl;
+  cerr << "\t                          and 5 (Customized)."<<endl;
   cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
@@ -79,7 +79,6 @@ void usage()
 
 int main(int argc, char **argv)
 {
-  
   //utility variables
   int i, ok;
   char buffer[256];
@@ -101,7 +100,8 @@ int main(int argc, char **argv)
   int nStacks;
   /// number of packages for each stack
   vector<int> packages;
-  char * order = NULL;
+  vector<int> order_vector;
+  
   int step = 1;
   int rewinder = 1;
 
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
   bool global_bias_correction = false;
   double low_intensity_cutoff = 0.01;
   //folder for slice-to-volume registrations, if given
-  char * folder=NULL;
+  char *folder=NULL;
   //flag to remove black background, e.g. when neonatal motion correction is performed
   bool remove_black_background = false;
   //flag to swich the intensity matching on and off
@@ -250,37 +250,19 @@ int main(int argc, char **argv)
 
     // Input slice ordering
     if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
-
     	argc--;
     	argv++;
-
-    	char temp;
-    	order = argv[1];
-    	temp = *order;
-
-    	if ((temp == 'A')) {
-    			cout<<"Slice acquisition order is ascending"<<endl;
-    	}
-    	else if ((temp == 'D')) {
-    			cout<<"Slice acquisition order is descending"<<endl;
-    	}
-    	else if ((temp == 'F')) {
-				cout<<"Slice acquisition order is default"<<endl;
-    	}
-    	else if ((temp == 'I')) {
-    			cout<<"Slice acquisition order is interleaved"<<endl;
-    	}
-    	else if ((temp == 'C'))	 {
-    			cout<<"Slice acquisition order is customized"<<endl;
-    	}
-    	else	{
-    		 	cout<<"Slice acquisition order not recognised, set to ascending (A)"<<endl;
-    	}
-
+    	cout<< "Order is ";
+	    for (i=0;i<nStacks;i++)
+	    {
+	    	order_vector.push_back(atoi(argv[1]));		
+			cout<<order_vector[i]<<" ";
+			argc--;
+			argv++;
+	    }
+	    cout<<"."<<endl;
         ok = true;
         gaveOrder = true;
-        argc--;
-        argv++;
     }
 
     // Forward slice jump for arbitrary slice ordering
@@ -553,6 +535,11 @@ int main(int argc, char **argv)
           reconstruction.Rescale(stacks[i],1000);
   }
   
+  // set ascending if not given by user
+  if (!gaveOrder)
+	  for (i=0;i<nStacks;i++)
+		  order_vector.push_back(1);		
+  
   //If transformations were not defined by user, set them to identity
   if(!have_stack_transformations)
   {
@@ -564,19 +551,7 @@ int main(int argc, char **argv)
     }
     templateNumber = 0;  
   }
-
-  // Default Behaviour
-  if (packages.size() == 0)
-	  for (i=0;i<nStacks;i++)
-		  packages.push_back(1);
-  
-  if (multiband_vector.size() == 0)
-  	  for (i=0;i<nStacks;i++)
-  		  multiband_vector.push_back(1);
-   
-  if(!gaveOrder)
-	  *order = 'A';
-  
+ 
   //Initialise 2*slice thickness if not given by user
   if (thickness.size()==0)
   {
@@ -822,17 +797,17 @@ int main(int argc, char **argv)
 
 		vector<int> level;
 		if(iter == 1) {
-			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, *order, step, rewinder,iter);
+			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter);
 		}
 
 		else if((iter > 1) && (iter < internal-1)){
 			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
+			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
 		}
 
 		else {	
 			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
+			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
 		}
 
 		if ( ! no_log ) {
