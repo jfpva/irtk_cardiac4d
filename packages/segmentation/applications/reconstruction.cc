@@ -813,28 +813,31 @@ int main(int argc, char **argv)
 	  
 	  cout<<"Iteration"<<iter<<". "<<endl;
 	  
+	  if ((iter>0) && (debug))
+		  reconstruction.SaveRegistrationStep(stacks,iter); 
+	  
 	  if (iter>0)
 	  {
-			if ( ! no_log ) {
-			  cerr.rdbuf(file_e.rdbuf());
-			  cout.rdbuf (file.rdbuf());
-			}
-	
-			vector<int> level;
-			if(iter == 1) {
-				reconstruction.newPackageToVolume(stacks, packages, multiband_vector, *order, step, rewinder,iter);
-			}
-	
-			else if((iter > 1) && (iter < internal-1)){
-				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-				reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
-			}
-	
-			else {	
-				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-				reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
-			}
-	
+		if ( ! no_log ) {
+		  cerr.rdbuf(file_e.rdbuf());
+		  cout.rdbuf (file.rdbuf());
+		}
+
+		vector<int> level;
+		if(iter == 1) {
+			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, *order, step, rewinder,iter);
+		}
+
+		else if((iter > 1) && (iter < internal-1)){
+			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
+			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
+		}
+
+		else {	
+			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
+			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, *order, step, rewinder,iter);
+		}
+
 		if ( ! no_log ) {
 			cerr.rdbuf (strm_buffer_e);
 		}
@@ -904,7 +907,7 @@ int main(int argc, char **argv)
 	  }
 	  else 
 		  rec_iterations = 10;
-	
+	  
 	  if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
 		  rec_iterations=0;
 		

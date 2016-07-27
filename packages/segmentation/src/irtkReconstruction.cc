@@ -4012,10 +4012,16 @@ void irtkReconstruction::SaveRegistrationStep(vector<irtkRealImage>& stacks,int 
 	irtkImageAttributes attr = stacks[0].GetImageAttributes();
 	int stack;
 	int slice;
-	
+	int threshold = attr._z;
+	int counter = 0;
 	for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
-		stack = inputIndex / attr._z;
-		slice = inputIndex % attr._z;
+		if (inputIndex >= threshold) {
+			counter++;
+			attr = stacks[counter].GetImageAttributes();
+			threshold += attr._z;
+		}				
+		stack = counter;
+		slice = inputIndex - (threshold-attr._z);
 		sprintf(buffer, "step%04i_travol%04islice%04i.dof", step, stack, slice);
 		_transformations[inputIndex].irtkTransformation::Write(buffer);
 	}
