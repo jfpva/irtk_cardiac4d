@@ -27,7 +27,7 @@ void usage()
   cerr << endl;
 
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
-  cerr << "\t-target	             Volume to be used as target (starts from 0)."<<endl;
+  cerr << "\t-target	                Volume to be used as target (starts from 0)."<<endl;
   cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
@@ -46,13 +46,13 @@ void usage()
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
   cerr << "\t-multiband 		  Multiband factor."<<endl;
-  cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack."<<endl;
+  cerr << "\t-packages                 Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
-  cerr << "\t                          and then again according to the specific slice order. "<<endl;
-  cerr << "\t                          registration iteration 2. The method will then continue with slice to"<<endl;
-  cerr << "\t                          volume approach or multiband registration. [Default: slice to volume registration]"<<endl;
-  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (A)]"<<endl;
-  cerr << "\t                          Possible values: D (descending), F (default) I (interleaved) and C (Customized)."<<endl;
+  cerr << "\t                          and then following the specific slice ordering "<<endl;
+  cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
+  cerr << "\t                          volume (or multiband registration)."<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (1)]"<<endl;
+  cerr << "\t                          Possible values: 2 (descending), 3 (default) 4 (interleaved) and 5 (Customized)."<<endl;
   cerr << "\t-step      		  Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-iterations [iter]        Number of registration iterations. [Default is calculated internally]"<<endl;
@@ -107,7 +107,8 @@ int main(int argc, char **argv)
   int nStacks;
   /// number of packages for each stack
   vector<int> packages;
-  char * order = NULL;
+  vector<int> order_vector;
+  vector<int> multiband_vector;
   int step = 1;
   int rewinder = 1;
 
@@ -330,38 +331,36 @@ int main(int argc, char **argv)
     }
     
     // Input slice ordering
-    if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
-
-    	argc--;
-    	argv++;
-
-    	char temp;
-    	order = argv[1];
-    	temp = *order;
-
-    	if ((temp == 'A')) {
-    			cout<<"Slice acquisition order is ascending"<<endl;
-    	}
-    	else if ((temp == 'D')) {
-    			cout<<"Slice acquisition order is descending"<<endl;
-    	}
-    	else if ((temp == 'F')) {
-				cout<<"Slice acquisition order is default"<<endl;
-    	}
-    	else if ((temp == 'I')) {
-    			cout<<"Slice acquisition order is interleaved"<<endl;
-    	}
-    	else if ((temp == 'C'))	 {
-    			cout<<"Slice acquisition order is customized"<<endl;
-    	}
-    	else	{
-    		 	cout<<"Slice acquisition order not recognised, set to ascending (A)"<<endl;
-    	}
-
-        ok = true;
-        argc--;
-        argv++;
-    }
+	if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
+		argc--;
+		argv++;
+		cout<< "Order is ";
+		for (i=0;i<nStacks;i++)
+		{
+			order_vector.push_back(atoi(argv[1]));		
+			cout<<order_vector[i]<<" ";
+		}
+		argc--;
+		argv++;
+		cout<<"."<<endl;
+		ok = true;
+	}
+	
+	//Multiband factor for each stack
+	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
+		argc--;
+		argv++;
+		cout<< "Multiband number is ";
+		for (i=0;i<nStacks;i++)
+		{
+		  multiband_vector.push_back(atoi(argv[1]));
+		  cout<<multiband_vector[i]<<" ";
+		}
+		argc--;
+		argv++;
+		cout<<"."<<endl;
+		ok = true;
+	}
 
     // Forward slice jump for arbitrary slice ordering
 	if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
@@ -412,16 +411,6 @@ int main(int argc, char **argv)
       argc--;
       argv++;
     } 
-    
-    //Multiband factor
-	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
-	  argc--;
-	  argv++;
-	  multiband_factor=atof(argv[1]);
-	  ok = true;
-	  argc--;
-	  argv++;
-	}
     //Smoothing parameter
     if ((ok == false) && (strcmp(argv[1], "-lambda") == 0)){
       argc--;
@@ -639,6 +628,48 @@ int main(int argc, char **argv)
       delete rigidTransf;
     }
   }
+  
+  // set packages to 1 if not given by user
+  if (packages.size() == 0) {
+	for (i=0;i<nStacks;i++)	{
+		packages.push_back(1);
+	}
+	cout<<"All packages set to 1"<<endl;
+  }
+  else // feel with package number from the first stack
+  {
+	for (i=1;i<nStacks;i++)	{
+	  packages.push_back(packages[0]);
+	}
+  }
+
+  // set multiband to 1 if not given by user
+  if (multiband_vector.size() == 0) {
+	for (i=0;i<nStacks;i++)	{
+		multiband_vector.push_back(1);
+	}
+	cout<<"Multiband set to 1 for all stacks"<<endl;
+  }
+  else // feel with multiband from the first stack
+  {
+	for (i=1;i<nStacks;i++)	{
+      multiband_vector.push_back(multiband_vector[0]);
+	}
+  }
+  
+  // set order to ascending if not given by user
+  if (order_vector.size() == 0) {
+  	for (i=0;i<nStacks;i++)	{
+      order_vector.push_back(1);
+  	}
+  	cout<<"Slice ordering set to ascending for all stacks"<<endl;
+  }
+  else // feel with order from the first stack
+  {
+  	for (i=1;i<nStacks;i++)	{
+        order_vector.push_back(order_vector[0]);
+  	}
+  }
 
   //Initialise 2*slice thickness if not given by user
   if (thickness.size()==0)
@@ -854,83 +885,60 @@ int main(int argc, char **argv)
   reconstruction.InitializeEM();
   
   //interleaved registration-reconstruction iterations
-  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_factor);
-  
+  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_vector);
   if (iterations == 0)	{
-      if (multiband_factor>1)
-	    iterations = internal*2;
-      else
-	    iterations = internal+1;
-	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
+ 	iterations = internal+1;
+ 	cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
   }
   else if (iterations <= internal)	{
-	  iterations = internal+1;
-	  cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
+ 	iterations = internal+1;
+ 	cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
   }
   else {
-	  cout<<"Number of iterations is :"<<iterations<<endl;
+    cout<<"Number of iterations is :"<<iterations<<endl;
   }
  
   for (int iter=0;iter<iterations;iter++)
   {
 	  //Print iteration number on the screen
-	  if ( ! no_log ) {
-		  cout.rdbuf (strm_buffer);
-	  }
-	  
-	  cout<<"Iteration"<<iter<<". "<<endl;
-	 
-	  if (iter > 0) {
-		  //reconstruction.InterpolateBSpline(stacks,iter);
-		  //reconstruction.InterpolateBSplineReordered(stacks,multiband_factor,iter);
-		  reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
-		  reconstruction.InterpolateGaussian(stacks,iter);
-		  //reconstruction.SaveRegistrationStep(stacks,iter);
-		  
-		  //reconstruction.InterpolateGaussianReordered(stacks,multiband_factor,iter);
-	  }
-	  
-	  // calculate and print mean displacement between iterations
-	  /*reconstruction.SaveRegistrationStep(iter);
-	  if (iter>1)	{
-		  double toPrint = reconstruction.calculateResidual(0);
-		  cout<<"Saving Registration step = "<<toPrint<<" in iteration = "<<iter-1<<endl;
-	  }*/
+	  	  if ( ! no_log ) {
+	  		  cout.rdbuf (strm_buffer);
+	  	  }
+	  	  
+	  	  cout<<"Iteration"<<iter<<". "<<endl;
+	  	  
+	  	  if (iter>0)
+	  	  {
+	  		if ( ! no_log ) {
+	  		  cerr.rdbuf(file_e.rdbuf());
+	  		  cout.rdbuf (file.rdbuf());
+	  		}
 
-	  //perform rest of the registration pipeline
-	  if (iter>0)
-	  {
-			if ( ! no_log ) {
-			  cerr.rdbuf(file_e.rdbuf());
-			  cout.rdbuf (file.rdbuf());
-			}
-	
-			vector<int> level;
-			if(iter == 1) {
-				reconstruction.newPackageToVolume(stacks, packages, multiband_factor, *order, step, rewinder,iter);
-			}
-	
-			else if((iter > 1) && (iter < internal-1)){
-				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, false);
-				reconstruction.ChunkToVolume(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
-			}
-	
-			else {
-				
-				level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_factor, iter, true);
-				if (multiband_factor == 1) {
-					reconstruction.ChunkToVolume(stacks, packages, level, 1, *order, step, rewinder,iter);
-				}
-				else {
-					reconstruction.ChunkToVolume(stacks, packages, level, multiband_factor, *order, step, rewinder,iter);
-				}
-				
-			}
-	
-		if ( ! no_log ) {
-			cerr.rdbuf (strm_buffer_e);
-		}
-	  }
+	  		vector<int> level;
+	  		if(iter == 1) {
+	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter);
+	  		}
+
+	  		else if((iter > 1) && (iter < internal-1)){
+	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+	  		}
+
+	  		else {	
+	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+	  		}
+
+	  		if ( ! no_log ) {
+	  			cerr.rdbuf (strm_buffer_e);
+	  		}
+	  	  }
+	  	  
+	  	  if ((iter>0) && (debug))
+	  		  reconstruction.SaveRegistrationStep(stacks,iter);
+	  	  
+	  	  if (iter>0)
+	  		  reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);
 	  
 	  //Write to file
 	  if ( ! no_log ) {

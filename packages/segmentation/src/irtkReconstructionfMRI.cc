@@ -168,7 +168,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 	}
 }
 
-void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& stacks, int multiband, int iter) {
+void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector, int iter) {
 	
 	// clear timeserie from previous iterations
 	_timeserie.clear();
@@ -178,6 +178,7 @@ void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& 
 	irtkRealImage interpolated;
 	irtkImageAttributes attr;
 	
+	int multiband;
 	int counter = 0;
 	int position;
 	int grouping;
@@ -185,6 +186,7 @@ void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& 
 	
 		attr = stacks[dyn].GetImageAttributes();
 		interpolated = stacks[dyn];
+		multiband = multiband_vector[dyn];
 		grouping = attr._z/multiband;
 		
 		for (int m = 0; m < multiband; m++) {
@@ -211,7 +213,7 @@ void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& 
 	}
 }
 
-void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>& stacks, int multiband, int iter) {
+void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector, int iter) {
 
 	// clear timeserie from previous iterations
 	_timeserie.clear();
@@ -225,6 +227,7 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 	irtkRealImage interpolated;
 	irtkImageAttributes attr, attr2;
 	
+	int multiband;
 	irtkRealImage slice;
 	double scale;
 	int n;
@@ -243,6 +246,7 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 	
 		attr = stacks[dyn].GetImageAttributes();
 		attr2 = interpolated.GetImageAttributes();
+		multiband = multiband_vector[dyn];
 		grouping = attr._z/multiband;
 		
 		for (int m = 0; m < multiband; m++) {
@@ -333,7 +337,7 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
     if (true) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
-			sprintf(buffer, "BSplineR%04iVolume%04i.nii.gz",iter,dyn);
+			sprintf(buffer, "GaussianR%04iVolume%04i.nii.gz",iter,dyn);
 			_timeserie[dyn].Write(buffer);	
 		}
 	}

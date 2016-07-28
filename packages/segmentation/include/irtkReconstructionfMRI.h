@@ -40,9 +40,9 @@ public:
 	
 	void InterpolateGaussian(vector<irtkRealImage>& stacks, int iter);
 	
-	void InterpolateBSplineReordered(vector<irtkRealImage>& stacks, int multiband , int iter);
+	void InterpolateBSplineReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector , int iter);
 		
-	void InterpolateGaussianReordered(vector<irtkRealImage>& stacks, int multiband , int iter);
+	void InterpolateGaussianReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector , int iter);
 	  
 };
 
