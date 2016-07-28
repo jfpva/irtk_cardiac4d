@@ -53,6 +53,8 @@ public:
   virtual void GuessParameter();
   /// Guess parameters for slice to volume registration 
   virtual void GuessParameterSliceToVolume();
+  /// Guess parameters for slice to volume registration
+  virtual void GuessParameterPackageToVolume();
   /// Guess parameters volumes with thick slices
   virtual void GuessParameterThickSlices();
   /// Guess parameters for distortion correction

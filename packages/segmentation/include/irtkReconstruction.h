@@ -60,6 +60,7 @@ class irtkReconstruction : public irtkObject
   
     /// Transformations
     vector<irtkRigidTransformation> _transformations;
+    vector<irtkRigidTransformation> _previous_transformations;
     /// Indicator whether slice has an overlap with volumetric mask
     vector<bool> _slice_inside;
   
@@ -142,6 +143,11 @@ class irtkReconstruction : public irtkObject
     vector<double> _stack_factor;
     double _average_value;
     vector<int> _stack_index;
+
+    // GF 200416 Handling slice acquisition order
+    // vector containing slice acquisition order
+    vector<int> _z_slice_order;
+    vector<int> _t_slice_order;
   
     //forced excluded slices
     vector<int> _force_excluded;
@@ -235,7 +241,11 @@ class irtkReconstruction : public irtkObject
     ///Crop image according to the mask
     void CropImage( irtkRealImage& image,
                     irtkRealImage& mask );
-  
+
+    // GF 190416, retainig all slices along z direction
+    void CropImageIgnoreZ( irtkRealImage& image,
+                        irtkRealImage& mask );
+
     /// Transform and resample mask to the space of the image
     void TransformMask( irtkRealImage& image,
                         irtkRealImage& mask,
@@ -356,7 +366,9 @@ class irtkReconstruction : public irtkObject
 
     ///Save weights
     void SaveWeights();
-  
+
+    void SaveRegistrationStep(vector<irtkRealImage>& stacks,int step);
+
     ///Save transformations
     void SaveTransformations();
     void GetTransformations( vector<irtkRigidTransformation> &transformations );
@@ -442,13 +454,27 @@ class irtkReconstruction : public irtkObject
                           bool half=false,
                           int half_iter=1);
   
-    void PackageToVolumeMasking( vector<irtkRealImage>& stacks,
-                          vector<int> &pack_num,
-  			   int iter,
-                          bool evenodd=false,
-                          bool half=false,
-                          int half_iter=1);
-  
+    // Calculate Slice acquisition order
+    void GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> order, int step, int rewinder);
+    // Split image in a flexible manner
+    void flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> order, int step, int rewinder);
+    // Create Multiband replica for flexibleSplitImage
+    void flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks,  vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband, vector<int> order, int step, int rewinder);
+    // Split images into packages
+    void splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> order, int step, int rewinder);
+    // Create Multiband replica for splitPackages
+    void splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> multiband, vector<int> order, int step, int rewinder);
+    // Performs package registration
+    void newPackageToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband, vector<int> order, int step, int rewinder, int iter);
+    // Perform subpackage registration for flexibleSplitImage
+    void ChunkToVolume( vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband, vector<int> order, int step, int rewinder, int iter);
+    // Calculate number of iterations needed for subpacking stages
+    int giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband);
+    // Calculate subpacking needed for tree like structure
+    vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband, int iterations, bool last);
+
+    double calculateResidual(int padding);
+    
     ///Splits stacks into packages
     void SplitImage( irtkRealImage image,
                      int packages,

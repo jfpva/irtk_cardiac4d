@@ -24,6 +24,7 @@ SET(SEGMENTATION_INCLUDES
 ../include/irtkDWImage.h
 ../include/irtkTensor.h
 ../include/irtkTensorField.h
+../include/irtkReconstructionfMRI.h
 ../include/irtkRician.h
 ../include/irtkSubcorticalSegmentation_4D.h
 ../../../external/gco-v3.0/block.h
@@ -66,7 +67,7 @@ irtkReconstructionDTI.cc
 irtkDWImage.cc
 irtkTensor.cc
 irtkTensorField.cc
-
+irtkReconstructionfMRI.cc
 irtkSubcorticalSegmentation_4D.cc
 irtkCRF.cc
 ../../../external/gco-v3.0/graph.cpp

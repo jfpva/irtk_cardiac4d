@@ -14,6 +14,8 @@
 #include <irtkImage.h>
 #include <irtkTransformation.h>
 #include <irtkReconstruction.h>
+#include <irtkReconstructionb0.h>
+#include <irtkReconstructionfMRI.h>
 
 using namespace std;
 
@@ -21,35 +23,39 @@ using namespace std;
 
 void usage()
 {
-  cerr << "Usage: reconstruction [reconstructed] [N] [stack_1] .. [stack_N] <options>\n" << endl;
+  cerr << "Usage: reconstruction [reconstructed] [Target] fMRI data <options>\n" << endl;
   cerr << endl;
 
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
-  cerr << "\t[N]                     Number of stacks." << endl;
-  cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format (first taken as reference)." << endl;
+  cerr << "\t-target	                Volume to be used as target (starts from 0)."<<endl;
+  cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
-  cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
+  cerr << "\t-dofin1 [dof_1] .. [dof_N] The transformations of the input stack to template" << endl;
   cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
   cerr << "\t                          some overlap is needed." << endl;
-  cerr << "\t                          Use \'id\' for an identity transformation for at least" << endl;
-  cerr << "\t                          one stack. The first stack with \'id\' transformation" << endl;
-  cerr << "\t                          will be resampled as template." << endl;
+  cerr << "\t                          Firsty, introduce the total number of transformations needed." << endl; 
+  cerr << "\t    	  	          Then, the frame number they refer to and dof file (frame by frame). " << endl;
+  cerr << "\t-dofin2 [dof_1] .. [dof_N] The transformations of the input stack to template" << endl;
+  cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
+  cerr << "\t                          Only rough alignment with correct orienation and " << endl;
+  cerr << "\t                          some overlap is needed." << endl;
+  cerr << "\t                          Firsty, introduce the total number of chunks needed." << endl; 
+  cerr << "\t    	  	          Then, first and last frames of each chunk followed by the relative dof file. " << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
-  cerr << "\t-multiband [num_1] .. [num_N]  Multiband factor for each stack for each stack. [Default: 1]"<<endl;
-  cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
+  cerr << "\t-multiband 		  Multiband factor."<<endl;
+  cerr << "\t-packages                 Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
   cerr << "\t                          and then following the specific slice ordering "<<endl;
   cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
   cerr << "\t                          volume (or multiband registration)."<<endl;
-  cerr << "\t-order                    Vector of slice acquisition orders used at acquisition. [Default: (1)]"<<endl;
-  cerr << "\t                          Possible values: 1 (ascending), 2 (descending), 3 (default), 4 (interleaved)"<<endl;
-  cerr << "\t                          and 5 (Customized)."<<endl;
-  cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
+  cerr << "\t-order                    Slice acquisition order used at acquisition. [Default: ascending (1)]"<<endl;
+  cerr << "\t                          Possible values: 2 (descending), 3 (default) 4 (interleaved) and 5 (Customized)."<<endl;
+  cerr << "\t-step      		  Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
-  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
+  cerr << "\t-iterations [iter]        Number of registration iterations. [Default is calculated internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
@@ -79,6 +85,7 @@ void usage()
 
 int main(int argc, char **argv)
 {
+  
   //utility variables
   int i, ok;
   char buffer[256];
@@ -101,7 +108,7 @@ int main(int argc, char **argv)
   /// number of packages for each stack
   vector<int> packages;
   vector<int> order_vector;
-  
+  vector<int> multiband_vector;
   int step = 1;
   int rewinder = 1;
 
@@ -111,7 +118,7 @@ int main(int argc, char **argv)
   int iterations = 0;
   bool debug = false;
   double sigma=20;
-  double resolution = 0.75;
+  double resolution = 2;
   double lambda = 0.02;
   double delta = 150;
   int levels = 3;
@@ -122,20 +129,19 @@ int main(int argc, char **argv)
   bool global_bias_correction = false;
   double low_intensity_cutoff = 0.01;
   //folder for slice-to-volume registrations, if given
-  char *folder=NULL;
+  char * folder=NULL;
   //flag to remove black background, e.g. when neonatal motion correction is performed
   bool remove_black_background = false;
   //flag to swich the intensity matching on and off
-  bool intensity_matching = true;
+  bool intensity_matching = false;
   bool rescale_stacks = false;
 
   //flag to swich the robust statistics on and off
-  bool robust_statistics = true;
+  bool robust_statistics = false;
   bool robust_slices_only = false;
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
-  vector<int> multiband_vector;
-  int multiband_factor=1;
+  int multiband_factor = 1;
   
   irtkRealImage average;
 
@@ -148,10 +154,10 @@ int main(int argc, char **argv)
   vector<int> force_excluded;
 
   //Create reconstruction object
-  irtkReconstruction reconstruction;
+  irtkReconstructionfMRI reconstruction;
     
   //if not enough arguments print help
-  if (argc < 5)
+  if (argc < 3)
     usage();
   
   //read output name
@@ -159,61 +165,139 @@ int main(int argc, char **argv)
   argc--;
   argv++;
   cout<<"Recontructed volume name ... "<<output_name<<endl;
-
-  //read number of stacks
-  nStacks = atoi(argv[1]);
+ 
+  templateNumber=atof(argv[1]);
+  cout<<"Template Number is ... "<<templateNumber<<endl;
   argc--;
   argv++;
+  
+  //read 4D image
+  irtkRealImage image4D; 
+  cout<<"Reading stack ... "<<argv[1]<<endl;
+  image4D.Read(argv[1]);
+  argc--;
+  argv++;
+  irtkImageAttributes attr = image4D.GetImageAttributes();
+  nStacks = attr._t;
   cout<<"Number 0f stacks ... "<<nStacks<<endl;
-
-  // Read stacks 
-  for (i=0;i<nStacks;i++)
+	
+  // Create stacks 
+  for (i = 0; i < nStacks;i++)
   {
-    //if ( i == 0 )
-    //log_id = argv[1];
-    stack_files.push_back(argv[1]);
-    stack.Read(argv[1]);
-    cout<<"Reading stack ... "<<argv[1]<<endl;
-    argc--;
-    argv++;
-    stacks.push_back(stack);
+		stacks.push_back(image4D.GetRegion(0,0,0,i,attr._x, attr._y,attr._z,i+1));
+		sprintf(buffer,"stack%i.nii.gz",i);
+		stacks[i].Write(buffer);    
   }
   
   // Parse options.
   while (argc > 1){
     ok = false;
-    
+
     //Read stack transformations
-    if ((ok == false) && (strcmp(argv[1], "-dofin") == 0)){
-      argc--;
-      argv++;
-      
-      for (i=0;i<nStacks;i++)
-      {
-        irtkTransformation *transformation;
-        cout<<"Reading transformation ... "<<argv[1]<<" ... ";
-        cout.flush();
-        if (strcmp(argv[1], "id") == 0)
-        {
-          transformation = new irtkRigidTransformation;
-          if ( templateNumber < 0) templateNumber = i;
-        }
-        else
-        {
-          transformation = irtkTransformation::New(argv[1]);
-        }
-        cout<<" done."<<endl;
+	if ((ok == false) && (strcmp(argv[1], "-dofin1") == 0)){
+		
+		argc--;
+		argv++;
+		
+		int quantity = atof(argv[1]);
+		argc--;
+		argv++;
+		
+		irtkTransformation *transformation;
+		
+		int q = 0;
+		int minimum = 0;
+		while(q < quantity) {
+			
+			int position = atof(argv[1]);
+			argc--;
+			argv++;
+			
+			for (int p = minimum; p < position; p++) {
+				// id transformations 
+				transformation = new irtkRigidTransformation;
+				if ( templateNumber < 0) templateNumber = i;
+				irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+				stack_transformations.push_back(*rigidTransf);
+				delete rigidTransf;
+			}
+			
+			transformation = irtkTransformation::New(argv[1]);
+			argc--;
+			argv++;
+						
+			// actual transformation inserted by user
+			irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+			stack_transformations.push_back(*rigidTransf);
+			delete rigidTransf;
+			
+			minimum = position+1;
+			q++;
+			
+			if (q == quantity)	{
+				for (int p = minimum; p < nStacks; p++) {
+					// id transformations 
+					transformation = new irtkRigidTransformation;
+					if ( templateNumber < 0) templateNumber = i;
+					irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+					stack_transformations.push_back(*rigidTransf);
+					delete rigidTransf;
+				}
+			}
+			
+		}
+		have_stack_transformations = true;	
+	}
+	
+	//Read stack transformations
+	if ((ok == false) && (strcmp(argv[1], "-dofin2") == 0)) {
+		
+		// if dofin1 has not been used, initialize all transformations as id
+		if (stack_transformations.size() == 0) {
+			for (i=0;i<nStacks;i++)
+			{
+			  irtkRigidTransformation *rigidTransf = new irtkRigidTransformation;
+			  stack_transformations.push_back(*rigidTransf);
+			  delete rigidTransf;
+			}
+		}
+		
+		argc--;
+		argv++;
+		
+		int quantity = atof(argv[1]);
+		argc--;
+		argv++;
 
-        argc--;
-        argv++;
-        irtkRigidTransformation *rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
-        stack_transformations.push_back(*rigidTransf);
-        delete rigidTransf;
-      }
-      reconstruction.InvertStackTransformations(stack_transformations);
-      have_stack_transformations = true;
-    }
-
+		int q = 0;
+		int min;
+		int max;
+		
+		while(q < quantity)	{
+			
+			min = atof(argv[1]);
+			argc--;
+			argv++;
+			
+			max = atof(argv[1]);
+			argc--;
+			argv++;
+				
+			irtkRigidTransformation *rigidTransf;
+			irtkTransformation *transformation;
+			
+			for (int p = min; p <= max; p++) {
+				transformation = irtkTransformation::New(argv[1]);
+				rigidTransf = dynamic_cast<irtkRigidTransformation*> (transformation);
+				stack_transformations[p] = *rigidTransf;
+			}
+			q++;			
+			argc--;
+			argv++;
+		}
+		have_stack_transformations = true;			
+	}
+	
     //Read slice thickness
     if ((ok == false) && (strcmp(argv[1], "-thickness") == 0)){
       argc--;
@@ -222,12 +306,12 @@ int main(int argc, char **argv)
       for (i=0;i<nStacks;i++)
       {
         thickness.push_back(atof(argv[1]));
-        cout<<thickness[i]<<" ";
-        argc--;
-        argv++;
-       }
-       cout<<"."<<endl;
-       ok = true;
+        cout<<thickness[i]<<" ";        
+      }
+      argc--;
+      argv++;
+      cout<<"."<<endl;
+      ok = true;
     }
     
     //Read number of packages for each stack
@@ -237,45 +321,45 @@ int main(int argc, char **argv)
       cout<< "Package number is ";
       for (i=0;i<nStacks;i++)
       {
-        packages.push_back(atoi(argv[1]));
-        cout<<packages[i]<<" ";
-        argc--;
-        argv++;
-       }
-       cout<<"."<<endl;
-       ok = true;
-    }
-
-    // Input slice ordering
-    if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
-    	argc--;
-    	argv++;
-    	cout<< "Order is ";
-	    for (i=0;i<nStacks;i++)
-	    {
-	    	order_vector.push_back(atoi(argv[1]));		
-			cout<<order_vector[i]<<" ";
-			argc--;
-			argv++;
-	    }
-	    cout<<"."<<endl;
-        ok = true;
+         packages.push_back(atoi(argv[1]));
+         cout<<packages[i]<<" ";
+      }
+      argc--;
+      argv++;
+      cout<<"."<<endl;
+      ok = true;
     }
     
-    //Multiband factor for each stack
+    // Input slice ordering
+	if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
+		argc--;
+		argv++;
+		cout<< "Order is ";
+		for (i=0;i<nStacks;i++)
+		{
+			order_vector.push_back(atoi(argv[1]));		
+			cout<<order_vector[i]<<" ";
+		}
+		argc--;
+		argv++;
+		cout<<"."<<endl;
+		ok = true;
+	}
+	
+	//Multiband factor for each stack
 	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
 		argc--;
-	    argv++;
-	    cout<< "Multiband number is ";
-	    for (i=0;i<nStacks;i++)
-	    {
+		argv++;
+		cout<< "Multiband number is ";
+		for (i=0;i<nStacks;i++)
+		{
 		  multiband_vector.push_back(atoi(argv[1]));
 		  cout<<multiband_vector[i]<<" ";
-		  argc--;
-		  argv++;
-	    }
-	    cout<<"."<<endl;
-	    ok = true;
+		}
+		argc--;
+		argv++;
+		cout<<"."<<endl;
+		ok = true;
 	}
 
     // Forward slice jump for arbitrary slice ordering
@@ -327,8 +411,7 @@ int main(int argc, char **argv)
       argc--;
       argv++;
     } 
-    
-	//Smoothing parameter
+    //Smoothing parameter
     if ((ok == false) && (strcmp(argv[1], "-lambda") == 0)){
       argc--;
       argv++;
@@ -526,32 +609,14 @@ int main(int argc, char **argv)
     }
   }
 
+ if (have_stack_transformations == true)
+	 reconstruction.InvertStackTransformations(stack_transformations);
+  
   if (rescale_stacks)
   {
       for (i=0;i<nStacks;i++)
           reconstruction.Rescale(stacks[i],1000);
   }
-  
-  // set packages to 1 if not given by user
-  if (packages.size() == 0)
-  	  for (i=0;i<nStacks;i++)	{
-  		  packages.push_back(1);
-  		  cout<<"All packages set to 1"<<endl;
-  	  }
-  
-  // set multiband to 1 if not given by user
-  if (multiband_vector.size() == 0)
-	  for (i=0;i<nStacks;i++)	{
-		  multiband_vector.push_back(1);
-		  cout<<"Multiband set to 1 for all stacks"<<endl;
-	  }
-  
-  // set ascending if not given by user
-  if (order_vector.size() == 0)
-	  for (i=0;i<nStacks;i++)	{
-		  order_vector.push_back(1);	
-		  cout<<"Slice order set to ascending for all stacks"<<endl;
-	  }
   
   //If transformations were not defined by user, set them to identity
   if(!have_stack_transformations)
@@ -562,9 +627,50 @@ int main(int argc, char **argv)
       stack_transformations.push_back(*rigidTransf);
       delete rigidTransf;
     }
-    templateNumber = 0;  
   }
- 
+  
+  // set packages to 1 if not given by user
+  if (packages.size() == 0) {
+	for (i=0;i<nStacks;i++)	{
+		packages.push_back(1);
+	}
+	cout<<"All packages set to 1"<<endl;
+  }
+  else // feel with package number from the first stack
+  {
+	for (i=1;i<nStacks;i++)	{
+	  packages.push_back(packages[0]);
+	}
+  }
+
+  // set multiband to 1 if not given by user
+  if (multiband_vector.size() == 0) {
+	for (i=0;i<nStacks;i++)	{
+		multiband_vector.push_back(1);
+	}
+	cout<<"Multiband set to 1 for all stacks"<<endl;
+  }
+  else // feel with multiband from the first stack
+  {
+	for (i=1;i<nStacks;i++)	{
+      multiband_vector.push_back(multiband_vector[0]);
+	}
+  }
+  
+  // set order to ascending if not given by user
+  if (order_vector.size() == 0) {
+  	for (i=0;i<nStacks;i++)	{
+      order_vector.push_back(1);
+  	}
+  	cout<<"Slice ordering set to ascending for all stacks"<<endl;
+  }
+  else // feel with order from the first stack
+  {
+  	for (i=1;i<nStacks;i++)	{
+        order_vector.push_back(order_vector[0]);
+  	}
+  }
+
   //Initialise 2*slice thickness if not given by user
   if (thickness.size()==0)
   {
@@ -656,7 +762,7 @@ int main(int argc, char **argv)
   }
   
   //volumetric registration
-  reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
+  reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
 
   //if remove_black_background flag is set, create mask from black background of the stacks
   if (remove_black_background)
@@ -730,7 +836,7 @@ int main(int argc, char **argv)
       cout.rdbuf (file.rdbuf());
   }
   //volumetric registration
-  reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
+  reconstruction.irtkReconstruction::StackRegistrations(stacks,stack_transformations,templateNumber);
   cout<<endl;
 
   //redirect output back to screen
@@ -777,66 +883,68 @@ int main(int argc, char **argv)
     
   //Initialise data structures for EM
   reconstruction.InitializeEM();
-
+  
   //interleaved registration-reconstruction iterations
   int internal = reconstruction.giveMeDepth(stacks, packages, multiband_vector);
   if (iterations == 0)	{
-	  iterations = internal+1;
-	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
+ 	iterations = internal+1;
+ 	cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
   }
   else if (iterations <= internal)	{
-	  iterations = internal+1;
-	  cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
+ 	iterations = internal+1;
+ 	cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
   }
   else {
-	  cout<<"Number of iterations is :"<<iterations<<endl;
+    cout<<"Number of iterations is :"<<iterations<<endl;
   }
  
   for (int iter=0;iter<iterations;iter++)
   {
 	  //Print iteration number on the screen
-	  if ( ! no_log ) {
-		  cout.rdbuf (strm_buffer);
-	  }
+	  	  if ( ! no_log ) {
+	  		  cout.rdbuf (strm_buffer);
+	  	  }
+	  	  
+	  	  cout<<"Iteration"<<iter<<". "<<endl;
+	  	  
+	  	  if (iter>0)
+	  	  {
+	  		if ( ! no_log ) {
+	  		  cerr.rdbuf(file_e.rdbuf());
+	  		  cout.rdbuf (file.rdbuf());
+	  		}
+
+	  		vector<int> level;
+	  		if(iter == 1) {
+	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter);
+	  		}
+
+	  		else if((iter > 1) && (iter < internal-1)){
+	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+	  		}
+
+	  		else {	
+	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+	  		}
+
+	  		if ( ! no_log ) {
+	  			cerr.rdbuf (strm_buffer_e);
+	  		}
+	  	  }
+	  	  
+	  	  if ((iter>0) && (debug))
+	  		  reconstruction.SaveRegistrationStep(stacks,iter);
+	  	  
+	  	  if (iter>0)
+	  		  reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);
 	  
-	  cout<<"Iteration"<<iter<<". "<<endl;
-	  
-	  if (iter>0)
-	  {
-		if ( ! no_log ) {
-		  cerr.rdbuf(file_e.rdbuf());
-		  cout.rdbuf (file.rdbuf());
-		}
-
-		vector<int> level;
-		if(iter == 1) {
-			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter);
-		}
-
-		else if((iter > 1) && (iter < internal-1)){
-			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
-		}
-
-		else {	
-			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
-		}
-
-		if ( ! no_log ) {
-			cerr.rdbuf (strm_buffer_e);
-		}
-	  }
-	  
-	  if ((iter>0) && (debug))
-		  reconstruction.SaveRegistrationStep(stacks,iter); 
-	
 	  //Write to file
 	  if ( ! no_log ) {
 		 cout.rdbuf (file2.rdbuf());
       }
-	  cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
-	
+
 	  //Set smoothing parameters
 	  //amount of smoothing (given by lambda) is decreased with improving alignment
 	  //delta (to determine edges) stays constant throughout
@@ -852,35 +960,37 @@ int main(int argc, char **argv)
 			l*=2;
 		}
 	  }
-		
+	  
 	  //Use faster reconstruction during iterations and slower for final reconstruction
 	  if ( iter<(iterations-1) )
 		  reconstruction.SpeedupOn();
 	  else 
 		  reconstruction.SpeedupOff();
-	
+	  
 	  if(robust_slices_only)
 		  reconstruction.ExcludeWholeSlicesOnly();
-	
+
 	  //Initialise values of weights, scales and bias fields
 	  reconstruction.InitializeEMValues();
-	
+	  
 	  //Calculate matrix of transformation between voxels of slices and volume
-	  if (bspline)
+	  reconstruction.SetInterpolationRecon();
+	  if (bspline) {
 		  reconstruction.CoeffInitBSpline();
+	  }
 	  else
 		  reconstruction.CoeffInit();
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
-	  if (bspline)
+	  if (bspline) {
 		  reconstruction.BSplineReconstruction();
+	  }
 	  else
 		  reconstruction.GaussianReconstruction();
 	
-	
 	  //Simulate slices (needs to be done after Gaussian reconstruction)
 	  reconstruction.SimulateSlices();
-		
+
 	  //Initialize robust statistics parameters
 	  reconstruction.InitializeRobustStatistics();
 	
@@ -895,10 +1005,13 @@ int main(int argc, char **argv)
 	  }
 	  else 
 		  rec_iterations = 10;
-	  
+	
 	  if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
 		  rec_iterations=0;
-		
+	  
+	  // super resolution not needed for fMRI
+	  rec_iterations = 0;
+	  
 	  //reconstruction iterations
 	  i=0;
 	  for (i=0;i<rec_iterations;i++)
@@ -915,8 +1028,9 @@ int main(int argc, char **argv)
 	  }
 	  
 	  //Update reconstructed volume
-	  if (bspline)
+	  if (bspline) {
 		  reconstruction.BSplineReconstruction();
+	  }
 	  else
 		  reconstruction.Superresolution(i+1);
 	  
@@ -972,7 +1086,7 @@ int main(int argc, char **argv)
 	}
 	
 	}// end of interleaved registration-reconstruction iterations
-	
+  
 	//save final result
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
@@ -980,11 +1094,11 @@ int main(int argc, char **argv)
 	reconstructed.Write(output_name); 
 	//reconstruction.SaveTransformations();
 	reconstruction.SaveSlices();
-	
-	if ( info_filename.length() > 0 )
+
+	// Don't know why it fails here
+	/*if ( info_filename.length() > 0 )
 	  reconstruction.SlicesInfo( info_filename.c_str(),
-								 stack_files );
-	
+								 stack_files );*/
 	if(debug)
 	{
 	reconstruction.SaveWeights();
@@ -998,4 +1112,4 @@ int main(int argc, char **argv)
 	}
   }
   //The end of main()
-}  
+}

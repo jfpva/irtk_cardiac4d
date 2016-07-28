@@ -19,6 +19,7 @@
 #include <irtkMeanShift.h>
 #include <irtkCRF.h>
 
+
 /* Auxiliary functions (not reconstruction specific) */
 
 void bbox( irtkRealImage &stack,
@@ -1218,10 +1219,10 @@ public:
                 //buffer to create the name
                 char buffer[256];
                 registration.irtkImageRegistration::Write((char *) "parout-volume.rreg");
-                sprintf(buffer, "stack-transformation%i.dof.gz", i);
-                stack_transformations[i].irtkTransformation::Write(buffer);
-                sprintf(buffer, "stack%i.nii.gz", i);
-                stacks[i].Write(buffer);
+                //sprintf(buffer, "stack-transformation%i.dof.gz", i);
+                //stack_transformations[i].irtkTransformation::Write(buffer);
+                //sprintf(buffer, "stack%i.nii.gz", i);
+                //stacks[i].Write(buffer);
             }            
         }
     }
@@ -1244,8 +1245,11 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
     
     InvertStackTransformations(stack_transformations);
     
+    cout<<"I get here 1"<<endl;
+    
     //template is set as the target
     irtkGreyImage target = stacks[templateNumber];
+    cout<<"I get here 2"<<endl;
     //target needs to be masked before registration
     if (_have_mask) {
         double x, y, z;
@@ -1274,6 +1278,8 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
                 }
     }
     
+    cout<<"I get here 3"<<endl;
+    
     if(_debug)
     {
       target.Write("target.nii.gz");
@@ -1282,6 +1288,8 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
     irtkRigidTransformation offset;
     ResetOrigin(target,offset);
 
+    cout<<"I get here 4"<<endl;
+    
     //register all stacks to the target
     ParallelStackRegistrations registration( this,
                                              stacks,
@@ -1290,8 +1298,12 @@ void irtkReconstruction::StackRegistrations(vector<irtkRealImage>& stacks,
                                              target,
                                              offset );
     registration();
+    
+    cout<<"I get here 5"<<endl;
         
     InvertStackTransformations(stack_transformations);
+    
+    cout<<"I get here 6"<<endl;
 }
 
 void irtkReconstruction::RestoreSliceIntensities()
@@ -4058,6 +4070,27 @@ void irtkReconstruction::SaveWeights()
     }
 }
 
+void irtkReconstruction::SaveRegistrationStep(vector<irtkRealImage>& stacks,int step) {
+
+	char buffer[256];
+	irtkImageAttributes attr = stacks[0].GetImageAttributes();
+	int stack;
+	int slice;
+	int threshold = attr._z;
+	int counter = 0;
+	for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+		if (inputIndex >= threshold) {
+			counter++;
+			attr = stacks[counter].GetImageAttributes();
+			threshold += attr._z;
+		}				
+		stack = counter;
+		slice = inputIndex - (threshold-attr._z);
+		sprintf(buffer, "step%04i_travol%04islice%04i.dof", step, stack, slice);
+		_transformations[inputIndex].irtkTransformation::Write(buffer);
+	}
+}
+
 void irtkReconstruction::SaveTransformations()
 {
     char buffer[256];
@@ -4140,362 +4173,1167 @@ void irtkReconstruction::SlicesInfo( const char* filename,
     info.close(); 
 }
 
-/* end Set/Get/Save operations */
+void irtkReconstruction::GetSliceAcquisitionOrder(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> order, int step, int rewinder)
+{
+	irtkImageAttributes attr;
+	int slicesPerPackage;
+	int slice_pos_counter, counter, temp, p, stepFactor, rewinderFactor;
+	vector<int> fakeAscending;
+	vector<int> realInterleaved;
+
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		attr = stacks[dyn].GetImageAttributes();
+		slicesPerPackage = (attr._z/pack_num[dyn]);
+		int z_slice_order[attr._z];
+		int t_slice_order[attr._z];
+
+		// ascending
+		if (order[dyn] == 1) {
+
+			counter = 0;
+			slice_pos_counter = 0;
+			p = 0;
+
+			while(counter < attr._z)	{
+
+				z_slice_order[counter] = slice_pos_counter;
+				t_slice_order[slice_pos_counter] = counter;
+				counter++;
+				slice_pos_counter = slice_pos_counter + pack_num[dyn];
+
+				// start new package
+				if (slice_pos_counter >= attr._z) {
+					p++;
+					slice_pos_counter = p;
+				}
+			}
+
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_z_slice_order.push_back(z_slice_order[temp]);
+				_t_slice_order.push_back(t_slice_order[temp]);
+			}
+		}
+
+		// descending
+		else if (order[dyn] == 2) {
+
+			counter = 0;
+			slice_pos_counter = attr._z - 1;
+			int p = 0; // package counter
+
+			while(counter < attr._z)	{
+
+				z_slice_order[counter] = slice_pos_counter;
+				t_slice_order[slice_pos_counter] = counter;
+				counter++;
+				slice_pos_counter = slice_pos_counter - pack_num[dyn];
+
+				// start new package
+				if (slice_pos_counter < 0) {
+					p++;
+					slice_pos_counter = attr._z - 1 - p;
+				}
+			}
+
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_z_slice_order.push_back(z_slice_order[temp]);
+				_t_slice_order.push_back(t_slice_order[temp]);
+			}
+		}
+
+		// default
+		else if (order[dyn] == 3) {
+
+			int index, restart;
+			rewinderFactor = 1;
+			stepFactor = 2;
+
+			// pretending to do ascending within each package, and then shuffling according to default acquisition
+			for(int p = 0; p < pack_num[dyn]; p++)
+				{
+					// middle part of the stack
+					for(int s = 0; s < slicesPerPackage; s++)
+					{
+						slice_pos_counter = s*pack_num[dyn] + p;
+						fakeAscending.push_back(slice_pos_counter);
+					}
+
+					// last slices for larger packages
+					if(attr._z > slicesPerPackage*pack_num[dyn]) {
+						slice_pos_counter = slicesPerPackage*pack_num[dyn] + p;
+						if (slice_pos_counter < attr._z) {
+							fakeAscending.push_back(slice_pos_counter);
+						}
+					}
+
+					// shuffling
+					index = 0;
+					restart = 0;
+					for(int i = 0; i < fakeAscending.size(); i++) 	{
+						if (index >= fakeAscending.size()) {
+							restart = restart + rewinderFactor;
+							index = restart;
+						}
+						realInterleaved.push_back(fakeAscending[index]);
+						index = index + stepFactor;
+					}
+					// clear fake ascending and start over
+					fakeAscending.clear();
+				}
+
+			// saving
+			for(temp = 0; temp < attr._z; temp++) 	{
+				z_slice_order[temp] = realInterleaved[temp];
+				t_slice_order[realInterleaved[temp]] = temp;
+			}
+
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_z_slice_order.push_back(z_slice_order[temp]);
+				_t_slice_order.push_back(t_slice_order[temp]);
+			}
+			realInterleaved.clear();
+		}
+
+		// interleaved
+		else {
+
+			int index, restart;
+			counter = 0;
+
+			if (order[dyn] == 4)
+			{
+				rewinderFactor = 1;
+			}
+			else
+			{
+				stepFactor = step;
+				rewinderFactor = rewinder;
+			}
+
+			// pretending to do ascending within each package, and then shuffling according to interleaved acquisition
+			for(int p = 0; p < pack_num[dyn]; p++)
+				{
+					if (order[dyn] == 4)
+					{
+						// getting step size, from PPE
+						if((attr._z - counter) > slicesPerPackage*pack_num[dyn])		{
+							stepFactor = round(sqrt(double(slicesPerPackage + 1)));
+							counter++;
+						}
+						else
+							stepFactor = round(sqrt(double(slicesPerPackage)));
+					}
+
+					// middle part of the stack
+					for(int s = 0; s < slicesPerPackage; s++)
+					{
+						slice_pos_counter = s*pack_num[dyn] + p;
+						fakeAscending.push_back(slice_pos_counter);
+					}
+
+					// last slices for larger packages
+					if(attr._z > slicesPerPackage*pack_num[dyn]) {
+						slice_pos_counter = slicesPerPackage*pack_num[dyn] + p;
+						if (slice_pos_counter < attr._z) {
+							fakeAscending.push_back(slice_pos_counter);
+						}
+					}
+
+					// shuffling
+					index = 0;
+					restart = 0;
+					for(int i = 0; i < fakeAscending.size(); i++) 	{
+						if (index >= fakeAscending.size()) {
+							restart = restart + rewinderFactor;
+							index = restart;
+						}
+						realInterleaved.push_back(fakeAscending[index]);
+						index = index + stepFactor;
+					}
+					// clear fake ascending and start over
+					fakeAscending.clear();
+				}
+
+			// saving
+			for(temp = 0; temp < attr._z; temp++) 	{
+				z_slice_order[temp] = realInterleaved[temp];
+				t_slice_order[realInterleaved[temp]] = temp;
+			}
+
+			// copying
+			for(temp = 0; temp < attr._z; temp++) 	{
+				_z_slice_order.push_back(z_slice_order[temp]);
+				_t_slice_order.push_back(t_slice_order[temp]);
+			}
+			realInterleaved.clear();
+		}
+	}
+}
+
+void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> order, int step, int rewinder)
+{
+	irtkRealImage image;
+	irtkImageAttributes attr;
+	int internalIterations, sliceNum;
+
+	// location acquisition order
+	vector<int> z_internal_slice_order;
+
+	// calculate slice order
+	GetSliceAcquisitionOrder(stacks,pack_num,order,step,rewinder);
+
+	// counters
+	int counter1 = 0;
+	int counter2 = 0;
+	int counter3 = 0;
+
+	int startIterations = 0;
+	int endIterations = 0;
+	int sum = 0;
+
+	// dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		image = stacks[dyn];
+		attr   = image.GetImageAttributes();
+
+		// slice loop
+		for (int sl = 0; sl < attr._z; sl++) {
+			z_internal_slice_order.push_back(_z_slice_order[counter1 + sl]);
+		}
+
+		// fake packages
+		while (sum < attr._z)	{
+			sum = sum + sliceNums[counter2];
+			counter2++;
+		}
+		endIterations = counter2;
+
+		// fake package loop
+		for (int iter = startIterations; iter < endIterations; iter++) {
+			internalIterations = sliceNums[iter];
+			irtkRealImage stack(attr);
+			// copying
+			for(int sl = counter3; sl < internalIterations + counter3; sl++) 	{
+				for(int j=0; j<stack.GetY();j++)
+					for(int i=0; i<stack.GetX();i++)
+					{
+						stack.Put(i,j,z_internal_slice_order[sl],image(i,j,z_internal_slice_order[sl]));
+					}
+			}
+			// pushing package
+			sliceStacks.push_back(stack);
+			counter3 = counter3 + internalIterations;
+		}
+		// updating varialbles for next dynamic
+		z_internal_slice_order.clear();
+		counter1 = counter1 + attr._z;
+		counter3 = 0;
+		sum = 0;
+		startIterations = endIterations;
+	}
+}
+
+void irtkReconstruction::flexibleSplitImagewithMB(vector<irtkRealImage>& stacks, vector<irtkRealImage>& sliceStacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, vector<int> order, int step, int rewinder)
+{
+	// initializing variables
+	irtkRealImage chunck;
+	vector<irtkRealImage> chuncks, chuncks_separated, chuncks_separated_reordered, chunksAll;
+	vector<int> pack_num_chucks;
+	irtkRealImage image;
+	irtkRealImage multibanded, toAdd;
+	irtkImageAttributes attr;
+	int sliceMB;
+	int stepFactor, startFactor, endFactor;
+	int counter1, counter2, counter3, counter4, counter5;
+	int multiband;
+
+	int sum = 0;
+    vector<int> sliceNumsChunks;
+
+    startFactor = 0;
+    endFactor = 0;
+    // dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		irtkRealImage multibanded(attr);
+		multiband = multiband_vector[dyn];
+		sliceMB = attr._z/multiband;
+
+		for (int m = 0; m < multiband; m++) {
+			chunck  = image.GetRegion(0,0,m*sliceMB,attr._x,attr._y,(m+1)*sliceMB);
+			chuncks.push_back(chunck);
+			pack_num_chucks.push_back(pack_num[dyn]);
+		}
+
+		while (sum < sliceMB)	{
+			sum = sum + sliceNums[endFactor];
+			endFactor++;
+		}
+
+		for (int m = 0; m < multiband; m++) {
+			for (int iter = startFactor; iter < endFactor; iter++)	{
+				sliceNumsChunks.push_back(sliceNums[iter]);
+			}
+		}
+		startFactor = endFactor;
+		sum = 0;
+	}
+
+	// splitting each multiband subgroup
+	flexibleSplitImage(chuncks, chunksAll, pack_num_chucks, sliceNumsChunks, order, step, rewinder);
+
+	counter4 = 0;
+	counter5 = 0;
+	stepFactor = 0;
+	// new dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		irtkRealImage multibanded(attr);
+		multiband = multiband_vector[dyn];
+		sliceMB = attr._z/multiband;
+
+		// stepping factor in vector
+		while (sum < sliceMB)	{
+			sum = sum + sliceNums[counter5 + stepFactor];
+			stepFactor++;
+		}
+
+		// getting data from this dynamic
+		for (int iter = 0; iter < multiband*stepFactor; iter++) {
+			chuncks_separated.push_back(chunksAll[iter+counter4]);
+		}
+		counter4 = counter4 + multiband*stepFactor;
+
+		// reordering chuncks_separated
+		counter1 = 0;
+		counter2 = 0;
+		counter3 = 0;
+		while (counter1 < chuncks_separated.size()) {
+
+			chuncks_separated_reordered.push_back(chuncks_separated[counter2]);
+
+			counter2 = counter2 + stepFactor;
+			if (counter2 > (chuncks_separated.size() - 1))	{
+				counter3++;
+				counter2 = counter3;
+			}
+			counter1++;
+		}
+
+		// riassembling multiband packs
+		counter1 = 0;
+		counter2 = 0;
+		while (counter1 < chuncks_separated_reordered.size())	 {
+			for (int m = 0; m < multiband; m++)	{
+				toAdd = chuncks_separated_reordered[counter1];
+				for (int k = 0; k < toAdd.GetZ(); k++)	{
+
+					for(int j=0; j<toAdd.GetY();j++)
+						for(int i=0; i<toAdd.GetX();i++)
+							multibanded.Put(i,j,counter2,toAdd(i,j,k));
+
+					counter2++;
+
+				}
+				counter1++;
+			}
+			sliceStacks.push_back(multibanded);
+			// clean multibanded for next iteration
+			for(int k=0; k<multibanded.GetZ();k++)
+				for(int j=0; j<multibanded.GetY();j++)
+					for(int i=0; i<multibanded.GetX();i++)
+						multibanded.Put(i,j,k,0);
+			counter2 = 0;
+		}
+		chuncks_separated.clear();
+		chuncks_separated_reordered.clear();
+		sum = 0;
+		counter5 = counter5 + stepFactor;
+		stepFactor = 0;
+	}
+}
+
+void irtkReconstruction::splitPackages(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> order, int step, int rewinder)
+{
+	irtkRealImage image;
+	irtkImageAttributes attr;
+	int pkg_z, internalIterations;
+
+	// location acquisition order
+	vector<int> z_internal_slice_order;
+
+	// counters
+	int counter1 = 0;
+	int counter2 = 0;
+	int counter3 = 0;
+
+	// calculate slice order
+	GetSliceAcquisitionOrder(stacks,pack_num,order,step,rewinder);
+
+	// dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		// current stack
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		pkg_z  = attr._z/pack_num[dyn];
+
+		// slice loop
+		for (int sl = 0; sl < attr._z; sl++) {
+			z_internal_slice_order.push_back(_z_slice_order[counter1 + sl]);
+		}
+
+		// package loop
+		for(int p = 0; p < pack_num[dyn]; p++)
+		{
+			// slice excess for each package
+			if((attr._z - counter2) > pkg_z*pack_num[dyn]) {
+				internalIterations = pkg_z + 1;
+				counter2++;
+			}
+			else{
+				internalIterations = pkg_z;
+			}
+
+			// copying
+			irtkRealImage stack(attr);
+			for(int sl = counter3; sl < internalIterations + counter3; sl++) {
+				for(int j=0; j<stack.GetY();j++)
+					for(int i=0; i<stack.GetX();i++)
+					{
+						stack.Put(i,j,z_internal_slice_order[sl],image(i,j, z_internal_slice_order[sl]));
+					}
+
+			}
+			// pushing package
+			packageStacks.push_back(stack);
+			// updating varialbles for next package
+			counter3 = counter3 + internalIterations;
+		}
+		// updating varialbles for next dynamic
+		z_internal_slice_order.clear();
+		counter1 = counter1 + attr._z;
+		counter2 = 0;
+		counter3 = 0;
+	}
+}
+
+void irtkReconstruction::splitPackageswithMB(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<irtkRealImage>& packageStacks, vector<int> multiband_vector, vector<int> order, int step, int rewinder)
+{
+	// initializing variables
+	irtkRealImage chunck;
+	vector<irtkRealImage> chuncks, chuncks_separated, chuncks_separated_reordered, chunksAll;
+	vector<int> pack_numAll;
+	irtkRealImage image;
+	irtkRealImage multibanded, toAdd;
+	irtkImageAttributes attr;
+	int sliceMB;
+	int stepFactor;
+	int counter1, counter2, counter3, counter4;
+	int multiband;
+	
+	// dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		irtkRealImage multibanded(attr);
+		multiband = multiband_vector[dyn];
+		sliceMB = attr._z/multiband;
+
+		for (int m = 0; m < multiband; m++) {
+			chunck  = image.GetRegion(0,0,m*sliceMB,attr._x,attr._y,(m+1)*sliceMB);
+			chuncks.push_back(chunck);
+			pack_numAll.push_back(pack_num[dyn]);
+		}
+	}
+
+	// split package
+	splitPackages(chuncks, pack_numAll, chunksAll, order, step, rewinder);
+
+	counter4 = 0;
+	// new dynamic loop
+	for (int dyn = 0; dyn < stacks.size(); dyn++) {
+
+		image  = stacks[dyn];
+		attr   = image.GetImageAttributes();
+		irtkRealImage multibanded(attr);
+		multiband = multiband_vector[dyn];
+		sliceMB = attr._z/multiband;
+
+		// getting data from this dynamic
+		stepFactor = pack_num[dyn];
+		for (int iter = 0; iter < multiband*stepFactor; iter++) {
+			chuncks_separated.push_back(chunksAll[iter+counter4]);
+		}
+		counter4 = counter4 + multiband*stepFactor;
+
+		// reordering chuncks_separated
+		counter1 = 0;
+		counter2 = 0;
+		counter3 = 0;
+		while (counter1 < chuncks_separated.size()) {
+
+			chuncks_separated_reordered.push_back(chuncks_separated[counter2]);
+
+			counter2 = counter2 + stepFactor;
+			if (counter2 > (chuncks_separated.size() - 1))	{
+				counter3++;
+				counter2 = counter3;
+			}
+			counter1++;
+		}
+
+		// riassembling multiband slices
+		counter1 = 0;
+		counter2 = 0;
+		while (counter1 < chuncks_separated_reordered.size())	 {
+			for (int m = 0; m < multiband; m++)	{
+				toAdd = chuncks_separated_reordered[counter1];
+				for (int k = 0; k < toAdd.GetZ(); k++)	{
+
+					for(int j=0; j<toAdd.GetY();j++)
+						for(int i=0; i<toAdd.GetX();i++)
+							multibanded.Put(i,j,counter2,toAdd(i,j,k));
+
+					counter2++;
+				}
+				counter1++;
+			}
+			packageStacks.push_back(multibanded);
+			// clean multibanded
+			for(int k=0; k<multibanded.GetZ();k++)
+				for(int j=0; j<multibanded.GetY();j++)
+					for(int i=0; i<multibanded.GetX();i++)
+						multibanded.Put(i,j,k,0);
+			counter2 = 0;
+		}
+		chuncks_separated.clear();
+		chuncks_separated_reordered.clear();
+	}
+}
+
+void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband_vector, vector<int> order, int step, int rewinder, int iter)
+{
+	// initializing variable
+    irtkImageRigidRegistrationWithPadding rigidregistration;
+    irtkGreyImage t,s;
+    irtkRealImage target, firstPackage;
+    vector<irtkRealImage> packages;
+    irtkImageAttributes attr;
+    irtkLinearInterpolateImageFunction interpolator;
+	vector<int> t_internal_slice_order;
+	vector<irtkRigidTransformation> internal_transformations;
+    int multiband;
+
+	splitPackageswithMB(stacks, pack_num, packages, multiband_vector, order, step, rewinder);
+
+    // other variables
+    int counter1 = 0;
+    int counter2 = 0;
+    int startIterations = 0;
+    int endIterations   = 0;
+    int extra = 0;
+    int iterations;
+
+    char buffer[256];
+
+    // copying transformations from previous iterations
+	if (_previous_transformations.size() > 0)
+		_previous_transformations.clear();
+	for (int i = 0; i < _transformations.size(); i++) 
+		_previous_transformations.push_back(_transformations[i]);
+    // dynamic loop
+    for (int i = 0; i < stacks.size(); i++) {
+
+    	 firstPackage = packages[counter1];
+    	 multiband = multiband_vector[i];
+    	 extra = (firstPackage.GetZ()/multiband)%(pack_num[i]);
+
+    	 // slice loop
+ 		 for (int sl = 0; sl < firstPackage.GetZ(); sl++) {
+ 		 	t_internal_slice_order.push_back(_t_slice_order[counter2 + sl]);
+ 		 	internal_transformations.push_back(_transformations[counter2 + sl]);
+ 		 }
+
+ 		 // package look
+    	 for (int j = 0; j < pack_num[i]; j++) {
+
+    		 // performing registration
+			 target = packages[counter1];
+			 t = target;
+			 s = _reconstructed;
+			 
+			 if (_debug) {
+				 sprintf(buffer,"target%i-%i-%i.nii.gz",iter,i,j);
+				 t.Write(buffer);
+				 sprintf(buffer,"source%i-%i-%i.nii.gz",iter,i,j);
+				 s.Write(buffer);
+			 }
+
+			 irtkRigidTransformation offset;
+			 ResetOrigin(t,offset);
+			 irtkMatrix mo = offset.GetMatrix();
+			 irtkMatrix m = internal_transformations[j].GetMatrix();
+			 m=m*mo;
+			 internal_transformations[j].PutMatrix(m);
+
+			 rigidregistration.SetInput(&t, &s);
+			 rigidregistration.SetOutput(&internal_transformations[j]);
+			 rigidregistration.GuessParameterPackageToVolume();
+			 rigidregistration.SetTargetPadding(0);
+
+			 if (_debug) {
+				 rigidregistration.Write("par-packages.rreg");
+			 }
+			 rigidregistration.Run();
+
+			 mo.Invert();
+			 m = internal_transformations[j].GetMatrix();
+			 m=m*mo;
+			 internal_transformations[j].PutMatrix(m);
+
+			 if (_debug) {
+				 sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
+				 internal_transformations[j].irtkTransformation::Write(buffer); 
+			 }
+
+			 // saving transformations
+			 iterations = (firstPackage.GetZ()/multiband)/(pack_num[i]);
+			 if (extra > 0) {
+				 iterations++;
+				 extra--;
+			 }
+			 endIterations = endIterations + iterations;
+
+			 for (int k = startIterations; k < endIterations; k++)	 {
+				 for (int l = 0; l < t_internal_slice_order.size(); l++) {
+					 if (k == t_internal_slice_order[l]) {
+						 _transformations[counter2+l].PutTranslationX(internal_transformations[j].GetTranslationX());
+						 _transformations[counter2+l].PutTranslationY(internal_transformations[j].GetTranslationY());
+						 _transformations[counter2+l].PutTranslationZ(internal_transformations[j].GetTranslationZ());
+						 _transformations[counter2+l].PutRotationX(internal_transformations[j].GetRotationX());
+						 _transformations[counter2+l].PutRotationY(internal_transformations[j].GetRotationY());
+						 _transformations[counter2+l].PutRotationZ(internal_transformations[j].GetRotationZ());
+						 _transformations[counter2+l].UpdateMatrix();
+					 }
+				 }
+			 }
+			 startIterations = endIterations;
+    		 counter1++;
+    	 }
+    	 // resetting variables for next dynamic
+    	 startIterations = 0;
+    	 endIterations = 0;
+		 t_internal_slice_order.clear();
+		 internal_transformations.clear();
+		 counter2 = counter2 + firstPackage.GetZ();
+    }
+    // save transformations and clear
+    SaveTransformations();
+    _z_slice_order.clear();
+    _t_slice_order.clear();
+}
+
+void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, vector<int> order, int step, int rewinder, int iter) {
+
+	// initializing variable
+	irtkImageRigidRegistrationWithPadding rigidregistration;
+	irtkGreyImage t,s;
+	irtkRealImage target, firstChunk;
+	vector<irtkRealImage> sliceStacks;
+	irtkImageAttributes attr;
+	irtkLinearInterpolateImageFunction interpolator;
+	vector<int> t_internal_slice_order;
+	vector<irtkRigidTransformation> internal_transformations;
+	int multiband;
+
+	flexibleSplitImagewithMB(stacks,sliceStacks,pack_num,sliceNums,multiband_vector,order,step,rewinder);
+
+	// other variables
+	int counter1 = 0;
+	int counter2 = 0;
+	int counter3 = 0;
+	int startIterations = 0;
+	int endIterations   = 0;
+	int iterations;
+	int fakePkg = 0;
+	int sum = 0;
+	int sliceMB;
+	int temp = 0;
+	
+	// copying transformations from previous iterations
+	if (_previous_transformations.size() > 0)
+		_previous_transformations.clear();
+	for (int i = 0; i < _transformations.size(); i++) 
+		_previous_transformations.push_back(_transformations[i]);
+	char buffer[256];	
+	// dynamic loop
+	for (int i = 0; i < stacks.size(); i++) {
+
+		firstChunk = sliceStacks[counter1];
+		multiband = multiband_vector[i];
+		sliceMB = firstChunk.GetZ()/multiband;
+
+		while (sum < sliceMB)	{
+			sum = sum + sliceNums[counter3 + fakePkg];
+			fakePkg++;
+		}
+		
+		 // slice loop
+		 for (int sl = 0; sl < firstChunk.GetZ(); sl++) {
+			t_internal_slice_order.push_back(_t_slice_order[counter2 + sl]);
+			internal_transformations.push_back(_transformations[counter2 + sl]);
+		 }
+
+		 // fake package loop
+		 for (int j = 0; j < fakePkg; j++) {
+			 
+			// performing registration
+			target = sliceStacks[counter1];
+			t = target;
+			s = _reconstructed;
+
+			if (_debug) {
+				sprintf(buffer,"target%i-%i-%i.nii.gz",iter,i,j);
+				t.Write(buffer);
+				sprintf(buffer,"source%i-%i-%i.nii.gz",iter,i,j);
+				s.Write(buffer);
+			}
+
+			irtkRigidTransformation offset;
+			ResetOrigin(t,offset);
+			irtkMatrix mo = offset.GetMatrix();
+			irtkMatrix m = internal_transformations[j].GetMatrix();
+			m=m*mo;
+			internal_transformations[j].PutMatrix(m);
+
+			rigidregistration.SetInput(&t, &s);
+			rigidregistration.SetOutput(&internal_transformations[j]);
+			rigidregistration.GuessParameterPackageToVolume();
+			rigidregistration.SetTargetPadding(0);
+
+			if (_debug) {
+			    rigidregistration.Write("par-packages.rreg");
+			}
+			rigidregistration.Run();
+			
+			mo.Invert();
+			m = internal_transformations[j].GetMatrix();
+			m=m*mo;
+			internal_transformations[j].PutMatrix(m);
+
+			if (_debug) {
+				sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
+				internal_transformations[j].irtkTransformation::Write(buffer);
+			}
+
+			// saving transformations
+			iterations = sliceNums[counter1];
+			endIterations = endIterations + iterations;
+
+			for (int k = startIterations; k < endIterations; k++)	 {
+			  for (int l = 0; l < t_internal_slice_order.size(); l++) {
+
+				  if (k == t_internal_slice_order[l]) {
+					 _transformations[counter2+l].PutTranslationX(internal_transformations[j].GetTranslationX());
+					 _transformations[counter2+l].PutTranslationY(internal_transformations[j].GetTranslationY());
+					 _transformations[counter2+l].PutTranslationZ(internal_transformations[j].GetTranslationZ());
+					 _transformations[counter2+l].PutRotationX(internal_transformations[j].GetRotationX());
+					 _transformations[counter2+l].PutRotationY(internal_transformations[j].GetRotationY());
+					 _transformations[counter2+l].PutRotationZ(internal_transformations[j].GetRotationZ());
+					 _transformations[counter2+l].UpdateMatrix();
+				  }
+			  }
+			}
+			startIterations = endIterations;
+			counter1++;
+	  }
+	  // resetting variables for next dynamic
+	  startIterations = 0;
+	  endIterations = 0;
+	  t_internal_slice_order.clear();
+	  internal_transformations.clear();
+	  counter2 = counter2 + firstChunk.GetZ();
+	  counter3 = counter3 + fakePkg;
+	  fakePkg = 0;
+	  sum = 0;
+	}
+	// save transformations and clear
+	SaveTransformations();
+	_z_slice_order.clear();
+	_t_slice_order.clear();
+}
+
+int irtkReconstruction::giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband_vector)
+{
+	// rigid step (which is always performed before package registration)
+	int iterations = 1;
+	int slices = (stacks[0].GetZ()/multiband_vector[0])/pack_num[0];
+	int next;
+
+	// Getting the package with least slices
+	for (int p = 1; p < stacks.size(); p++) {
+		next = (stacks[p].GetZ()/multiband_vector[p])/pack_num[p];
+		if (next < slices)
+			slices = next;
+	}
+
+	// calculate intermediate steps
+	while (slices != 1) {
+		iterations++;
+		slices = slices/2;
+	}
+	iterations++;
+	return iterations;
+}
+
+vector<int> irtkReconstruction::giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband_vector, int iterations, bool last) {
+
+	vector<int> new_vector;
+	if (!last) {
+		// initializing variables
+		iterations++;
+		vector<int> old_vector;
+		int counter = 0;
+		int multiband;
+		
+		// start calculating vector
+		for (int iter = 0; iter < iterations; iter++) {
+
+			for (int dyn = 0; dyn < stacks.size(); dyn++)	{
+
+				multiband = multiband_vector[dyn];
+				// rigid registration loop
+				if (iter == 0) {
+					new_vector.push_back((stacks[dyn].GetZ())/multiband);
+				}
+				// package registration loop
+				else if (iter == 1) {
+
+					int extra = (old_vector[dyn])%(pack_num[dyn]);
+					for (int pkg = 0; pkg < pack_num[dyn]; pkg++)	{
+						int toPut = old_vector[dyn]/pack_num[dyn];
+						if (extra > 0)	{
+							toPut++;
+							extra--;
+						}
+						new_vector.push_back(toPut);
+					}
+				}
+				// intermediate steps
+				else {
+
+					int sum = 0;
+					int internalIter = 0;
+					while (sum < ((stacks[dyn].GetZ())/multiband))	{
+						sum = sum + old_vector[counter + internalIter];
+						internalIter++;
+					}
+
+					for (int iIter = 0; iIter < internalIter; iIter++) {
+						int toPut1 = old_vector[counter + iIter] / 2 + old_vector[counter + iIter] % 2;
+						int toPut2 = old_vector[counter + iIter] / 2;
+						new_vector.push_back(toPut1);
+						new_vector.push_back(toPut2);
+					}
+					counter = counter + internalIter;
+				}
+			}
+			old_vector = new_vector;
+			counter = 0;
+			if (iter != iterations-1)	{
+				new_vector.clear();
+			}
+		}	
+	}
+	else {
+		int totSlices = 0;
+		for (int dyn = 0; dyn < stacks.size(); dyn++)
+			totSlices += stacks[dyn].GetZ();
+		for (int iter = 0; iter < totSlices; iter++)
+			new_vector.push_back(1);
+	}
+	return new_vector;
+}
 
 /* Package specific functions */
 void irtkReconstruction::SplitImage(irtkRealImage image, int packages, vector<irtkRealImage>& stacks)
 {
-    irtkImageAttributes attr = image.GetImageAttributes();
-  
-    //slices in package
-    int pkg_z = attr._z/packages;
-    double pkg_dz = attr._dz*packages;
-    //cout<<"packages: "<<packages<<"; slices: "<<attr._z<<"; slices in package: "<<pkg_z<<endl;
-    //cout<<"slice thickness "<<attr._dz<<"; slickess thickness in package: "<<pkg_dz<<endl;
-  
-    char buffer[256];
-    int i,j,k,l;
-    double x,y,z,sx,sy,sz,ox,oy,oz;
-    for(l=0;l<packages;l++) {
-        attr = image.GetImageAttributes();
-        if((pkg_z*packages+l)<attr._z)
-            attr._z = pkg_z+1;
-        else
-            attr._z = pkg_z;
-        attr._dz = pkg_dz;
-    
-        cout<<"split image "<<l<<" has "<<attr._z<<" slices."<<endl;
-  
-        //fill values in each stack
-        irtkRealImage stack(attr);
-        stack.GetOrigin(ox,oy,oz);
+	irtkImageAttributes attr = image.GetImageAttributes();
 
-        cout<<"Stack "<<l<<":"<<endl;
-        for(k=0; k<stack.GetZ();k++)
-            for(j=0; j<stack.GetY();j++)
-                for(i=0; i<stack.GetX();i++)
-                    stack.Put(i,j,k,image(i,j,k*packages+l));
-    
-        //adjust origin
-     
-        //original image coordinates
-        x=0;y=0;z=l;
-        image.ImageToWorld(x,y,z);
-        cout<<"image: "<<x<<" "<<y<<" "<<z<<endl;
-        //stack coordinates
-        sx=0;sy=0;sz=0;
-        stack.PutOrigin(ox,oy,oz); //adjust to original value
-        stack.ImageToWorld(sx,sy,sz);
-        cout<<"stack: "<<sx<<" "<<sy<<" "<<sz<<endl;
-        //adjust origin
-        cout<<"adjustment needed: "<<x-sx<<" "<<y-sy<<" "<<z-sz<<endl;
-        stack.PutOrigin(ox + (x-sx), oy + (y-sy), oz + (z-sz));
-        sx=0;sy=0;sz=0;
-        stack.ImageToWorld(sx,sy,sz);
-        cout<<"adjusted: "<<sx<<" "<<sy<<" "<<sz<<endl;
-    
-        //sprintf(buffer,"stack%i.nii.gz",l);
-        //stack.Write(buffer);
-        stacks.push_back(stack);
-    }
-    cout<<"done."<<endl;
+	//slices in package
+	int pkg_z = attr._z/packages;
+	double pkg_dz = attr._dz*packages;
+	//cout<<"packages: "<<packages<<"; slices: "<<attr._z<<"; slices in package: "<<pkg_z<<endl;
+	//cout<<"slice thickness "<<attr._dz<<"; slickess thickness in package: "<<pkg_dz<<endl;
+
+	char buffer[256];
+	int i,j,k,l;
+	double x,y,z,sx,sy,sz,ox,oy,oz;
+	for(l=0;l<packages;l++) {
+		attr = image.GetImageAttributes();
+		if((pkg_z*packages+l)<attr._z)
+			attr._z = pkg_z+1;
+		else
+			attr._z = pkg_z;
+		attr._dz = pkg_dz;
+
+		cout<<"split image "<<l<<" has "<<attr._z<<" slices."<<endl;
+
+		//fill values in each stack
+		irtkRealImage stack(attr);
+		stack.GetOrigin(ox,oy,oz);
+
+		cout<<"Stack "<<l<<":"<<endl;
+		for(k=0; k<stack.GetZ();k++)
+			for(j=0; j<stack.GetY();j++)
+				for(i=0; i<stack.GetX();i++)
+					stack.Put(i,j,k,image(i,j,k*packages+l));
+
+		//adjust origin
+
+		//original image coordinates
+		x=0;y=0;z=l;
+		image.ImageToWorld(x,y,z);
+		cout<<"image: "<<x<<" "<<y<<" "<<z<<endl;
+		//stack coordinates
+		sx=0;sy=0;sz=0;
+		stack.PutOrigin(ox,oy,oz); //adjust to original value
+		stack.ImageToWorld(sx,sy,sz);
+		cout<<"stack: "<<sx<<" "<<sy<<" "<<sz<<endl;
+		//adjust origin
+		cout<<"adjustment needed: "<<x-sx<<" "<<y-sy<<" "<<z-sz<<endl;
+		stack.PutOrigin(ox + (x-sx), oy + (y-sy), oz + (z-sz));
+		sx=0;sy=0;sz=0;
+		stack.ImageToWorld(sx,sy,sz);
+		cout<<"adjusted: "<<sx<<" "<<sy<<" "<<sz<<endl;
+
+		//sprintf(buffer,"stack%i.nii.gz",l);
+		//stack.Write(buffer);
+		stacks.push_back(stack);
+	}
+	cout<<"done."<<endl;
 
 }
 
 void irtkReconstruction::SplitImageEvenOdd(irtkRealImage image, int packages, vector<irtkRealImage>& stacks)
 {
-    vector<irtkRealImage> packs;
-    vector<irtkRealImage> packs2;
-    cout<<"Split Image Even Odd: "<<packages<<" packages."<<endl;
+	vector<irtkRealImage> packs;
+	vector<irtkRealImage> packs2;
+	cout<<"Split Image Even Odd: "<<packages<<" packages."<<endl;
 
-    stacks.clear();
-    SplitImage(image,packages,packs);
-    for (int i=0;i<packs.size();i++) {
-        cout<<"Package "<<i<<": "<<endl;
-        packs2.clear();
-        SplitImage(packs[i],2,packs2);
-        stacks.push_back(packs2[0]);
-        stacks.push_back(packs2[1]);
-    }
-   
-    cout<<"done."<<endl;
-}
+	stacks.clear();
+	SplitImage(image,packages,packs);
+	for (int i=0;i<packs.size();i++) {
+		cout<<"Package "<<i<<": "<<endl;
+		packs2.clear();
+		SplitImage(packs[i],2,packs2);
+		stacks.push_back(packs2[0]);
+		stacks.push_back(packs2[1]);
+	}
+
+	cout<<"done."<<endl;
+	}
 
 void irtkReconstruction::SplitImageEvenOddHalf(irtkRealImage image, int packages, vector<irtkRealImage>& stacks, int iter)
 {
-    vector<irtkRealImage> packs;
-    vector<irtkRealImage> packs2;
-   
-    cout<<"Split Image Even Odd Half "<<iter<<endl;
-    stacks.clear();
-    if (iter>1)
-        SplitImageEvenOddHalf(image,packages,packs,iter-1);
-    else
-        SplitImageEvenOdd(image,packages,packs);
-    for (int i=0;i<packs.size();i++) {
-        packs2.clear();
-        HalfImage(packs[i],packs2);
-        for (int j=0; j<packs2.size(); j++)
-            stacks.push_back(packs2[j]);
-    }     
+	vector<irtkRealImage> packs;
+	vector<irtkRealImage> packs2;
+
+	cout<<"Split Image Even Odd Half "<<iter<<endl;
+	stacks.clear();
+	if (iter>1)
+		SplitImageEvenOddHalf(image,packages,packs,iter-1);
+	else
+		SplitImageEvenOdd(image,packages,packs);
+	for (int i=0;i<packs.size();i++) {
+		packs2.clear();
+		HalfImage(packs[i],packs2);
+		for (int j=0; j<packs2.size(); j++)
+			stacks.push_back(packs2[j]);
+	}
 }
 
 
 void irtkReconstruction::HalfImage(irtkRealImage image, vector<irtkRealImage>& stacks)
 {
-    irtkRealImage tmp;
-    irtkImageAttributes attr = image.GetImageAttributes();
-    stacks.clear();
-  
-    //We would not like single slices - that is reserved for slice-to-volume
-    if(attr._z>=4) {
-        tmp = image.GetRegion(0,0,0,attr._x,attr._y,attr._z/2);
-        stacks.push_back(tmp);
-        tmp = image.GetRegion(0,0,attr._z/2,attr._x,attr._y,attr._z);
-        stacks.push_back(tmp);
-    }
-    else
-        stacks.push_back(image);
-}
+	irtkRealImage tmp;
+	irtkImageAttributes attr = image.GetImageAttributes();
+	stacks.clear();
 
+	//We would not like single slices - that is reserved for slice-to-volume
+	if(attr._z>=4) {
+		tmp = image.GetRegion(0,0,0,attr._x,attr._y,attr._z/2);
+		stacks.push_back(tmp);
+		tmp = image.GetRegion(0,0,attr._z/2,attr._x,attr._y,attr._z);
+		stacks.push_back(tmp);
+	}
+	else
+		stacks.push_back(image);
+}
 
 void irtkReconstruction::PackageToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, int iter, bool evenodd, bool half, int half_iter)
 {
-    irtkImageRigidRegistrationWithPadding rigidregistration;
-    irtkGreyImage t,s;
-    irtkRealImage target;
-    vector<irtkRealImage> packages;
-    char buffer[256];
-    irtkImageAttributes attr, attr2;
-    irtkLinearInterpolateImageFunction interpolator;
-  
-    int firstSlice = 0;
-    cout<<"Package to volume: "<<endl;
-    for (unsigned int i = 0; i < stacks.size(); i++) {
-        cout<<"Stack "<<i<<": First slice index is "<<firstSlice<<endl;
 
-        packages.clear();
-        if (evenodd) {
-            if(half)
-                SplitImageEvenOddHalf(stacks[i],pack_num[i],packages,half_iter);
-            else
-                SplitImageEvenOdd(stacks[i],pack_num[i],packages);
-        }
-        else
-            SplitImage(stacks[i],pack_num[i],packages);
-    
-        for (unsigned int j = 0; j < packages.size(); j++) {
-            cout<<"Package "<<j<<" of stack "<<i<<endl;
-            if (_debug) {
-                sprintf(buffer,"package%i-%i-%i.nii.gz",iter,i,j);
-                packages[j].Write(buffer);
-            }
-      
-            attr=_reconstructed.GetImageAttributes();
-            attr2=packages[j].GetImageAttributes();
-	    //packages are not masked at present
-            //irtkResamplingWithPadding<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz,-1);
-	    irtkResampling<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz);         
+	irtkImageRigidRegistrationWithPadding rigidregistration;
+	irtkGreyImage t,s;
+	irtkRealImage target;
+	vector<irtkRealImage> packages;
+	char buffer[256];
+	irtkImageAttributes attr, attr2;
+	irtkLinearInterpolateImageFunction interpolator;
 
-            target=packages[j];
+	int firstSlice = 0;
+	cout<<"Package to volume: "<<endl;
+	for (unsigned int i = 0; i < stacks.size(); i++) {
+	cout<<"Stack "<<i<<": First slice index is "<<firstSlice<<endl;
 
-	    resampling.SetInput(&packages[j]);
-            resampling.SetOutput(&target);
-	    resampling.SetInterpolator(&interpolator);
-            resampling.Run();
+	packages.clear();
+	if (evenodd) {
+	if(half)
+		SplitImageEvenOddHalf(stacks[i],pack_num[i],packages,half_iter);
+	else
+		SplitImageEvenOdd(stacks[i],pack_num[i],packages);
+	}
+	else
+	SplitImage(stacks[i],pack_num[i],packages);
 
-	    t=target;
-            s=_reconstructed;
-      
-            //find existing transformation
-            double x,y,z;
-            x=0;y=0;z=0;
-            packages[j].ImageToWorld(x,y,z);
-            stacks[i].WorldToImage(x,y,z);
-      
-            int firstSliceIndex = round(z)+firstSlice;
-            cout<<"First slice index for package "<<j<<" of stack "<<i<<" is "<<firstSliceIndex<<endl;
-            //transformation = _transformations[sliceIndex];
+	for (unsigned int j = 0; j < packages.size(); j++) {
+	cout<<"Package "<<j<<" of stack "<<i<<endl;
+	if (_debug) {
+		sprintf(buffer,"package%i-%i-%i.nii.gz",iter,i,j);
+		packages[j].Write(buffer);
+	}
 
-	    //put origin in target to zero
-            irtkRigidTransformation offset;
-            ResetOrigin(t,offset);
-            irtkMatrix mo = offset.GetMatrix();
-            irtkMatrix m = _transformations[firstSliceIndex].GetMatrix();
-            m=m*mo;
-            _transformations[firstSliceIndex].PutMatrix(m);
+	attr2=packages[j].GetImageAttributes();
+	//packages are not masked at present
+	irtkResampling<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz);
 
-            rigidregistration.SetInput(&t, &s);
-            rigidregistration.SetOutput(&_transformations[firstSliceIndex]);
-            rigidregistration.GuessParameterSliceToVolume();
-            if(_debug)
-                rigidregistration.Write("par-packages.rreg");
-            rigidregistration.Run();
-      
-            //undo the offset
-            mo.Invert();
-            m = _transformations[firstSliceIndex].GetMatrix();
-            m=m*mo;
-            _transformations[firstSliceIndex].PutMatrix(m);
-      
-            if (_debug) {
-                sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
-                _transformations[firstSliceIndex].irtkTransformation::Write(buffer);
-            }
+	target=packages[j];
 
-      
-            //set the transformation to all slices of the package
-            cout<<"Slices of the package "<<j<<" of the stack "<<i<<" are: ";
-            for (int k = 0; k < packages[j].GetZ(); k++) {
-                x=0;y=0;z=k;
-                packages[j].ImageToWorld(x,y,z);
-                stacks[i].WorldToImage(x,y,z);
-                int sliceIndex = round(z)+firstSlice;
-                cout<<sliceIndex<<" "<<endl;
-    
-                if(sliceIndex>=_transformations.size()) {
-                    cerr<<"irtkRecnstruction::PackageToVolume: sliceIndex out of range."<<endl;
-                    cerr<<sliceIndex<<" "<<_transformations.size()<<endl;
-                    exit(1);
-                }
-    
-                if(sliceIndex!=firstSliceIndex) {
-                    _transformations[sliceIndex].PutTranslationX(_transformations[firstSliceIndex].GetTranslationX());
-                    _transformations[sliceIndex].PutTranslationY(_transformations[firstSliceIndex].GetTranslationY());
-                    _transformations[sliceIndex].PutTranslationZ(_transformations[firstSliceIndex].GetTranslationZ());
-                    _transformations[sliceIndex].PutRotationX(_transformations[firstSliceIndex].GetRotationX());
-                    _transformations[sliceIndex].PutRotationY(_transformations[firstSliceIndex].GetRotationY());
-                    _transformations[sliceIndex].PutRotationZ(_transformations[firstSliceIndex].GetRotationZ());
-                    _transformations[sliceIndex].UpdateMatrix();
-                }
-            }
-      
-      
-        }
-        cout<<"End of stack "<<i<<endl<<endl;
-    
-        firstSlice += stacks[i].GetZ();
-    }
+	resampling.SetInput(&packages[j]);
+	resampling.SetOutput(&target);
+	resampling.SetInterpolator(&interpolator);
+	resampling.Run();
+
+	t=target;
+	s=_reconstructed;
+
+	//find existing transformation
+	double x,y,z;
+	x=0;y=0;z=0;
+	packages[j].ImageToWorld(x,y,z);
+	stacks[i].WorldToImage(x,y,z);
+
+	int firstSliceIndex = round(z)+firstSlice;
+	cout<<"First slice index for package "<<j<<" of stack "<<i<<" is "<<firstSliceIndex<<endl;
+	//transformation = _transformations[sliceIndex];
+
+	//put origin in target to zero
+	irtkRigidTransformation offset;
+	ResetOrigin(t,offset);
+	irtkMatrix mo = offset.GetMatrix();
+	irtkMatrix m = _transformations[firstSliceIndex].GetMatrix();
+	m=m*mo;
+	_transformations[firstSliceIndex].PutMatrix(m);
+
+	rigidregistration.SetInput(&t, &s);
+	rigidregistration.SetOutput(&_transformations[firstSliceIndex]);
+	rigidregistration.GuessParameterPackageToVolume();
+	if(_debug)
+		rigidregistration.Write("par-packages.rreg");
+	rigidregistration.Run();
+
+	//undo the offset
+	mo.Invert();
+	m = _transformations[firstSliceIndex].GetMatrix();
+	m=m*mo;
+	_transformations[firstSliceIndex].PutMatrix(m);
+
+	if (_debug) {
+		sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
+		_transformations[firstSliceIndex].irtkTransformation::Write(buffer);
+	}
+
+	//set the transformation to all slices of the package
+	cout<<"Slices of the package "<<j<<" of the stack "<<i<<" are: ";
+	for (int k = 0; k < packages[j].GetZ(); k++) {
+		x=0;y=0;z=k;
+		packages[j].ImageToWorld(x,y,z);
+		stacks[i].WorldToImage(x,y,z);
+		int sliceIndex = round(z)+firstSlice;
+		cout<<sliceIndex<<" "<<endl;
+
+		if(sliceIndex>=_transformations.size()) {
+			cerr<<"irtkRecnstruction::PackageToVolume: sliceIndex out of range."<<endl;
+			cerr<<sliceIndex<<" "<<_transformations.size()<<endl;
+			exit(1);
+		}
+		if(sliceIndex!=firstSliceIndex) {
+					_transformations[sliceIndex].PutTranslationX(_transformations[firstSliceIndex].GetTranslationX());
+					_transformations[sliceIndex].PutTranslationY(_transformations[firstSliceIndex].GetTranslationY());
+					_transformations[sliceIndex].PutTranslationZ(_transformations[firstSliceIndex].GetTranslationZ());
+					_transformations[sliceIndex].PutRotationX(_transformations[firstSliceIndex].GetRotationX());
+					_transformations[sliceIndex].PutRotationY(_transformations[firstSliceIndex].GetRotationY());
+					_transformations[sliceIndex].PutRotationZ(_transformations[firstSliceIndex].GetRotationZ());
+					_transformations[sliceIndex].UpdateMatrix();
+				}
+			}
+
+
+		}
+		cout<<"End of stack "<<i<<endl<<endl;
+
+		firstSlice += stacks[i].GetZ();
+	}
 }
 
-
-void irtkReconstruction::PackageToVolumeMasking(vector<irtkRealImage>& stacks, vector<int> &pack_num, int iter, bool evenodd, bool half, int half_iter)
+double irtkReconstruction::calculateResidual(int padding)
 {
-    irtkImageRigidRegistrationWithPadding rigidregistration;
-    irtkGreyImage t,s;
-    irtkRealImage target;
-    vector<irtkRealImage> packages;
-    char buffer[256];
-    irtkImageAttributes attr, attr2;
-    irtkLinearInterpolateImageFunction interpolator;
-  
-    int firstSlice = 0;
-    cout<<"Package to volume: "<<endl;
-    for (unsigned int i = 0; i < stacks.size(); i++) {
-        cout<<"Stack "<<i<<": First slice index is "<<firstSlice<<endl;
+	double x,y,z,cx,cy,cz,px,py,pz;
+	double sum, sums = 0;
+	int num, nums = 0;
+	int k = 0;
+	double out;
 
-        packages.clear();
-        if (evenodd) {
-            if(half)
-                SplitImageEvenOddHalf(stacks[i],pack_num[i],packages,half_iter);
-            else
-                SplitImageEvenOdd(stacks[i],pack_num[i],packages);
-        }
-        else
-            SplitImage(stacks[i],pack_num[i],packages);
-    
-        for (unsigned int j = 0; j < packages.size(); j++) {
-            cout<<"Package "<<j<<" of stack "<<i<<endl;
-            if (_debug) {
-                sprintf(buffer,"package%i-%i-%i.nii.gz",iter,i,j);
-                packages[j].Write(buffer);
-            }
-      
-            attr2=packages[j].GetImageAttributes();
-	    //packages are not masked at present
-            irtkResamplingWithPadding<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz,-1);
-	    //irtkResampling<irtkRealPixel> resampling(attr._dx,attr._dx, attr2._dz);         
-
-            target=packages[j];
-
-	    resampling.SetInput(&packages[j]);
-            resampling.SetOutput(&target);
-	    resampling.SetInterpolator(&interpolator);
-            resampling.Run();
-
-	    t=target;
-            s=_reconstructed;
-      
-            //find existing transformation
-            double x,y,z;
-            x=0;y=0;z=0;
-            packages[j].ImageToWorld(x,y,z);
-            stacks[i].WorldToImage(x,y,z);
-      
-            int firstSliceIndex = round(z)+firstSlice;
-            cout<<"First slice index for package "<<j<<" of stack "<<i<<" is "<<firstSliceIndex<<endl;
-            //transformation = _transformations[sliceIndex];
-
-	    //put origin in target to zero
-            irtkRigidTransformation offset;
-            ResetOrigin(t,offset);
-            irtkMatrix mo = offset.GetMatrix();
-            irtkMatrix m = _transformations[firstSliceIndex].GetMatrix();
-            m=m*mo;
-            _transformations[firstSliceIndex].PutMatrix(m);
-
-            rigidregistration.SetInput(&t, &s);
-            rigidregistration.SetOutput(&_transformations[firstSliceIndex]);
-            rigidregistration.GuessParameterSliceToVolume();
-	    rigidregistration.SetTargetPadding(-1);
-            if(_debug)
-                rigidregistration.Write("par-packages.rreg");
-            rigidregistration.Run();
-      
-            //undo the offset
-            mo.Invert();
-            m = _transformations[firstSliceIndex].GetMatrix();
-            m=m*mo;
-            _transformations[firstSliceIndex].PutMatrix(m);
-      
-            if (_debug) {
-                sprintf(buffer,"transformation%i-%i-%i.dof",iter,i,j);
-                _transformations[firstSliceIndex].irtkTransformation::Write(buffer);
-            }
-
-      
-            //set the transformation to all slices of the package
-            cout<<"Slices of the package "<<j<<" of the stack "<<i<<" are: ";
-            for (int k = 0; k < packages[j].GetZ(); k++) {
-                x=0;y=0;z=k;
-                packages[j].ImageToWorld(x,y,z);
-                stacks[i].WorldToImage(x,y,z);
-                int sliceIndex = round(z)+firstSlice;
-                cout<<sliceIndex<<" "<<endl;
-    
-                if(sliceIndex>=_transformations.size()) {
-                    cerr<<"irtkRecnstruction::PackageToVolume: sliceIndex out of range."<<endl;
-                    cerr<<sliceIndex<<" "<<_transformations.size()<<endl;
-                    exit(1);
-                }
-    
-                if(sliceIndex!=firstSliceIndex) {
-                    _transformations[sliceIndex].PutTranslationX(_transformations[firstSliceIndex].GetTranslationX());
-                    _transformations[sliceIndex].PutTranslationY(_transformations[firstSliceIndex].GetTranslationY());
-                    _transformations[sliceIndex].PutTranslationZ(_transformations[firstSliceIndex].GetTranslationZ());
-                    _transformations[sliceIndex].PutRotationX(_transformations[firstSliceIndex].GetRotationX());
-                    _transformations[sliceIndex].PutRotationY(_transformations[firstSliceIndex].GetRotationY());
-                    _transformations[sliceIndex].PutRotationZ(_transformations[firstSliceIndex].GetRotationZ());
-                    _transformations[sliceIndex].UpdateMatrix();
-                }
-            }
-      
-      
-        }
-        cout<<"End of stack "<<i<<endl<<endl;
-    
-        firstSlice += stacks[i].GetZ();
-    }
+	for (int index = 0; index < _slices.size(); index++) {
+		for (int i = 0; i < _slices[index].GetX(); i++)
+		{
+			for (int j = 0; j < _slices[index].GetY(); j++)
+			{
+				  if (_slices[index](i,j,k) != padding)
+				  {
+					x = i;
+					y = j;
+					z = k;
+					_slices[index].ImageToWorld(x,y,z);
+					px = x; py = y; pz = z;
+					cx = x; cy = y; cz = z;
+					_previous_transformations[index].Transform(px,py,pz);
+					_transformations[index].Transform(cx,cy,cz);
+					sum += sqrt((px-cx)*(px-cx)+(py-cy)*(py-cy)+(pz-cz)*(pz-cz));
+					num += 1;
+				  }
+			}
+		}
+		sum = sum/num;
+		sums += sum;
+		nums++;
+		sum = 0;
+		num = 0;
+	}
+	out = sums/nums;
+	return out;
 }
 
 /* end Package specific functions */
@@ -4504,11 +5342,170 @@ void irtkReconstruction::PackageToVolumeMasking(vector<irtkRealImage>& stacks, v
 
 void irtkReconstruction::CropImage(irtkRealImage& image, irtkRealImage& mask)
 {
-    //Crops the image according to the mask
+	//Crops the image according to the mask
 
+	int i, j, k;
+	//ROI boundaries
+	int x1, x2, y1, y2, z1, z2;
+
+	//Original ROI
+	x1 = 0;
+	y1 = 0;
+	z1 = 0;
+	x2 = image.GetX();
+	y2 = image.GetY();
+	z2 = image.GetZ();
+
+	//upper boundary for z coordinate
+	int sum = 0;
+	for (k = image.GetZ() - 1; k >= 0; k--) {
+		sum = 0;
+		for (j = image.GetY() - 1; j >= 0; j--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	z2 = k;
+
+	//lower boundary for z coordinate
+	sum = 0;
+	for (k = 0; k <= image.GetZ() - 1; k++) {
+		sum = 0;
+		for (j = image.GetY() - 1; j >= 0; j--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	z1 = k;
+
+	//upper boundary for y coordinate
+	sum = 0;
+	for (j = image.GetY() - 1; j >= 0; j--) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	y2 = j;
+
+	//lower boundary for y coordinate
+	sum = 0;
+	for (j = 0; j <= image.GetY() - 1; j++) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	y1 = j;
+
+	//upper boundary for x coordinate
+	sum = 0;
+	for (i = image.GetX() - 1; i >= 0; i--) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (j = image.GetY() - 1; j >= 0; j--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	x2 = i;
+
+	//lower boundary for x coordinate
+	sum = 0;
+	for (i = 0; i <= image.GetX() - 1; i++) {
+		sum = 0;
+		for (k = image.GetZ() - 1; k >= 0; k--)
+			for (j = image.GetY() - 1; j >= 0; j--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	x1 = i;
+
+	if (_debug)
+		cout << "Region of interest is " << x1 << " " << y1 << " " << z1 << " " << x2 << " " << y2
+			 << " " << z2 << endl;
+
+	// if no intersection with mask, force exclude
+	if ((x2 < x1) || (y2 < y1) || (z2 < z1) ) {
+		x1 = 0;
+		y1 = 0;
+		z1 = 0;
+		x2 = 0;
+		y2 = 0;
+		z2 = 0;
+	}
+
+	//Cut region of interest
+	image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
+}
+
+// GF 190416, useful for handling different slice orders
+void irtkReconstruction::CropImageIgnoreZ(irtkRealImage& image, irtkRealImage& mask)
+
+{
+    //Crops the image according to the mask
     int i, j, k;
     //ROI boundaries
     int x1, x2, y1, y2, z1, z2;
+
+	// Filling slices out of mask with zeors
+	int sum = 0;
+	for (k = image.GetZ() - 1; k >= 0; k--) {
+		sum = 0;
+		for (j = image.GetY() - 1; j >= 0; j--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0) {
+			k = k+1;
+			break;
+		}
+	}
+	z2 = k;
+
+	//lower boundary for z coordinate
+	sum = 0;
+	for (k = 0; k <= image.GetZ() - 1; k++) {
+		sum = 0;
+		for (j = image.GetY() - 1; j >= 0; j--)
+			for (i = image.GetX() - 1; i >= 0; i--)
+				if (mask.Get(i, j, k) > 0)
+					sum++;
+		if (sum > 0)
+			break;
+	}
+	z1 = k;
+
+	// Filling upper part
+	for (k = z2; k < image.GetZ(); k++)	{
+		for (j = 0; j < image.GetY(); j++)	{
+			for (i = 0; i < image.GetX(); i++)	{
+				image.Put(i,j,k,0);
+			}
+		}
+	}
+
+	// Filling lower part
+	for (k = 0; k < z1; k++)	{
+		for (j = 0; j < image.GetY(); j++)	{
+			for (i = 0; i < image.GetX(); i++)	{
+				image.Put(i,j,k,0);
+			}
+		}
+	}
 
     //Original ROI
     x1 = 0;
@@ -4518,31 +5515,7 @@ void irtkReconstruction::CropImage(irtkRealImage& image, irtkRealImage& mask)
     y2 = image.GetY();
     z2 = image.GetZ();
 
-    //upper boundary for z coordinate
-    int sum = 0;
-    for (k = image.GetZ() - 1; k >= 0; k--) {
-        sum = 0;
-        for (j = image.GetY() - 1; j >= 0; j--)
-            for (i = image.GetX() - 1; i >= 0; i--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    z2 = k;
-
-    //lower boundary for z coordinate
-    sum = 0;
-    for (k = 0; k <= image.GetZ() - 1; k++) {
-        sum = 0;
-        for (j = image.GetY() - 1; j >= 0; j--)
-            for (i = image.GetX() - 1; i >= 0; i--)
-                if (mask.Get(i, j, k) > 0)
-                    sum++;
-        if (sum > 0)
-            break;
-    }
-    z1 = k;
+    z2 = z2-1;
 
     //upper boundary for y coordinate
     sum = 0;
@@ -4610,11 +5583,11 @@ void irtkReconstruction::CropImage(irtkRealImage& image, irtkRealImage& mask)
         y2 = 0;
         z2 = 0;
     }
-    
+
     //Cut region of interest
     image = image.GetRegion(x1, y1, z1, x2+1, y2+1, z2+1);
 }
-
+	
 void irtkReconstruction::InvertStackTransformations( vector<irtkRigidTransformation>& stack_transformations)
 {
     //for each stack

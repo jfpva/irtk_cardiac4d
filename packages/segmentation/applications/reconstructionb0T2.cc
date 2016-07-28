@@ -655,7 +655,7 @@ int main(int argc, char **argv)
   reconstruction.CreateSlicesAndTransformations(stacks,stack_transformations,thickness);
   
   //Mask all the slices
-  //reconstruction.MaskSlices();
+  reconstruction.MaskSlices();
   
    
   //Set sigma for the bias field smoothing

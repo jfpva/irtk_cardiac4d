@@ -782,6 +782,8 @@ int main(int argc, char **argv)
     
     double x,y,z,xx,yy,zz;
     irtkImageAttributes attr = original.GetImageAttributes();
+    //irtkRealImage jacobian(fieldmap);
+    //jacobian=0;
   
     for(k=0; k<fieldmap.GetZ();k++)
     for(j=0; j<fieldmap.GetY();j++)
@@ -798,6 +800,7 @@ int main(int argc, char **argv)
       //transformed
       x=i;y=j;z=k;
       fieldmap.ImageToWorld(x,y,z);
+      //jacobian(i,j,k)=_fieldMap.irtkTransformation::Jacobian(x,y,z);
       _fieldMap.Transform(x,y,z);
       original.WorldToImage(x,y,z);
     
@@ -809,6 +812,8 @@ int main(int argc, char **argv)
    
     sprintf(buffer,"fieldmap-bspline-%i.nii.gz",iter);
     fieldmap.Write(buffer);
+    //sprintf(buffer,"jacobian-fieldmap-bspline-%i.nii.gz",iter);
+    //jacobian.Write(buffer);
 
   
     //Step 4: Smooth fieldmap
@@ -900,7 +905,7 @@ int main(int argc, char **argv)
 	            (y > -0.5) && (y < image.GetY()-0.5) &&
                     (z > -0.5) && (z < image.GetZ()-0.5))
 	        {
-	          output(i,j,k,t) = interpolator->Evaluate(x,y,z,t);
+	          output(i,j,k,t) = interpolator->Evaluate(x,y,z,t); // * jacobian(i,j,k);
 	        }
 	        else
 		  output(i,j,k,t) = 0;
