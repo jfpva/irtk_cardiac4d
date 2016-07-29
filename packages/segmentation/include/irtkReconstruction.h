@@ -495,6 +495,7 @@ class irtkReconstruction : public irtkObject
     friend class ParallelStackRegistrations;
     friend class ParallelSliceToVolumeRegistration;
     friend class ParallelCoeffInit;
+    friend class ParallelCoeffInitfMRI;
     friend class ParallelSuperresolution;
     friend class ParallelMStep;
     friend class ParallelEStep;

@@ -938,7 +938,7 @@ int main(int argc, char **argv)
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
 	  	  
 	  	  if (iter>0)
-	  		  reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);
+	  		  reconstruction.InterpolateGaussian(stacks,iter);
 	  
 	  //Write to file
 	  if ( ! no_log ) {
@@ -979,7 +979,9 @@ int main(int argc, char **argv)
 		  reconstruction.CoeffInitBSpline();
 	  }
 	  else
-		  reconstruction.CoeffInit();
+	  {
+		  //reconstruction.CoeffInit();
+	  }
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
 	  if (bspline) {
