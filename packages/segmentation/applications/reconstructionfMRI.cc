@@ -938,7 +938,7 @@ int main(int argc, char **argv)
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
 	  	  
 	  	  if (iter>0)
-	  		  reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);
+	  		  reconstruction.InterpolateGaussian(stacks,iter);
 	  
 	  //Write to file
 	  if ( ! no_log ) {
