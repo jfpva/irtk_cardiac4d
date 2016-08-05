@@ -303,6 +303,7 @@ class irtkReconstruction : public irtkObject
   
     ///Calculate transformation matrix between slices and voxels
     void CoeffInit();
+	void CoeffInitfMRI(int begin, int end);
     
     ///Calculate transformation matrix between slices and voxels for BSpline interpolation
     void CoeffInitBSpline();
@@ -495,7 +496,7 @@ class irtkReconstruction : public irtkObject
     friend class ParallelStackRegistrations;
     friend class ParallelSliceToVolumeRegistration;
     friend class ParallelCoeffInit;
-    friend class ParallelCoeffInitfMRI;
+	friend class ParallelCoeffInitfMRI;  
     friend class ParallelSuperresolution;
     friend class ParallelMStep;
     friend class ParallelEStep;
