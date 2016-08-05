@@ -2604,11 +2604,11 @@ public:
             int xDim = round(2 * dx / size);
             int yDim = round(2 * dy / size);
             int zDim = round(2 * dz / size);
-	    ///test to make dimension alwways odd
-	    xDim = xDim/2*2+1;
-	    yDim = yDim/2*2+1;
-	    zDim = zDim/2*2+1;
-	    ///end test
+			///test to make dimension alwways odd
+			xDim = xDim/2*2+1;
+			yDim = yDim/2*2+1;
+			zDim = zDim/2*2+1;
+			///end test
 
             //image corresponding to PSF
             irtkImageAttributes attr;
@@ -2821,11 +2821,10 @@ public:
                                     }
                     } //end of loop for slice voxels
 
-            reconstructor->_volcoeffs[inputIndex] = slicecoeffs;
-            reconstructor->_slice_inside[inputIndex] = slice_inside;
-            cerr<<" Done "<<r.end()<<endl;
+            reconstructor->_volcoeffs2[inputIndex % (reconstructor->_slicePerDyn)] = slicecoeffs;
+            reconstructor->_slice_inside2[inputIndex % (reconstructor->_slicePerDyn)] = slice_inside;
+            //cerr<<" Done "<<inputIndex % (reconstructor->_slicePerDyn)<<endl;
         }  //end of loop through the slices                            
-
     }
 
     // execute
@@ -2836,7 +2835,6 @@ public:
                       *this );
         init.terminate();
     }
-
 };
 
 void irtkReconstruction::CoeffInitfMRI(int begin, int end)
@@ -2845,12 +2843,12 @@ void irtkReconstruction::CoeffInitfMRI(int begin, int end)
         cout << "CoeffInit" << endl;
     
     //clear slice-volume matrix from previous iteration
-    _volcoeffs.clear();
-    _volcoeffs.resize(_slices.size());
+    _volcoeffs2.clear();
+    _volcoeffs2.resize(_slicePerDyn);
 
     //clear indicator of slice having and overlap with volumetric mask
-    _slice_inside.clear();
-    _slice_inside.resize(_slices.size());
+    _slice_inside2.clear();
+    _slice_inside2.resize(_slicePerDyn);
 
     cout << "Initialising matrix coefficients...";
     cout.flush();

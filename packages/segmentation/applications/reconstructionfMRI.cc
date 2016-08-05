@@ -609,7 +609,9 @@ int main(int argc, char **argv)
     }
   }
 
- if (have_stack_transformations == true)
+  reconstruction.SetSlicesPerDyn(stacks[templateNumber].GetZ());
+  
+  if (have_stack_transformations == true)
 	 reconstruction.InvertStackTransformations(stack_transformations);
   
   if (rescale_stacks)

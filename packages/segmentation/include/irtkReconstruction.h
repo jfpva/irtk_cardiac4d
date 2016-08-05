@@ -50,7 +50,10 @@ class irtkReconstruction : public irtkObject
     RECON_TYPE _recon_type;
     //Structures to store the matrix of transformation between volume and slices
     std::vector<SLICECOEFFS> _volcoeffs;
-
+    std::vector<SLICECOEFFS> _volcoeffs2;
+    
+    int _slicePerDyn;
+    
     //SLICES
     /// Slices
     vector<irtkRealImage> _slices;
@@ -63,10 +66,12 @@ class irtkReconstruction : public irtkObject
     vector<irtkRigidTransformation> _previous_transformations;
     /// Indicator whether slice has an overlap with volumetric mask
     vector<bool> _slice_inside;
-  
+    vector<bool> _slice_inside2;
+    
     //VOLUME
     /// Reconstructed volume
     irtkRealImage _reconstructed;
+    irtkRealImage _target;
     /// Flag to say whether the template volume has been created
     bool _template_created;
     /// Volume mask
@@ -415,6 +420,7 @@ class irtkReconstruction : public irtkObject
     inline void Set3DRecon();
     inline void Set1DRecon();
     inline void SetInterpolationRecon();
+    inline void SetSlicesPerDyn(int slices);
 
     //utility
     ///Save intermediate results
@@ -473,7 +479,7 @@ class irtkReconstruction : public irtkObject
     int giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband);
     // Calculate subpacking needed for tree like structure
     vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband, int iterations, bool last);
-
+    
     double calculateResidual(int padding);
     
     ///Splits stacks into packages
@@ -625,6 +631,11 @@ inline void irtkReconstruction::Set1DRecon()
 inline void irtkReconstruction::SetInterpolationRecon()
 {
     _recon_type = _interpolate;
+}
+
+inline void irtkReconstruction::SetSlicesPerDyn(int slices) 
+{
+	_slicePerDyn = slices;
 }
 
 #endif
