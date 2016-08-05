@@ -85,6 +85,8 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		attr = stacks[dyn].GetImageAttributes();
 		attr2 = interpolated.GetImageAttributes();
 		
+		CoeffInitfMRI(counter,counter+attr._z);
+		
 		for (int s = 0; s < attr._z; s ++) {
 			currentTransformations.push_back(_transformations[counter + s]);
 			currentSlices.push_back(_slices[counter + s]);

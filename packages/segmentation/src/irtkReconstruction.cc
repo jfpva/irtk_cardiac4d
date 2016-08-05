@@ -2519,7 +2519,6 @@ public:
         for ( size_t inputIndex = r.begin(); inputIndex != r.end(); ++inputIndex ) {
 
             bool slice_inside;
-            cerr << inputIndex << " ";
             //current slice
             //irtkRealImage slice;
 
@@ -2824,7 +2823,7 @@ public:
 
             reconstructor->_volcoeffs[inputIndex] = slicecoeffs;
             reconstructor->_slice_inside[inputIndex] = slice_inside;
-            cerr<<" Done "<<inputIndex<<endl;
+            cerr<<" Done "<<r.end()<<endl;
         }  //end of loop through the slices                            
 
     }
@@ -2833,7 +2832,7 @@ public:
     void operator() () const {
     	cerr<<"Bounds: "<<_begin<<" "<<_end<<endl;
         task_scheduler_init init(tbb_no_threads);
-        parallel_for( blocked_range<size_t>(_begin, _end +1 ),
+        parallel_for( blocked_range<size_t>(_begin, _end),
                       *this );
         init.terminate();
     }

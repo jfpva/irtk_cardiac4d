@@ -980,7 +980,7 @@ int main(int argc, char **argv)
 	  }
 	  else
 	  {
-		  //reconstruction.CoeffInit();
+		  reconstruction.CoeffInit();
 	  }
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
