@@ -85,7 +85,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		attr = stacks[dyn].GetImageAttributes();
 		attr2 = interpolated.GetImageAttributes();
 		
-		CoeffInitfMRI(counter,counter+attr._z);
+		CoeffInitSF(counter,counter+attr._z);
 		
 		// cleaning interpolated and volumeWeights
 		for (int k = 0; k < attr2._z; k++) {

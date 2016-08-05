@@ -2501,14 +2501,14 @@ void irtkReconstruction::CoeffInit()
     
 }  //end of CoeffInit()
 
-class ParallelCoeffInitfMRI {
+class ParallelCoeffInitSF {
 public:
 	
     irtkReconstruction *reconstructor;
     size_t _begin;
     size_t _end;
 
-    ParallelCoeffInitfMRI(irtkReconstruction *_reconstructor, size_t begin, size_t end) : 
+    ParallelCoeffInitSF(irtkReconstruction *_reconstructor, size_t begin, size_t end) : 
     reconstructor(_reconstructor) 
     { 
     	_begin = begin;
@@ -2838,7 +2838,7 @@ public:
     }
 };
 
-void irtkReconstruction::CoeffInitfMRI(int begin, int end)
+void irtkReconstruction::CoeffInitSF(int begin, int end)
 {
     if (_debug)
         cout << "CoeffInit" << endl;
@@ -2854,7 +2854,7 @@ void irtkReconstruction::CoeffInitfMRI(int begin, int end)
     cout << "Initialising matrix coefficients...";
     cout.flush();
 	
-    ParallelCoeffInitfMRI coeffinit(this,begin,end);
+    ParallelCoeffInitSF coeffinit(this,begin,end);
     coeffinit();
     cerr << " ... done." << endl;
     
