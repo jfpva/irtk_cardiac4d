@@ -2856,26 +2856,26 @@ void irtkReconstruction::CoeffInitfMRI(int begin, int end)
     ParallelCoeffInitfMRI coeffinit(this,begin,end);
     coeffinit();
     cerr << " ... done." << endl;
-    /*
+    
     //prepare image for volume weights, will be needed for Gaussian Reconstruction
-    _volume_weights.Initialize( _reconstructed.GetImageAttributes() );
-    _volume_weights = 0;
+    _volume_weights2.Initialize( _reconstructed.GetImageAttributes() );
+    _volume_weights2 = 0;
 
     int inputIndex, i, j, n, k;
     POINT3D p;
-    for ( inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) {
+    for ( inputIndex = begin; inputIndex < end; ++inputIndex) {
         for ( i = 0; i < _slices[inputIndex].GetX(); i++)
             for ( j = 0; j < _slices[inputIndex].GetY(); j++) {
-                n = _volcoeffs[inputIndex][i][j].size();
+                n = _volcoeffs2[inputIndex % _slicePerDyn][i][j].size();
                 for (k = 0; k < n; k++) {
-                    p = _volcoeffs[inputIndex][i][j][k];
-                    _volume_weights(p.x, p.y, p.z) += p.value;
+                    p = _volcoeffs2[inputIndex % _slicePerDyn][i][j][k];
+                    _volume_weights2(p.x, p.y, p.z) += p.value;
                 }
             }
     }
     if (_debug)
-        _volume_weights.Write("volume_weights.nii.gz");
-    
+        _volume_weights2.Write("volume_weights.nii.gz");
+    /*
     //find average volume weight to modify alpha parameters accordingly
     irtkRealPixel *ptr = _volume_weights.GetPointerToVoxels();
     irtkRealPixel *pm = _mask.GetPointerToVoxels();

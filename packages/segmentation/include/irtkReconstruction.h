@@ -83,6 +83,7 @@ class irtkReconstruction : public irtkObject
     bool _have_mask;
     /// Weights for Gaussian reconstruction
     irtkRealImage _volume_weights;
+    irtkRealImage _volume_weights2;
     /// Weights for regularization
     irtkRealImage _confidence_map;
   
