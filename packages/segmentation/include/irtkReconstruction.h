@@ -137,6 +137,7 @@ class irtkReconstruction : public irtkObject
     double _lambda;
     ///Average voxel wights to modulate parameter alpha
     double _average_volume_weight;
+    double _average_volume_weight2;
 
     
     //global bias field correction

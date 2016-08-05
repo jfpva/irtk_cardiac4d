@@ -2503,6 +2503,7 @@ void irtkReconstruction::CoeffInit()
 
 class ParallelCoeffInitfMRI {
 public:
+	
     irtkReconstruction *reconstructor;
     size_t _begin;
     size_t _end;
@@ -2550,27 +2551,27 @@ public:
 
             //sigma of 3D Gaussian (sinc with FWHM=dx or dy in-plane, Gaussian with FWHM = dz through-plane)
 	    
-	    double sigmax, sigmay, sigmaz;
-	    if(reconstructor->_recon_type == _3D)
-	    {
-              sigmax = 1.2 * dx / 2.3548;
-              sigmay = 1.2 * dy / 2.3548;
-              sigmaz = dz / 2.3548;
-	    }
-
-	    if(reconstructor->_recon_type == _1D)
-	    {
-              sigmax = 0.5 * dx / 2.3548;
-              sigmay = 0.5 * dy / 2.3548;
-              sigmaz = dz / 2.3548;
-	    }
-
-	    if(reconstructor->_recon_type == _interpolate)
-	    {
-              sigmax = 0.5 * dx / 2.3548;
-              sigmay = 0.5 * dx / 2.3548;
-              sigmaz = 0.5 * dx / 2.3548;
-	    }
+			double sigmax, sigmay, sigmaz;
+			if(reconstructor->_recon_type == _3D)
+			{
+				  sigmax = 1.2 * dx / 2.3548;
+				  sigmay = 1.2 * dy / 2.3548;
+				  sigmaz = dz / 2.3548;
+			}
+	
+			if(reconstructor->_recon_type == _1D)
+			{
+				  sigmax = 0.5 * dx / 2.3548;
+				  sigmay = 0.5 * dy / 2.3548;
+				  sigmaz = dz / 2.3548;
+			}
+	
+			if(reconstructor->_recon_type == _interpolate)
+			{
+				  sigmax = 0.5 * dx / 2.3548;
+				  sigmay = 0.5 * dx / 2.3548;
+				  sigmaz = 0.5 * dx / 2.3548;
+			}
             /*
               cout<<"Original sigma"<<sigmax<<" "<<sigmay<<" "<<sigmaz<<endl;
         
@@ -2858,8 +2859,8 @@ void irtkReconstruction::CoeffInitfMRI(int begin, int end)
     cerr << " ... done." << endl;
     
     //prepare image for volume weights, will be needed for Gaussian Reconstruction
-    _volume_weights2.Initialize( _reconstructed.GetImageAttributes() );
-    _volume_weights2 = 0;
+	_volume_weights2.Initialize( _reconstructed.GetImageAttributes() );
+	_volume_weights2 = 0;
 
     int inputIndex, i, j, n, k;
     POINT3D p;
@@ -2875,13 +2876,13 @@ void irtkReconstruction::CoeffInitfMRI(int begin, int end)
     }
     if (_debug)
         _volume_weights2.Write("volume_weights.nii.gz");
-    /*
+    
     //find average volume weight to modify alpha parameters accordingly
-    irtkRealPixel *ptr = _volume_weights.GetPointerToVoxels();
+    irtkRealPixel *ptr = _volume_weights2.GetPointerToVoxels();
     irtkRealPixel *pm = _mask.GetPointerToVoxels();
     double sum = 0;
     int num=0;
-    for (int i=0;i<_volume_weights.GetNumberOfVoxels();i++) {
+    for (int i=0;i<_volume_weights2.GetNumberOfVoxels();i++) {
         if (*pm==1) {
             sum+=*ptr;
             num++;
@@ -2889,12 +2890,14 @@ void irtkReconstruction::CoeffInitfMRI(int begin, int end)
         ptr++;
         pm++;
     }
-    _average_volume_weight = sum/num;
+    _average_volume_weight2 = sum/num;
     
     if(_debug) {
-        cout<<"Average volume weight is "<<_average_volume_weight<<endl;
+        cout<<"Average volume weight is "<<_average_volume_weight2<<endl;
     }
-    */
+    
+    cerr<<"I PASS HERE"<<endl;
+    
 }  //end of CoeffInit()
 
 void irtkReconstruction::GaussianReconstruction()

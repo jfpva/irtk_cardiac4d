@@ -87,13 +87,6 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		
 		CoeffInitfMRI(counter,counter+attr._z);
 		
-		for (int s = 0; s < attr._z; s ++) {
-			currentTransformations.push_back(_transformations[counter + s]);
-			currentSlices.push_back(_slices[counter + s]);
-			currentScales.push_back(_scale[counter + s]);
-			currentBiases.push_back(_bias[counter + s]);
-		}
-
 		// cleaning interpolated and volumeWeights
 		for (int k = 0; k < attr2._z; k++) {
 			for (int j = 0; j < attr2._y; j++) {
@@ -104,16 +97,11 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 			}
 		}
 		
-		// weights
-		for ( int s = 0; s < attr._z; s ++ ) {
-			for ( int i = 0; i < _slices[counter + s].GetX(); i++)
-				for ( int j = 0; j < _slices[counter + s].GetY(); j++) {
-					n = _volcoeffs[counter + s][i][j].size();
-					for (int k = 0; k < n; k++) {			
-						p = _volcoeffs[counter + s][i][j][k];
-						volumeWeights(p.x, p.y, p.z) += p.value;
-					}
-			}
+		for (int s = 0; s < attr._z; s ++) {
+			currentTransformations.push_back(_transformations[counter + s]);
+			currentSlices.push_back(_slices[counter + s]);
+			currentScales.push_back(_scale[counter + s]);
+			currentBiases.push_back(_bias[counter + s]);
 		}
 		
 		for (int s = 0; s < currentSlices.size(); s++) {
@@ -133,7 +121,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 			
 						//number of volume voxels with non-zero coefficients
 						//for current slice voxel
-						n = _volcoeffs[counter + s][i][j].size();
+						n = _volcoeffs2[s][i][j].size();
 			
 						//if given voxel is not present in reconstructed volume at all,
 						//pad it
@@ -147,7 +135,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 						//add contribution of current slice voxel to all voxel volumes
 						//to which it contributes
 						for (int k = 0; k < n; k++) {
-							p = _volcoeffs[counter + s][i][j][k];
+							p = _volcoeffs2[s][i][j][k];
 							interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
 						}
 					}
@@ -157,6 +145,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		currentBiases.clear();
 		currentTransformations.clear();
 		currentScales.clear();
+		volumeWeights = _volume_weights2;
 		interpolated /= volumeWeights;
 		_timeserie.push_back(interpolated);
     }
