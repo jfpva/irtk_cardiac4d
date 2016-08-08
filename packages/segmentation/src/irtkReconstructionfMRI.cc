@@ -128,7 +128,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		attr = stacks[dyn].GetImageAttributes();
 		attr2 = interpolated.GetImageAttributes();
 		
-		CoeffInitSF(counter,counter + attr._z);
+		CoeffInitSF(counter,counter+attr._z);
 		
 		// cleaning interpolated
 		for (int k = 0; k < attr2._z; k++) {
@@ -143,7 +143,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 			currentTransformations.push_back(_transformations[counter + s]);
 			currentSlices.push_back(_slices[counter + s]);
 			currentScales.push_back(_scale[counter + s]);
-			currentBiases.push_back(_bias[counter + s]);
+			currentBiases.push_back(_bias[counter + s]);		
 		}
 		
 		for (int s = 0; s < currentSlices.size(); s++) {
@@ -173,25 +173,24 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 						}
 					}
 		}
+		
 		counter = counter + attr._z;
 		currentSlices.clear();
 		currentBiases.clear();
 		currentTransformations.clear();
 		currentScales.clear();
 		interpolated /= _volume_weightsSF;
-		_timeserie.push_back(interpolated);
-		
-		if (true) {
-			char buffer[256];
-			for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
-				sprintf(buffer, "GaussianS%04iVolume%04i.nii.gz",iter,dyn);
-				_timeserie[dyn].Write(buffer);	
-			}
-		}
-		
+		_timeserie.push_back(interpolated);	
     }
     
- 
+	if (true) {
+		char buffer[256];
+		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
+			sprintf(buffer, "GaussianS%04iVolume%04i.nii.gz",iter,dyn);
+			_timeserie[dyn].Write(buffer);	
+		}
+	}
+	
 }
 
 void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector, int iter) {
@@ -238,19 +237,12 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 		counter = counter + attr._z;
 	}
 	
-	cerr<<"_slicesRwithMB = "<<_slicesRwithMB.size()<<endl;
-	cerr<<"_slicesRwithMB = "<<_transformationsRwithMB.size()<<endl;
-	
-	cerr<<"_slices = "<<_slices.size()<<endl;
-	cerr<<"_slices = "<<_transformations.size()<<endl;
-	
 	counter = 0;	
     for (int dyn = 0; dyn < stacks.size()-multiband+1; dyn++)  {
     	
     	attr = stacks[dyn].GetImageAttributes();
     	attr2 = interpolated.GetImageAttributes();
-    	cerr<<"counter = "<<counter<<endl;
-    	CoeffInitSF(counter,counter + attr._z);
+    	CoeffInitSF(counter,counter+attr._z);
     	
     	// cleaning interpolated
 		for (int k = 0; k < attr2._z; k++) {
@@ -260,7 +252,7 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 				}
 			}
 		}
-    	
+		
     	for (int m = 0; m < multiband; m++) {
     		for (int g = 0; g < grouping; g++) {	
     			position = counter + g + attr._z*m + grouping*m;
@@ -270,9 +262,7 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 				currentBiases.push_back(_bias[position]);						
     		}
 		}
-		
-    	
-    	
+   
 		for (int s = 0; s < currentSlices.size(); s++) {
 			
 			//copy the current slice
@@ -307,14 +297,13 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 		currentScales.clear();
 		interpolated /= _volume_weightsSF;
 		_timeserie.push_back(interpolated);
-    
-		if (true) {
-				char buffer[256];
-				for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
-					sprintf(buffer, "GaussianR%04iVolume%04i.nii.gz",iter,dyn);
-					_timeserie[dyn].Write(buffer);	
-				}
-			}
-		
     }
+    
+	if (true) {
+		char buffer[256];
+		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
+			sprintf(buffer, "GaussianR%04iVolume%04i.nii.gz",iter,dyn);
+			_timeserie[dyn].Write(buffer);	
+		}
+	}   
 }

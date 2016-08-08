@@ -610,10 +610,10 @@ int main(int argc, char **argv)
   }
 
   reconstruction.SetSlicesPerDyn(stacks[templateNumber].GetZ());
-  if (multiband_vector[0] > 1)
+  //if (multiband_vector[0] > 1)
 	  reconstruction.SetMultiband(true);
-  else
-	  reconstruction.SetMultiband(false);
+  //else
+  //	  reconstruction.SetMultiband(false);
   
   if (have_stack_transformations == true)
 	 reconstruction.InvertStackTransformations(stack_transformations);
@@ -944,7 +944,6 @@ int main(int argc, char **argv)
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
 	  	  
 	  	  if (iter>0) {
-	  		  reconstruction.InterpolateGaussian(stacks,iter);
 	  		  reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);  		
 	  	  }
 	  		  

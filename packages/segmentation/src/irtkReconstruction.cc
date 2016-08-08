@@ -2973,7 +2973,7 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
     
     if (_debug)
         _volume_weightsSF.Write("volume_weights.nii.gz");
-    
+
     //find average volume weight to modify alpha parameters accordingly
     irtkRealPixel *ptr = _volume_weightsSF.GetPointerToVoxels();
     irtkRealPixel *pm = _mask.GetPointerToVoxels();
