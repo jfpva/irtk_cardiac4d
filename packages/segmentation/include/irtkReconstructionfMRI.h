@@ -44,9 +44,6 @@ public:
 		
 	void InterpolateGaussianReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector , int iter);
 	
-	//void CoeffInitfMRI(int begin, int end);
-	
-	//friend class ParallelCoeffInitfMRI;  
 };
 
 #endif

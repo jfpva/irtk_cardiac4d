@@ -50,7 +50,7 @@ class irtkReconstruction : public irtkObject
     RECON_TYPE _recon_type;
     //Structures to store the matrix of transformation between volume and slices
     std::vector<SLICECOEFFS> _volcoeffs;
-    std::vector<SLICECOEFFS> _volcoeffs2;
+    std::vector<SLICECOEFFS> _volcoeffsSF;
     
     int _slicePerDyn;
     
@@ -66,7 +66,7 @@ class irtkReconstruction : public irtkObject
     vector<irtkRigidTransformation> _previous_transformations;
     /// Indicator whether slice has an overlap with volumetric mask
     vector<bool> _slice_inside;
-    vector<bool> _slice_inside2;
+    vector<bool> _slice_insideSF;
     
     //VOLUME
     /// Reconstructed volume
@@ -83,7 +83,7 @@ class irtkReconstruction : public irtkObject
     bool _have_mask;
     /// Weights for Gaussian reconstruction
     irtkRealImage _volume_weights;
-    irtkRealImage _volume_weights2;
+    irtkRealImage _volume_weightsSF;
     /// Weights for regularization
     irtkRealImage _confidence_map;
   
@@ -137,7 +137,7 @@ class irtkReconstruction : public irtkObject
     double _lambda;
     ///Average voxel wights to modulate parameter alpha
     double _average_volume_weight;
-    double _average_volume_weight2;
+    double _average_volume_weightSF;
 
     
     //global bias field correction

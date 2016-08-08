@@ -2154,27 +2154,27 @@ public:
 
             //sigma of 3D Gaussian (sinc with FWHM=dx or dy in-plane, Gaussian with FWHM = dz through-plane)
 	    
-	    double sigmax, sigmay, sigmaz;
-	    if(reconstructor->_recon_type == _3D)
-	    {
-              sigmax = 1.2 * dx / 2.3548;
-              sigmay = 1.2 * dy / 2.3548;
-              sigmaz = dz / 2.3548;
-	    }
-
-	    if(reconstructor->_recon_type == _1D)
-	    {
-              sigmax = 0.5 * dx / 2.3548;
-              sigmay = 0.5 * dy / 2.3548;
-              sigmaz = dz / 2.3548;
-	    }
-
-	    if(reconstructor->_recon_type == _interpolate)
-	    {
-              sigmax = 0.5 * dx / 2.3548;
-              sigmay = 0.5 * dx / 2.3548;
-              sigmaz = 0.5 * dx / 2.3548;
-	    }
+			double sigmax, sigmay, sigmaz;
+			if(reconstructor->_recon_type == _3D)
+			{
+				  sigmax = 1.2 * dx / 2.3548;
+				  sigmay = 1.2 * dy / 2.3548;
+				  sigmaz = dz / 2.3548;
+			}
+	
+			if(reconstructor->_recon_type == _1D)
+			{
+				  sigmax = 0.5 * dx / 2.3548;
+				  sigmay = 0.5 * dy / 2.3548;
+				  sigmaz = dz / 2.3548;
+			}
+	
+			if(reconstructor->_recon_type == _interpolate)
+			{
+				  sigmax = 0.5 * dx / 2.3548;
+				  sigmay = 0.5 * dx / 2.3548;
+				  sigmaz = 0.5 * dx / 2.3548;
+			}
             /*
               cout<<"Original sigma"<<sigmax<<" "<<sigmay<<" "<<sigmaz<<endl;
         
@@ -2208,11 +2208,11 @@ public:
             int xDim = round(2 * dx / size);
             int yDim = round(2 * dy / size);
             int zDim = round(2 * dz / size);
-	    ///test to make dimension alwways odd
-	    xDim = xDim/2*2+1;
-	    yDim = yDim/2*2+1;
-	    zDim = zDim/2*2+1;
-	    ///end test
+			///test to make dimension alwways odd
+			xDim = xDim/2*2+1;
+			yDim = yDim/2*2+1;
+			zDim = zDim/2*2+1;
+			///end test
 
             //image corresponding to PSF
             irtkImageAttributes attr;
@@ -2429,7 +2429,7 @@ public:
             reconstructor->_slice_inside[inputIndex] = slice_inside;
 
         }  //end of loop through the slices                            
-
+        
     }
 
     // execute
@@ -2822,8 +2822,8 @@ public:
                                     }
                     } //end of loop for slice voxels
 
-            reconstructor->_volcoeffs2[inputIndex % (reconstructor->_slicePerDyn)] = slicecoeffs;
-            reconstructor->_slice_inside2[inputIndex % (reconstructor->_slicePerDyn)] = slice_inside;
+            reconstructor->_volcoeffsSF[inputIndex % (reconstructor->_slicePerDyn)] = slicecoeffs;
+            reconstructor->_slice_insideSF[inputIndex % (reconstructor->_slicePerDyn)] = slice_inside;
             //cerr<<" Done "<<inputIndex % (reconstructor->_slicePerDyn)<<endl;
         }  //end of loop through the slices                            
     }
@@ -2844,12 +2844,12 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
         cout << "CoeffInit" << endl;
     
     //clear slice-volume matrix from previous iteration
-    _volcoeffs2.clear();
-    _volcoeffs2.resize(_slicePerDyn);
+    _volcoeffsSF.clear();
+    _volcoeffsSF.resize(_slicePerDyn);
 
     //clear indicator of slice having and overlap with volumetric mask
-    _slice_inside2.clear();
-    _slice_inside2.resize(_slicePerDyn);
+    _slice_insideSF.clear();
+    _slice_insideSF.resize(_slicePerDyn);
 
     cout << "Initialising matrix coefficients...";
     cout.flush();
@@ -2859,30 +2859,31 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
     cerr << " ... done." << endl;
     
     //prepare image for volume weights, will be needed for Gaussian Reconstruction
-	_volume_weights2.Initialize( _reconstructed.GetImageAttributes() );
-	_volume_weights2 = 0;
+	_volume_weightsSF.Initialize( _reconstructed.GetImageAttributes() );
+	_volume_weightsSF = 0;
 
     int inputIndex, i, j, n, k;
     POINT3D p;
     for ( inputIndex = begin; inputIndex < end; ++inputIndex) {
         for ( i = 0; i < _slices[inputIndex].GetX(); i++)
             for ( j = 0; j < _slices[inputIndex].GetY(); j++) {
-                n = _volcoeffs2[inputIndex % _slicePerDyn][i][j].size();
+                n = _volcoeffsSF[inputIndex % _slicePerDyn][i][j].size();
                 for (k = 0; k < n; k++) {
-                    p = _volcoeffs2[inputIndex % _slicePerDyn][i][j][k];
-                    _volume_weights2(p.x, p.y, p.z) += p.value;
+                    p = _volcoeffsSF[inputIndex % _slicePerDyn][i][j][k];
+                    _volume_weightsSF(p.x, p.y, p.z) += p.value;
                 }
             }
     }
-    if (_debug)
-        _volume_weights2.Write("volume_weights.nii.gz");
+    
+    /*if (_debug)
+        _volume_weightsSF.Write("volume_weights.nii.gz");*/
     
     //find average volume weight to modify alpha parameters accordingly
-    irtkRealPixel *ptr = _volume_weights2.GetPointerToVoxels();
+    irtkRealPixel *ptr = _volume_weightsSF.GetPointerToVoxels();
     irtkRealPixel *pm = _mask.GetPointerToVoxels();
     double sum = 0;
     int num=0;
-    for (int i=0;i<_volume_weights2.GetNumberOfVoxels();i++) {
+    for (int i=0;i<_volume_weightsSF.GetNumberOfVoxels();i++) {
         if (*pm==1) {
             sum+=*ptr;
             num++;
@@ -2890,10 +2891,10 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
         ptr++;
         pm++;
     }
-    _average_volume_weight2 = sum/num;
+    _average_volume_weightSF = sum/num;
     
     if(_debug) {
-        cout<<"Average volume weight is "<<_average_volume_weight2<<endl;
+        cout<<"Average volume weight is "<<_average_volume_weightSF<<endl;
     }
     
     cerr<<"I PASS HERE"<<endl;
