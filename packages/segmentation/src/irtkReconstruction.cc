@@ -2830,7 +2830,6 @@ public:
 
     // execute
     void operator() () const {
-    	cerr<<"Bounds: "<<_begin<<" "<<_end<<endl;
         task_scheduler_init init(tbb_no_threads);
         parallel_for( blocked_range<size_t>(_begin, _end),
                       *this );
@@ -2856,7 +2855,6 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
 	
     ParallelCoeffInitSF coeffinit(this,begin,end);
     coeffinit();
-    cerr << " ... done." << endl;
     
     //prepare image for volume weights, will be needed for Gaussian Reconstruction
 	_volume_weightsSF.Initialize( _reconstructed.GetImageAttributes() );
@@ -2875,8 +2873,8 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
             }
     }
     
-    /*if (_debug)
-        _volume_weightsSF.Write("volume_weights.nii.gz");*/
+    if (_debug)
+        _volume_weightsSF.Write("volume_weights.nii.gz");
     
     //find average volume weight to modify alpha parameters accordingly
     irtkRealPixel *ptr = _volume_weightsSF.GetPointerToVoxels();
@@ -2896,8 +2894,6 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
     if(_debug) {
         cout<<"Average volume weight is "<<_average_volume_weightSF<<endl;
     }
-    
-    cerr<<"I PASS HERE"<<endl;
     
 }  //end of CoeffInit()
 

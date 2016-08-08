@@ -83,7 +83,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		attr = stacks[dyn].GetImageAttributes();
 		attr2 = interpolated.GetImageAttributes();
 		
-		CoeffInitSF(counter,counter+attr._z);
+		CoeffInitSF(counter,counter + attr._z);
 		
 		// cleaning interpolated and volumeWeights
 		for (int k = 0; k < attr2._z; k++) {
@@ -132,11 +132,12 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 						//add contribution of current slice voxel to all voxel volumes
 						//to which it contributes
 						for (int k = 0; k < n; k++) {
-							p = _volcoeffs[s][i][j][k];
+							p = _volcoeffsSF[s][i][j][k];
 							interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
 						}
 					}
 		}
+		
 		counter = counter + attr._z;
 		currentSlices.clear();
 		currentBiases.clear();
