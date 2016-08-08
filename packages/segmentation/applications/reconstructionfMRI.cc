@@ -982,7 +982,7 @@ int main(int argc, char **argv)
 	  }
 	  else
 	  {
-		  reconstruction.CoeffInit();
+		  // reconstruction.CoeffInit();
 	  }
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
@@ -990,14 +990,14 @@ int main(int argc, char **argv)
 		  reconstruction.BSplineReconstruction();
 	  }
 	  else
-		  reconstruction.GaussianReconstruction();
+		  reconstruction.GaussianReconstructionSF(stacks);
 	
 	  //Simulate slices (needs to be done after Gaussian reconstruction)
-	  reconstruction.SimulateSlices();
+	  // reconstruction.SimulateSlices();
 
 	  //Initialize robust statistics parameters
-	  reconstruction.InitializeRobustStatistics();
-	
+	  // reconstruction.InitializeRobustStatistics();
+	  
 	  //EStep
 	  if(robust_statistics)
 		  reconstruction.EStep();
@@ -1082,7 +1082,7 @@ int main(int argc, char **argv)
 	if ( ! no_log ) {
 		cout.rdbuf (fileEv.rdbuf());
 	}
-	reconstruction.Evaluate(iter);
+	//reconstruction.Evaluate(iter);
 	cout<<endl;
 	
 	if ( ! no_log ) {
@@ -1095,10 +1095,10 @@ int main(int argc, char **argv)
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
 	reconstructed=reconstruction.GetReconstructed();
-	reconstructed.Write(output_name); 
+	reconstructed.Write(output_name);
 	//reconstruction.SaveTransformations();
 	reconstruction.SaveSlices();
-
+	
 	// Don't know why it fails here
 	/*if ( info_filename.length() > 0 )
 	  reconstruction.SlicesInfo( info_filename.c_str(),
@@ -1108,12 +1108,12 @@ int main(int argc, char **argv)
 	reconstruction.SaveWeights();
 	reconstruction.SaveBiasFields();
 	//reconstruction.SaveConfidenceMap();
-	reconstruction.SimulateStacks(stacks);
-	for (unsigned int i=0;i<stacks.size();i++)
+	// reconstruction.SimulateStacks(stacks);
+	/*for (unsigned int i=0;i<stacks.size();i++)
 	{
 	  sprintf(buffer,"simulated%i.nii.gz",i);
 	  stacks[i].Write(buffer);
-	}
+	}*/
   }
   //The end of main()
 }

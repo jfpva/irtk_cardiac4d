@@ -73,7 +73,6 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 	double scale;
 	int n;
 	POINT3D p;
-	int slice_vox_num = 0;
     
 	int counter = 0;
 	interpolated  = _reconstructed;
@@ -85,7 +84,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		
 		CoeffInitSF(counter,counter + attr._z);
 		
-		// cleaning interpolated and volumeWeights
+		// cleaning interpolated
 		for (int k = 0; k < attr2._z; k++) {
 			for (int j = 0; j < attr2._y; j++) {
 				for (int i = 0; i < attr2._x; i++) {
@@ -119,16 +118,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 						//number of volume voxels with non-zero coefficients
 						//for current slice voxel
 						n = _volcoeffsSF[s][i][j].size();
-			
-						//if given voxel is not present in reconstructed volume at all,
-						//pad it
 						
-						//if (n == 0)
-						//_slices[inputIndex].PutAsDouble(i, j, 0, -1);
-						//calculate num of vox in a slice that have overlap with roi
-						if (n>0)
-							slice_vox_num++;
-			
 						//add contribution of current slice voxel to all voxel volumes
 						//to which it contributes
 						for (int k = 0; k < n; k++) {
@@ -137,7 +127,6 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 						}
 					}
 		}
-		
 		counter = counter + attr._z;
 		currentSlices.clear();
 		currentBiases.clear();

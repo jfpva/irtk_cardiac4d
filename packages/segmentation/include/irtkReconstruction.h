@@ -318,6 +318,7 @@ class irtkReconstruction : public irtkObject
   
     ///Reconstruction using weighted Gaussian PSF
     void GaussianReconstruction();
+    void GaussianReconstructionSF(vector<irtkRealImage>& stacks);
     
     ///Reconstruction using multilevel B-spline
     void BSplineReconstruction();

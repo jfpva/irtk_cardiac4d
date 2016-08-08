@@ -1455,16 +1455,16 @@ void irtkReconstruction::SimulateStacks(vector<irtkRealImage>& stacks)
     z=-1;//this is the z coordinate of the stack
     current_stack=-1; //we need to know when to start a new stack
 
-_reconstructed.Write("reconstructed.nii.gz");
+    _reconstructed.Write("reconstructed.nii.gz");
     for (inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
       
 	cout<<inputIndex<<" ";
-        // read the current slice
-        irtkRealImage& slice = _slices[inputIndex];
+	// read the current slice
+	irtkRealImage& slice = _slices[inputIndex];
 
-        //Calculate simulated slice
-        sim.Initialize( slice.GetImageAttributes() );
-        sim = 0;
+	//Calculate simulated slice
+	sim.Initialize( slice.GetImageAttributes() );
+	sim = 0;
 
 	//do not simulate excluded slice
         if(_slice_weight[inputIndex]>0.5)
@@ -2501,6 +2501,94 @@ void irtkReconstruction::CoeffInit()
     
 }  //end of CoeffInit()
 
+void irtkReconstruction::GaussianReconstruction()
+{
+    cout << "Gaussian reconstruction ... ";
+    unsigned int inputIndex;
+    int i, j, k, n;
+    irtkRealImage slice;
+    double scale;
+    POINT3D p;
+    vector<int> voxel_num;  
+    int slice_vox_num;
+
+    //clear _reconstructed image
+    _reconstructed = 0;
+
+    for (inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) {
+        //copy the current slice
+        slice = _slices[inputIndex];
+        //alias the current bias image
+        irtkRealImage& b = _bias[inputIndex];
+        //read current scale factor
+        scale = _scale[inputIndex];
+        
+        slice_vox_num=0;
+
+        //Distribute slice intensities to the volume
+        for (i = 0; i < slice.GetX(); i++)
+            for (j = 0; j < slice.GetY(); j++)
+                if (slice(i, j, 0) != -1) {
+                    //biascorrect and scale the slice
+                    slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
+
+                    //number of volume voxels with non-zero coefficients
+                    //for current slice voxel
+                    n = _volcoeffs[inputIndex][i][j].size();
+
+                    //if given voxel is not present in reconstructed volume at all,
+                    //pad it
+                    
+                    //if (n == 0)
+                    //_slices[inputIndex].PutAsDouble(i, j, 0, -1);
+                    //calculate num of vox in a slice that have overlap with roi
+                    if (n>0)
+                        slice_vox_num++;
+
+                    //add contribution of current slice voxel to all voxel volumes
+                    //to which it contributes
+                    for (k = 0; k < n; k++) {
+                        p = _volcoeffs[inputIndex][i][j][k];
+                        _reconstructed(p.x, p.y, p.z) += p.value * slice(i, j, 0);
+                    }
+                }
+        voxel_num.push_back(slice_vox_num);
+        //end of loop for a slice inputIndex
+    }
+
+    //normalize the volume by proportion of contributing slice voxels
+    //for each volume voxe
+    _reconstructed /= _volume_weights;
+        
+    cout << "done." << endl;
+
+    if (_debug)
+        _reconstructed.Write("init.nii.gz");
+
+    //now find slices with small overlap with ROI and exclude them.
+    
+    vector<int> voxel_num_tmp;
+    for (i=0;i<voxel_num.size();i++)
+        voxel_num_tmp.push_back(voxel_num[i]);
+    
+    //find median
+    sort(voxel_num_tmp.begin(),voxel_num_tmp.end());
+    int median = voxel_num_tmp[round(voxel_num_tmp.size()*0.5)];
+    
+    //remember slices with small overlap with ROI
+    _small_slices.clear();
+    for (i=0;i<voxel_num.size();i++)
+        if (voxel_num[i]<0.1*median)
+            _small_slices.push_back(i);
+    
+    if (_debug) {
+        cout<<"Small slices:";
+        for (i=0;i<_small_slices.size();i++)
+            cout<<" "<<_small_slices[i];
+        cout<<endl;
+    }
+}
+
 class ParallelCoeffInitSF {
 public:
 	
@@ -2840,7 +2928,7 @@ public:
 void irtkReconstruction::CoeffInitSF(int begin, int end)
 {
     if (_debug)
-        cout << "CoeffInit" << endl;
+        cout << "CoeffInitSF" << endl;
     
     //clear slice-volume matrix from previous iteration
     _volcoeffsSF.clear();
@@ -2895,97 +2983,134 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
         cout<<"Average volume weight is "<<_average_volume_weightSF<<endl;
     }
     
-}  //end of CoeffInit()
+}  //end of CoeffInitSF()
 
-void irtkReconstruction::GaussianReconstruction()
+void irtkReconstruction::GaussianReconstructionSF(vector<irtkRealImage>& stacks)
 {
-    cout << "Gaussian reconstruction ... ";
-    unsigned int inputIndex;
-    int i, j, k, n;
-    irtkRealImage slice;
-    double scale;
-    POINT3D p;
-    vector<int> voxel_num;  
-    int slice_vox_num;
+	vector<irtkRigidTransformation> currentTransformations;
+	vector<irtkRealImage> currentSlices;
+	vector<double> currentScales;
+	vector<irtkRealImage> currentBiases;
+		
+	irtkRealImage interpolated;
+	irtkImageAttributes attr, attr2;
+		
+	irtkRealImage slice;
+	double scale;
+	int n;
+	POINT3D p;
+	vector<int> voxel_num;  
+	int slice_vox_num = 0;
 
-    //clear _reconstructed image
-    _reconstructed = 0;
+	int counter = 0;
+	interpolated  = _reconstructed;
+	attr2 = interpolated.GetImageAttributes();
+	
+	// cleaning _interpolated
+	for (int k = 0; k < attr2._z; k++) {
+		for (int j = 0; j < attr2._y; j++) {
+			for (int i = 0; i < attr2._x; i++) {
+				_reconstructed(i,j,k) = 0;
+			}
+		}
+	}
 
-    for (inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) {
-        //copy the current slice
-        slice = _slices[inputIndex];
-        //alias the current bias image
-        irtkRealImage& b = _bias[inputIndex];
-        //read current scale factor
-        scale = _scale[inputIndex];
-        
-        slice_vox_num=0;
+	for (int dyn = 0; dyn < stacks.size(); dyn++)  {
+	
+		attr = stacks[dyn].GetImageAttributes();
+		
+		CoeffInitSF(counter,counter+attr._z);		
+		
+		for (int s = 0; s < attr._z; s ++) {
+			currentTransformations.push_back(_transformations[counter + s]);
+			currentSlices.push_back(_slices[counter + s]);
+			currentScales.push_back(_scale[counter + s]);
+			currentBiases.push_back(_bias[counter + s]);
+		}
+		
+		// cleaning interpolated
+		for (int k = 0; k < attr2._z; k++) {
+			for (int j = 0; j < attr2._y; j++) {
+				for (int i = 0; i < attr2._x; i++) {
+					interpolated(i,j,k) = 0;
+				}
+			}
+		}
 
-        //Distribute slice intensities to the volume
-        for (i = 0; i < slice.GetX(); i++)
-            for (j = 0; j < slice.GetY(); j++)
-                if (slice(i, j, 0) != -1) {
-                    //biascorrect and scale the slice
-                    slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
+		for (int s = 0; s < currentSlices.size(); s++) {
+			
+			//copy the current slice
+			slice = currentSlices[s];
+			//alias the current bias image
+			irtkRealImage& b = currentBiases[s];
+			//read current scale factor
+			scale = currentScales[s];
+			
+			slice_vox_num = 0;
+			for (int i = 0; i < slice.GetX(); i++)
+				for (int j = 0; j < slice.GetY(); j++)
+					if (slice(i, j, 0) != -1) {
+						//biascorrect and scale the slice
+						slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
+			
+						//number of volume voxels with non-zero coefficients
+						//for current slice voxel
+						n = _volcoeffsSF[s][i][j].size();
+			
+						//if given voxel is not present in reconstructed volume at all,
+						//pad it
+						
+						//if (n == 0)
+						//_slices[inputIndex].PutAsDouble(i, j, 0, -1);
+						//calculate num of vox in a slice that have overlap with roi
+						if (n>0)
+							slice_vox_num++;
+			
+						//add contribution of current slice voxel to all voxel volumes
+						//to which it contributes
+						for (int k = 0; k < n; k++) {
+							p = _volcoeffsSF[s][i][j][k];
+							interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
+						}
+					}
+			voxel_num.push_back(slice_vox_num);
+		}
+		counter = counter + attr._z;
+		currentSlices.clear();
+		currentBiases.clear();
+		currentTransformations.clear();
+		currentScales.clear();
+		interpolated /= _volume_weightsSF;
+		_reconstructed += interpolated;
+	}	
+	_reconstructed /= stacks.size();
 
-                    //number of volume voxels with non-zero coefficients
-                    //for current slice voxel
-                    n = _volcoeffs[inputIndex][i][j].size();
-
-                    //if given voxel is not present in reconstructed volume at all,
-                    //pad it
-                    
-                    //if (n == 0)
-                    //_slices[inputIndex].PutAsDouble(i, j, 0, -1);
-                    //calculate num of vox in a slice that have overlap with roi
-                    if (n>0)
-                        slice_vox_num++;
-
-                    //add contribution of current slice voxel to all voxel volumes
-                    //to which it contributes
-                    for (k = 0; k < n; k++) {
-                        p = _volcoeffs[inputIndex][i][j][k];
-                        _reconstructed(p.x, p.y, p.z) += p.value * slice(i, j, 0);
-                    }
-                }
-        voxel_num.push_back(slice_vox_num);
-        //end of loop for a slice inputIndex
-    }
-
-    //normalize the volume by proportion of contributing slice voxels
-    //for each volume voxe
-    _reconstructed /= _volume_weights;
-        
     cout << "done." << endl;
-
-    if (_debug)
-        _reconstructed.Write("init.nii.gz");
-
-    //now find slices with small overlap with ROI and exclude them.
-    
-    vector<int> voxel_num_tmp;
-    for (i=0;i<voxel_num.size();i++)
-        voxel_num_tmp.push_back(voxel_num[i]);
-    
-    //find median
-    sort(voxel_num_tmp.begin(),voxel_num_tmp.end());
-    int median = voxel_num_tmp[round(voxel_num_tmp.size()*0.5)];
-    
-    //remember slices with small overlap with ROI
-    _small_slices.clear();
-    for (i=0;i<voxel_num.size();i++)
-        if (voxel_num[i]<0.1*median)
-            _small_slices.push_back(i);
-    
-    if (_debug) {
-        cout<<"Small slices:";
-        for (i=0;i<_small_slices.size();i++)
-            cout<<" "<<_small_slices[i];
-        cout<<endl;
-    }
+	if (_debug)
+		_reconstructed.Write("init.nii.gz");
+	
+	//now find slices with small overlap with ROI and exclude them.  
+	vector<int> voxel_num_tmp;
+	for (int i=0;i<voxel_num.size();i++)
+		voxel_num_tmp.push_back(voxel_num[i]);
+	
+	//find median
+	sort(voxel_num_tmp.begin(),voxel_num_tmp.end());
+	int median = voxel_num_tmp[round(voxel_num_tmp.size()*0.5)];
+	
+	//remember slices with small overlap with ROI
+	_small_slices.clear();
+	for (int i=0;i<voxel_num.size();i++)
+		if (voxel_num[i]<0.1*median)
+			_small_slices.push_back(i);
+	
+	if (_debug) {
+		cout<<"Small slices:";
+		for (int i=0;i<_small_slices.size();i++)
+			cout<<" "<<_small_slices[i];
+		cout<<endl;
+	}
 }
-
-
 
 void irtkReconstruction::BSplineReconstruction()
 {
@@ -4247,7 +4372,6 @@ void irtkReconstruction::Evaluate(int iter)
         }
     }
     cout << endl << "Total: " << sum << endl;
-
 }
 
 
