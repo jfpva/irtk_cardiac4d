@@ -2621,7 +2621,8 @@ public:
             cout << inputIndex << " ";
             cout.flush();
             //read the slice
-            irtkRealImage& slice = reconstructor->_slices[inputIndex];
+            
+            irtkRealImage& slice = (reconstructor->_withMB == true) ? reconstructor->_slicesRwithMB[inputIndex] : reconstructor->_slices[inputIndex];
 
             //prepare structures for storage
             POINT3D p;
@@ -2772,7 +2773,12 @@ public:
                         y = j;
                         z = 0;
                         slice.ImageToWorld(x, y, z);
-                        reconstructor->_transformations[inputIndex].Transform(x, y, z);
+                        
+                        if (reconstructor->_withMB)
+                        	reconstructor->_transformationsRwithMB[inputIndex].Transform(x, y, z);
+                        else
+                        	reconstructor->_transformations[inputIndex].Transform(x, y, z);
+                        
                         reconstructor->_reconstructed.WorldToImage(x, y, z);
                         tx = round(x);
                         ty = round(y);
@@ -2824,7 +2830,11 @@ public:
 
                                     //x+=(vx-cx); y+=(vy-cy); z+=(vz-cz);
                                     //Transform to space of reconstructed volume
-                                    reconstructor->_transformations[inputIndex].Transform(x, y, z);
+                                    if (reconstructor->_withMB)
+                                    	reconstructor->_transformationsRwithMB[inputIndex].Transform(x, y, z);
+                                    else
+                                    	reconstructor->_transformations[inputIndex].Transform(x, y, z);
+                                    
                                     //Change to image coordinates
                                     reconstructor->_reconstructed.WorldToImage(x, y, z);
 
@@ -3019,7 +3029,9 @@ void irtkReconstruction::GaussianReconstructionSF(vector<irtkRealImage>& stacks)
 	
 		attr = stacks[dyn].GetImageAttributes();
 		
+		SetMultiband(false);
 		CoeffInitSF(counter,counter+attr._z);		
+		SetMultiband(true);
 		
 		for (int s = 0; s < attr._z; s ++) {
 			currentTransformations.push_back(_transformations[counter + s]);

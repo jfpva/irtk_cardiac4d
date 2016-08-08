@@ -57,6 +57,7 @@ class irtkReconstruction : public irtkObject
     //SLICES
     /// Slices
     vector<irtkRealImage> _slices;
+    vector<irtkRealImage> _slicesRwithMB;
     vector<irtkRealImage> _simulated_slices;
     vector<irtkRealImage> _simulated_weights;
     vector<irtkRealImage> _simulated_inside;
@@ -64,6 +65,7 @@ class irtkReconstruction : public irtkObject
     /// Transformations
     vector<irtkRigidTransformation> _transformations;
     vector<irtkRigidTransformation> _previous_transformations;
+    vector<irtkRigidTransformation> _transformationsRwithMB;
     /// Indicator whether slice has an overlap with volumetric mask
     vector<bool> _slice_inside;
     vector<bool> _slice_insideSF;
@@ -172,6 +174,7 @@ class irtkReconstruction : public irtkObject
     //do not exclude voxels, only whole slices
     bool _robust_slices_only;
 
+    bool _withMB;
   
     //Probability density functions
     ///Zero-mean Gaussian PDF
@@ -424,6 +427,7 @@ class irtkReconstruction : public irtkObject
     inline void Set1DRecon();
     inline void SetInterpolationRecon();
     inline void SetSlicesPerDyn(int slices);
+    inline void SetMultiband(bool withMB);
 
     //utility
     ///Save intermediate results
@@ -639,6 +643,11 @@ inline void irtkReconstruction::SetInterpolationRecon()
 inline void irtkReconstruction::SetSlicesPerDyn(int slices) 
 {
 	_slicePerDyn = slices;
+}
+
+inline void irtkReconstruction::SetMultiband(bool withMB) 
+{
+	_withMB = withMB;
 }
 
 #endif
