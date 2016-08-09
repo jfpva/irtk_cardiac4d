@@ -2622,8 +2622,6 @@ public:
             cout.flush();
             //read the slice
             
-            cerr<<"_slicesRwithMB size = "<<reconstructor->_slicesRwithMB.size()<< " and inputIndex = " << inputIndex << endl;
-            
             irtkRealImage& slice = (reconstructor->_withMB == true) ? reconstructor->_slicesRwithMB[inputIndex] : reconstructor->_slices[inputIndex];
 
             //prepare structures for storage

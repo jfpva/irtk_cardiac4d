@@ -615,7 +615,7 @@ int main(int argc, char **argv)
   else
  	  reconstruction.SetMultiband(false);
   
-  reconstruction.SetMultiband(true);
+  reconstruction.SetMultiband(false);
   
   if (have_stack_transformations == true)
 	 reconstruction.InvertStackTransformations(stack_transformations);
@@ -946,8 +946,10 @@ int main(int argc, char **argv)
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
 	  	  
 	  	  if (iter>0) {
-	  		  //reconstruction.InterpolateGaussian(stacks,iter);
-	  		  reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);  		
+	  		  reconstruction.SetMultiband(false);
+	  		  reconstruction.InterpolateGaussian(stacks,iter);
+	  		  //reconstruction.SetMultiband(true);
+	  		  //reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);  		
 	  	  }
 	
 	  //Write to file
@@ -988,17 +990,19 @@ int main(int argc, char **argv)
 	  if (bspline) {
 		  reconstruction.CoeffInitBSpline();
 	  }
-	  else
-		  reconstruction.CoeffInit();
+	  else {}
+		  // reconstruction.CoeffInit();
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
 	  if (bspline) {
 		  reconstruction.BSplineReconstruction();
 	  }
 	  else
-		  reconstruction.GaussianReconstruction();
-		  // reconstruction.GaussianReconstructionSF(stacks);
-	
+		  //reconstruction.GaussianReconstruction();
+	  {	  
+		  reconstruction.SetMultiband(false);
+		  reconstruction.GaussianReconstructionSF(stacks);
+	  }
 	  //Simulate slices (needs to be done after Gaussian reconstruction)
 	  // reconstruction.SimulateSlices();
 
