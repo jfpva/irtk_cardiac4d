@@ -122,12 +122,12 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
     
 	int counter = 0;
 	interpolated  = _reconstructed;
+	attr2 = interpolated.GetImageAttributes();
 	
     for (int dyn = 0; dyn < stacks.size(); dyn++)  {
 	
 		attr = stacks[dyn].GetImageAttributes();
-		attr2 = interpolated.GetImageAttributes();
-		
+			
 		CoeffInitSF(counter,counter+attr._z);
 		
 		// cleaning interpolated
@@ -174,7 +174,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 					}
 		}
 		
-		counter = counter + attr._z;
+		counter = counter+attr._z;
 		currentSlices.clear();
 		currentBiases.clear();
 		currentTransformations.clear();
@@ -216,32 +216,34 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 	int stackCounter = 0;
 	int sliceIndex = 0;
 	interpolated  = _reconstructed;
-
+	attr2 = interpolated.GetImageAttributes();
+	
 	char buffer[256];
 	int grouping;
 	int position;
 	
+	// clear from previous iterations stages
+    _slicesRwithMB.clear();
+    _transformationsRwithMB.clear();
 	for (int dyn = 0; dyn < stacks.size()-multiband+1; dyn++)  {
 		
 		attr = stacks[dyn].GetImageAttributes();
-		attr2 = interpolated.GetImageAttributes();
 		multiband = multiband_vector[dyn];
 		grouping = attr._z/multiband;
 		for (int m = 0; m < multiband; m++) {
-				for (int g = 0; g < grouping; g++) {	
-					position = counter + g + attr._z*m + grouping*m;
-					_slicesRwithMB.push_back(_slices[position]); 
-					_transformationsRwithMB.push_back(_transformations[position]);					
-				}
+			for (int g = 0; g < grouping; g++) {	
+				position = counter + g + attr._z*m + grouping*m;
+				_slicesRwithMB.push_back(_slices[position]); 
+				_transformationsRwithMB.push_back(_transformations[position]);					
+			}
 		}
-		counter = counter + attr._z;
+		counter = counter+attr._z;
 	}
 	
 	counter = 0;	
     for (int dyn = 0; dyn < stacks.size()-multiband+1; dyn++)  {
     	
     	attr = stacks[dyn].GetImageAttributes();
-    	attr2 = interpolated.GetImageAttributes();
     	CoeffInitSF(counter,counter+attr._z);
     	
     	// cleaning interpolated
@@ -290,7 +292,7 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 						}
 					}
 		}
-		counter = counter + attr._z;
+		counter = counter+attr._z;
 		currentSlices.clear();
 		currentBiases.clear();
 		currentTransformations.clear();

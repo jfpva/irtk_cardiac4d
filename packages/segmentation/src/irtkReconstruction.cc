@@ -2622,6 +2622,8 @@ public:
             cout.flush();
             //read the slice
             
+            cerr<<"_slicesRwithMB size = "<<reconstructor->_slicesRwithMB.size()<< " and inputIndex = " << inputIndex << endl;
+            
             irtkRealImage& slice = (reconstructor->_withMB == true) ? reconstructor->_slicesRwithMB[inputIndex] : reconstructor->_slices[inputIndex];
 
             //prepare structures for storage
@@ -2958,18 +2960,31 @@ void irtkReconstruction::CoeffInitSF(int begin, int end)
 	_volume_weightsSF.Initialize( _reconstructed.GetImageAttributes() );
 	_volume_weightsSF = 0;
 
-    int inputIndex, i, j, n, k;
-    POINT3D p;
-    for ( inputIndex = begin; inputIndex < end; ++inputIndex) {
-        for ( i = 0; i < _slices[inputIndex].GetX(); i++)
-            for ( j = 0; j < _slices[inputIndex].GetY(); j++) {
-                n = _volcoeffsSF[inputIndex % _slicePerDyn][i][j].size();
-                for (k = 0; k < n; k++) {
-                    p = _volcoeffsSF[inputIndex % _slicePerDyn][i][j][k];
-                    _volume_weightsSF(p.x, p.y, p.z) += p.value;
-                }
-            }
-    }
+	int inputIndex, i, j, n, k;
+	POINT3D p;
+	if(_withMB)
+		for ( inputIndex = begin; inputIndex < end; ++inputIndex) {
+			for ( i = 0; i < _slicesRwithMB[inputIndex].GetX(); i++)
+				for ( j = 0; j < _slicesRwithMB[inputIndex].GetY(); j++) {
+					n = _volcoeffsSF[inputIndex % _slicePerDyn][i][j].size();
+					for (k = 0; k < n; k++) {
+						p = _volcoeffsSF[inputIndex % _slicePerDyn][i][j][k];
+						_volume_weightsSF(p.x, p.y, p.z) += p.value;
+					}
+				}
+		}
+	else {
+		for ( inputIndex = begin; inputIndex < end; ++inputIndex) {
+			for ( i = 0; i < _slices[inputIndex].GetX(); i++)
+				for ( j = 0; j < _slices[inputIndex].GetY(); j++) {
+					n = _volcoeffsSF[inputIndex % _slicePerDyn][i][j].size();
+					for (k = 0; k < n; k++) {
+						p = _volcoeffsSF[inputIndex % _slicePerDyn][i][j][k];
+						_volume_weightsSF(p.x, p.y, p.z) += p.value;
+					}
+				}
+		}
+	}
     
     if (_debug)
         _volume_weightsSF.Write("volume_weights.nii.gz");
@@ -3029,9 +3044,7 @@ void irtkReconstruction::GaussianReconstructionSF(vector<irtkRealImage>& stacks)
 	
 		attr = stacks[dyn].GetImageAttributes();
 		
-		SetMultiband(false);
 		CoeffInitSF(counter,counter+attr._z);		
-		SetMultiband(true);
 		
 		for (int s = 0; s < attr._z; s ++) {
 			currentTransformations.push_back(_transformations[counter + s]);
