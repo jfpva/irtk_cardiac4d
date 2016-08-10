@@ -26,7 +26,6 @@ void usage()
   cerr << "Usage: reconstruction [reconstructed] [Target] fMRI data <options>\n" << endl;
   cerr << endl;
 
-  cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
   cerr << "\t-target	                Volume to be used as target (starts from 0)."<<endl;
   cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
@@ -159,12 +158,6 @@ int main(int argc, char **argv)
   //if not enough arguments print help
   if (argc < 3)
     usage();
-  
-  //read output name
-  output_name = argv[1];
-  argc--;
-  argv++;
-  cout<<"Recontructed volume name ... "<<output_name<<endl;
  
   templateNumber=atof(argv[1]);
   cout<<"Template Number is ... "<<templateNumber<<endl;
@@ -610,11 +603,6 @@ int main(int argc, char **argv)
   }
 
   reconstruction.SetSlicesPerDyn(stacks[templateNumber].GetZ());
-  if (multiband_vector[0] > 1)
-	  reconstruction.SetMultiband(true);
-  else
- 	  reconstruction.SetMultiband(false);
-  
   reconstruction.SetMultiband(false);
   
   if (have_stack_transformations == true)
@@ -946,10 +934,7 @@ int main(int argc, char **argv)
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
 	  	  
 	  	  if (iter>0) {
-	  		  reconstruction.SetMultiband(false);
 	  		  reconstruction.InterpolateGaussian(stacks,iter);
-	  		  //reconstruction.SetMultiband(true);
-	  		  //reconstruction.InterpolateGaussianReordered(stacks,multiband_vector,iter);  		
 	  	  }
 	
 	  //Write to file
@@ -1000,7 +985,6 @@ int main(int argc, char **argv)
 	  else
 		  //reconstruction.GaussianReconstruction();
 	  {	  
-		  reconstruction.SetMultiband(false);
 		  reconstruction.GaussianReconstructionSF(stacks);
 	  }
 	  //Simulate slices (needs to be done after Gaussian reconstruction)
@@ -1106,7 +1090,6 @@ int main(int argc, char **argv)
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
 	reconstructed=reconstruction.GetReconstructed();
-	reconstructed.Write(output_name);
 	//reconstruction.SaveTransformations();
 	reconstruction.SaveSlices();
 	
