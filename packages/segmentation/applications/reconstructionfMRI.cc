@@ -23,11 +23,11 @@ using namespace std;
 
 void usage()
 {
-  cerr << "Usage: reconstruction [reconstructed] [Target] fMRI data <options>\n" << endl;
+  cerr << "Usage: reconstruction [Target] fMRI data <options>\n" << endl;
   cerr << endl;
 
-  cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
-  cerr << "\t-target	                Volume to be used as target (starts from 0)."<<endl;
+  cerr << "                                  Final time series name is output.nii.gz" << endl;
+  cerr << "\t-target	                  Volume to be used as target (starts from 0)."<<endl;
   cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
@@ -159,12 +159,6 @@ int main(int argc, char **argv)
   //if not enough arguments print help
   if (argc < 3)
     usage();
-  
-  //read output name
-  output_name = argv[1];
-  argc--;
-  argv++;
-  cout<<"Recontructed volume name ... "<<output_name<<endl;
  
   templateNumber=atof(argv[1]);
   cout<<"Template Number is ... "<<templateNumber<<endl;
@@ -609,7 +603,10 @@ int main(int argc, char **argv)
     }
   }
 
- if (have_stack_transformations == true)
+  reconstruction.SetSlicesPerDyn(stacks[templateNumber].GetZ());
+  reconstruction.SetMultiband(false);
+  
+  if (have_stack_transformations == true)
 	 reconstruction.InvertStackTransformations(stack_transformations);
   
   if (rescale_stacks)
@@ -936,10 +933,11 @@ int main(int argc, char **argv)
 	  	  
 	  	  if ((iter>0) && (debug))
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
-	  	  
-	  	  if (iter>0)
+
+	  	  if (iter>0) {
 	  		  reconstruction.InterpolateGaussian(stacks,iter);
-	  
+	  	  }
+
 	  //Write to file
 	  if ( ! no_log ) {
 		 cout.rdbuf (file2.rdbuf());
@@ -978,22 +976,23 @@ int main(int argc, char **argv)
 	  if (bspline) {
 		  reconstruction.CoeffInitBSpline();
 	  }
-	  else
-		  reconstruction.CoeffInit();
+	  else {}
+		  // reconstruction.CoeffInit(); no need to perform this if GaussianReconstructionSF is used
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
 	  if (bspline) {
 		  reconstruction.BSplineReconstruction();
 	  }
 	  else
-		  reconstruction.GaussianReconstruction();
-	
+	  {	  
+		  reconstruction.GaussianReconstructionSF(stacks);
+	  }
 	  //Simulate slices (needs to be done after Gaussian reconstruction)
-	  reconstruction.SimulateSlices();
+	  // reconstruction.SimulateSlices();
 
 	  //Initialize robust statistics parameters
-	  reconstruction.InitializeRobustStatistics();
-	
+	  // reconstruction.InitializeRobustStatistics();
+	  
 	  //EStep
 	  if(robust_statistics)
 		  reconstruction.EStep();
@@ -1057,7 +1056,7 @@ int main(int argc, char **argv)
 		  reconstructed=reconstruction.GetReconstructed();
 		  sprintf(buffer,"super%i.nii.gz",i);
 		  reconstructed.Write(buffer);
-	  }
+	  } 
 	  
 	}//end of reconstruction iterations
 	
@@ -1078,7 +1077,7 @@ int main(int argc, char **argv)
 	if ( ! no_log ) {
 		cout.rdbuf (fileEv.rdbuf());
 	}
-	reconstruction.Evaluate(iter);
+	//reconstruction.Evaluate(iter);
 	cout<<endl;
 	
 	if ( ! no_log ) {
@@ -1090,26 +1089,26 @@ int main(int argc, char **argv)
 	//save final result
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
-	reconstructed=reconstruction.GetReconstructed();
-	reconstructed.Write(output_name); 
+	reconstructed = reconstruction.GetReconstructed();
 	//reconstruction.SaveTransformations();
-	reconstruction.SaveSlices();
-
+	//reconstruction.SaveSlices();
+	reconstruction.writefMRI();
+	
 	// Don't know why it fails here
 	/*if ( info_filename.length() > 0 )
 	  reconstruction.SlicesInfo( info_filename.c_str(),
 								 stack_files );*/
 	if(debug)
 	{
-	reconstruction.SaveWeights();
-	reconstruction.SaveBiasFields();
+		reconstruction.SaveWeights();
+		reconstruction.SaveBiasFields();
 	//reconstruction.SaveConfidenceMap();
-	reconstruction.SimulateStacks(stacks);
-	for (unsigned int i=0;i<stacks.size();i++)
+	// reconstruction.SimulateStacks(stacks);
+	/*for (unsigned int i=0;i<stacks.size();i++)
 	{
 	  sprintf(buffer,"simulated%i.nii.gz",i);
 	  stacks[i].Write(buffer);
-	}
+	}*/
   }
   //The end of main()
 }

@@ -50,10 +50,14 @@ class irtkReconstruction : public irtkObject
     RECON_TYPE _recon_type;
     //Structures to store the matrix of transformation between volume and slices
     std::vector<SLICECOEFFS> _volcoeffs;
-
+    std::vector<SLICECOEFFS> _volcoeffsSF;
+    
+    int _slicePerDyn;
+    
     //SLICES
     /// Slices
     vector<irtkRealImage> _slices;
+    vector<irtkRealImage> _slicesRwithMB;
     vector<irtkRealImage> _simulated_slices;
     vector<irtkRealImage> _simulated_weights;
     vector<irtkRealImage> _simulated_inside;
@@ -61,12 +65,15 @@ class irtkReconstruction : public irtkObject
     /// Transformations
     vector<irtkRigidTransformation> _transformations;
     vector<irtkRigidTransformation> _previous_transformations;
+    vector<irtkRigidTransformation> _transformationsRwithMB;
     /// Indicator whether slice has an overlap with volumetric mask
     vector<bool> _slice_inside;
-  
+    vector<bool> _slice_insideSF;
+    
     //VOLUME
     /// Reconstructed volume
     irtkRealImage _reconstructed;
+    irtkRealImage _target;
     /// Flag to say whether the template volume has been created
     bool _template_created;
     /// Volume mask
@@ -78,6 +85,7 @@ class irtkReconstruction : public irtkObject
     bool _have_mask;
     /// Weights for Gaussian reconstruction
     irtkRealImage _volume_weights;
+    irtkRealImage _volume_weightsSF;
     /// Weights for regularization
     irtkRealImage _confidence_map;
   
@@ -131,6 +139,7 @@ class irtkReconstruction : public irtkObject
     double _lambda;
     ///Average voxel wights to modulate parameter alpha
     double _average_volume_weight;
+    double _average_volume_weightSF;
 
     
     //global bias field correction
@@ -165,6 +174,7 @@ class irtkReconstruction : public irtkObject
     //do not exclude voxels, only whole slices
     bool _robust_slices_only;
 
+    bool _withMB;
   
     //Probability density functions
     ///Zero-mean Gaussian PDF
@@ -303,6 +313,7 @@ class irtkReconstruction : public irtkObject
   
     ///Calculate transformation matrix between slices and voxels
     void CoeffInit();
+	void CoeffInitSF(int begin, int end);
     
     ///Calculate transformation matrix between slices and voxels for BSpline interpolation
     void CoeffInitBSpline();
@@ -310,6 +321,7 @@ class irtkReconstruction : public irtkObject
   
     ///Reconstruction using weighted Gaussian PSF
     void GaussianReconstruction();
+    void GaussianReconstructionSF(vector<irtkRealImage>& stacks);
     
     ///Reconstruction using multilevel B-spline
     void BSplineReconstruction();
@@ -414,6 +426,8 @@ class irtkReconstruction : public irtkObject
     inline void Set3DRecon();
     inline void Set1DRecon();
     inline void SetInterpolationRecon();
+    inline void SetSlicesPerDyn(int slices);
+    inline void SetMultiband(bool withMB);
 
     //utility
     ///Save intermediate results
@@ -472,7 +486,7 @@ class irtkReconstruction : public irtkObject
     int giveMeDepth(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband);
     // Calculate subpacking needed for tree like structure
     vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> multiband, int iterations, bool last);
-
+    
     double calculateResidual(int padding);
     
     ///Splits stacks into packages
@@ -495,6 +509,7 @@ class irtkReconstruction : public irtkObject
     friend class ParallelStackRegistrations;
     friend class ParallelSliceToVolumeRegistration;
     friend class ParallelCoeffInit;
+	friend class ParallelCoeffInitSF;  
     friend class ParallelSuperresolution;
     friend class ParallelMStep;
     friend class ParallelEStep;
@@ -623,6 +638,16 @@ inline void irtkReconstruction::Set1DRecon()
 inline void irtkReconstruction::SetInterpolationRecon()
 {
     _recon_type = _interpolate;
+}
+
+inline void irtkReconstruction::SetSlicesPerDyn(int slices) 
+{
+	_slicePerDyn = slices;
+}
+
+inline void irtkReconstruction::SetMultiband(bool withMB) 
+{
+	_withMB = withMB;
 }
 
 #endif

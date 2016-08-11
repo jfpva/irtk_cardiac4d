@@ -47,122 +47,10 @@ void irtkReconstructionfMRI::InterpolateBSpline(vector<irtkRealImage>& stacks, i
 		currentSlices.clear();
 	}
 	
-	if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "BsplineS%04iVolume%04i.nii.gz",iter,dyn);
-			_timeserie[dyn].Write(buffer);	
-		}
-	}
-}
-
-void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, int iter) {
-
-	// clear timeserie from previous iterations
-	_timeserie.clear();
-	
-	vector<irtkRigidTransformation> currentTransformations;
-	vector<irtkRealImage> currentSlices;
-	vector<double> currentScales;
-	vector<irtkRealImage> currentBiases;
-	irtkRealImage volumeWeights;
-	
-	irtkRealImage interpolated;
-	irtkImageAttributes attr, attr2;
-	
-	irtkRealImage slice;
-	double scale;
-	int n;
-	POINT3D p;
-	int slice_vox_num = 0;
-    
-	int counter = 0;
-	interpolated  = _reconstructed;
-	volumeWeights = _reconstructed;
-	
-    for (int dyn = 0; dyn < stacks.size(); dyn++)  {
-	
-		attr = stacks[dyn].GetImageAttributes();
-		attr2 = interpolated.GetImageAttributes();
-		
-		for (int s = 0; s < attr._z; s ++) {
-			currentTransformations.push_back(_transformations[counter + s]);
-			currentSlices.push_back(_slices[counter + s]);
-			currentScales.push_back(_scale[counter + s]);
-			currentBiases.push_back(_bias[counter + s]);
-		}
-
-		// cleaning interpolated and volumeWeights
-		for (int k = 0; k < attr2._z; k++) {
-			for (int j = 0; j < attr2._y; j++) {
-				for (int i = 0; i < attr2._x; i++) {
-					interpolated(i,j,k) = 0;
-					volumeWeights(i,j,k) = 0;
-				}
-			}
-		}
-		
-		// weights
-		for ( int s = 0; s < attr._z; s ++ ) {
-			for ( int i = 0; i < _slices[counter + s].GetX(); i++)
-				for ( int j = 0; j < _slices[counter + s].GetY(); j++) {
-					n = _volcoeffs[counter + s][i][j].size();
-					for (int k = 0; k < n; k++) {			
-						p = _volcoeffs[counter + s][i][j][k];
-						volumeWeights(p.x, p.y, p.z) += p.value;
-					}
-			}
-		}
-		
-		for (int s = 0; s < currentSlices.size(); s++) {
-			
-			//copy the current slice
-			slice = currentSlices[s];
-			//alias the current bias image
-			irtkRealImage& b = currentBiases[s];
-			//read current scale factor
-			scale = currentScales[s];
-			
-			for (int i = 0; i < slice.GetX(); i++)
-				for (int j = 0; j < slice.GetY(); j++)
-					if (slice(i, j, 0) != -1) {
-						//biascorrect and scale the slice
-						slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
-			
-						//number of volume voxels with non-zero coefficients
-						//for current slice voxel
-						n = _volcoeffs[counter + s][i][j].size();
-			
-						//if given voxel is not present in reconstructed volume at all,
-						//pad it
-						
-						//if (n == 0)
-						//_slices[inputIndex].PutAsDouble(i, j, 0, -1);
-						//calculate num of vox in a slice that have overlap with roi
-						if (n>0)
-							slice_vox_num++;
-			
-						//add contribution of current slice voxel to all voxel volumes
-						//to which it contributes
-						for (int k = 0; k < n; k++) {
-							p = _volcoeffs[counter + s][i][j][k];
-							interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
-						}
-					}
-		}
-		counter = counter + attr._z;
-		currentSlices.clear();
-		currentBiases.clear();
-		currentTransformations.clear();
-		currentScales.clear();
-		interpolated /= volumeWeights;
-		_timeserie.push_back(interpolated);
-    }
-    
-    if (true) {
-		char buffer[256];
-		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
-			sprintf(buffer, "GaussianS%04iVolume%04i.nii.gz",iter,dyn);
 			_timeserie[dyn].Write(buffer);	
 		}
 	}
@@ -204,13 +92,105 @@ void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& 
 		currentSlices.clear();
 	}
 	
-	if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "BSplineR%04iVolume%04i.nii.gz",iter,dyn);
 			_timeserie[dyn].Write(buffer);	
 		}
 	}
+}
+
+void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, int iter) {
+
+	// clear timeserie from previous iterations
+	_timeserie.clear();
+	
+	vector<irtkRigidTransformation> currentTransformations;
+	vector<irtkRealImage> currentSlices;
+	vector<double> currentScales;
+	vector<irtkRealImage> currentBiases;
+	
+	irtkRealImage interpolated;
+	irtkImageAttributes attr, attr2;
+	
+	int multiband;
+	irtkRealImage slice;
+	double scale;
+	int n;
+	POINT3D p;
+    
+	int counter = 0;
+	interpolated  = _reconstructed;
+	attr2 = interpolated.GetImageAttributes();
+	
+    for (int dyn = 0; dyn < stacks.size(); dyn++)  {
+	
+		attr = stacks[dyn].GetImageAttributes();
+			
+		CoeffInitSF(counter,counter+attr._z);
+		
+		// cleaning interpolated
+		for (int k = 0; k < attr2._z; k++) {
+			for (int j = 0; j < attr2._y; j++) {
+				for (int i = 0; i < attr2._x; i++) {
+					interpolated(i,j,k) = 0;
+				}
+			}
+		}
+		
+		for (int s = 0; s < attr._z; s ++) {
+			currentTransformations.push_back(_transformations[counter + s]);
+			currentSlices.push_back(_slices[counter + s]);
+			currentScales.push_back(_scale[counter + s]);
+			currentBiases.push_back(_bias[counter + s]);		
+		}
+		
+		for (int s = 0; s < currentSlices.size(); s++) {
+			
+			//copy the current slice
+			slice = currentSlices[s];
+			//alias the current bias image
+			irtkRealImage& b = currentBiases[s];
+			//read current scale factor
+			scale = currentScales[s];
+			
+			for (int i = 0; i < slice.GetX(); i++)
+				for (int j = 0; j < slice.GetY(); j++)
+					if (slice(i, j, 0) != -1) {
+						//biascorrect and scale the slice
+						slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
+			
+						//number of volume voxels with non-zero coefficients
+						//for current slice voxel
+						n = _volcoeffsSF[s][i][j].size();
+						
+						//add contribution of current slice voxel to all voxel volumes
+						//to which it contributes
+						for (int k = 0; k < n; k++) {
+							p = _volcoeffsSF[s][i][j][k];
+							interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
+						}
+					}
+		}
+		
+		counter = counter+attr._z;
+		currentSlices.clear();
+		currentBiases.clear();
+		currentTransformations.clear();
+		currentScales.clear();
+		interpolated /= _volume_weightsSF;
+		_timeserie.push_back(interpolated);	
+    }
+    
+	if (_debug) {
+		char buffer[256];
+		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
+			sprintf(buffer, "GaussianS%04iVolume%04i.nii.gz",iter,dyn);
+			_timeserie[dyn].Write(buffer);	
+		}
+	}
+	
 }
 
 void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector, int iter) {
@@ -222,7 +202,6 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 	vector<irtkRealImage> currentSlices;
 	vector<double> currentScales;
 	vector<irtkRealImage> currentBiases;
-	irtkRealImage volumeWeights;
 	
 	irtkRealImage interpolated;
 	irtkImageAttributes attr, attr2;
@@ -232,113 +211,121 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 	double scale;
 	int n;
 	POINT3D p;
-	int slice_vox_num = 0;
     
 	int counter = 0;
+	int stackCounter = 0;
 	int sliceIndex = 0;
 	interpolated  = _reconstructed;
-	volumeWeights = _reconstructed;
-
+	attr2 = interpolated.GetImageAttributes();
+	
 	char buffer[256];
 	int grouping;
 	int position;
-    for (int dyn = 0; dyn < stacks.size()-multiband+1; dyn++)  {
 	
+	// clear from previous iterations stages
+    _slicesRwithMB.clear();
+    _transformationsRwithMB.clear();
+	for (int dyn = 0; dyn < stacks.size()-multiband+1; dyn++)  {
+		
 		attr = stacks[dyn].GetImageAttributes();
-		attr2 = interpolated.GetImageAttributes();
 		multiband = multiband_vector[dyn];
 		grouping = attr._z/multiband;
-		
 		for (int m = 0; m < multiband; m++) {
 			for (int g = 0; g < grouping; g++) {	
 				position = counter + g + attr._z*m + grouping*m;
-				currentTransformations.push_back(_transformations[position]);
-				currentSlices.push_back(_slices[position]);
-				currentScales.push_back(_scale[position]);
-				currentBiases.push_back(_bias[position]);
+				_slicesRwithMB.push_back(_slices[position]); 
+				_transformationsRwithMB.push_back(_transformations[position]);					
 			}
 		}
-
-		// cleaning interpolated and volumeWeights
+		counter = counter+attr._z;
+	}
+	
+	counter = 0;	
+    for (int dyn = 0; dyn < stacks.size()-multiband+1; dyn++)  {
+    	
+    	attr = stacks[dyn].GetImageAttributes();
+    	CoeffInitSF(counter,counter+attr._z);
+    	
+    	// cleaning interpolated
 		for (int k = 0; k < attr2._z; k++) {
 			for (int j = 0; j < attr2._y; j++) {
 				for (int i = 0; i < attr2._x; i++) {
 					interpolated(i,j,k) = 0;
-					volumeWeights(i,j,k) = 0;
 				}
 			}
 		}
 		
-		for (int m = 0; m < multiband; m++) {
-			for (int g = 0; g < grouping; g++) {	
-				position = counter + g + attr._z*m + grouping*m;
-				for ( int i = 0; i < _slices[position].GetX(); i++)
-					for ( int j = 0; j < _slices[position].GetY(); j++) {
-						n = _volcoeffs[position][i][j].size();
-						for (int k = 0; k < n; k++) {			
-							p = _volcoeffs[position][i][j][k];
-							volumeWeights(p.x, p.y, p.z) += p.value;
-						}
-				}
-			}
+    	for (int m = 0; m < multiband; m++) {
+    		for (int g = 0; g < grouping; g++) {	
+    			position = counter + g + attr._z*m + grouping*m;
+				currentTransformations.push_back(_transformations[position]);
+				currentSlices.push_back(_slices[position]);
+				currentScales.push_back(_scale[position]);
+				currentBiases.push_back(_bias[position]);						
+    		}
 		}
-
-		for (int m = 0; m < multiband; m++) {
-			for (int g = 0; g < grouping; g++) {	
-				
-				position = counter + g + attr._z*m + grouping*m;
-				
-				//copy the current slice
-				slice = currentSlices[sliceIndex];
-				//alias the current bias image
-				irtkRealImage& b = currentBiases[sliceIndex];
-				//read current scale factor
-				scale = currentScales[sliceIndex];
-				
-				for (int i = 0; i < slice.GetX(); i++)
-					for (int j = 0; j < slice.GetY(); j++)
-						if (slice(i, j, 0) != -1) {
-							//biascorrect and scale the slice
-							slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
-				
-							//number of volume voxels with non-zero coefficients
-							//for current slice voxel
-							n = _volcoeffs[position][i][j].size();
-				
-							//if given voxel is not present in reconstructed volume at all,
-							//pad it
-							
-							//if (n == 0)
-							//_slices[inputIndex].PutAsDouble(i, j, 0, -1);
-							//calculate num of vox in a slice that have overlap with roi
-							if (n>0)
-								slice_vox_num++;
-				
-							//add contribution of current slice voxel to all voxel volumes
-							//to which it contributes
-							for (int k = 0; k < n; k++) {
-								p = _volcoeffs[position][i][j][k];
-								interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
-							}
+   
+		for (int s = 0; s < currentSlices.size(); s++) {
+			
+			//copy the current slice
+			slice = currentSlices[s];
+			//alias the current bias image
+			irtkRealImage& b = currentBiases[s];
+			//read current scale factor
+			scale = currentScales[s];
+			
+			for (int i = 0; i < slice.GetX(); i++)
+				for (int j = 0; j < slice.GetY(); j++)
+					if (slice(i, j, 0) != -1) {
+						//biascorrect and scale the slice
+						slice(i, j, 0) *= exp(-b(i, j, 0)) * scale;
+			
+						//number of volume voxels with non-zero coefficients
+						//for current slice voxel
+						n = _volcoeffsSF[s][i][j].size();
+						
+						//add contribution of current slice voxel to all voxel volumes
+						//to which it contributes
+						for (int k = 0; k < n; k++) {
+							p = _volcoeffsSF[s][i][j][k];
+							interpolated(p.x, p.y, p.z) += p.value * slice(i, j, 0);
 						}
-				sliceIndex++;
-				}
+					}
 		}
-		sliceIndex = 0;
-		counter = counter + attr._z;
+		counter = counter+attr._z;
 		currentSlices.clear();
 		currentBiases.clear();
 		currentTransformations.clear();
 		currentScales.clear();
-		interpolated /= volumeWeights;
-		_timeserie.push_back(interpolated);		
+		interpolated /= _volume_weightsSF;
+		_timeserie.push_back(interpolated);
     }
     
-    if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "GaussianR%04iVolume%04i.nii.gz",iter,dyn);
 			_timeserie[dyn].Write(buffer);	
 		}
-	}
+	}   
+}
+
+void irtkReconstructionfMRI::writefMRI() {
+	
+	char buffer[256];
+	
+	irtkImageAttributes attr = _timeserie[0].GetImageAttributes();
+	attr._t = _timeserie.size();
+	irtkRealImage image(attr);
+	for(int t=0;t<attr._t;t++)
+	for(int z=0;z<attr._z;z++)
+	  for(int y=0;y<attr._y;y++)
+		for(int x=0;x<attr._x;x++)
+		{
+			image(x,y,z,t) = _timeserie[t](x,y,z);
+		}
+	
+	sprintf(buffer,"output.nii.gz");
+	image.Write(buffer);
+	
 }
