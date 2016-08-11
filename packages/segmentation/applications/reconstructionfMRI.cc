@@ -165,23 +165,23 @@ int main(int argc, char **argv)
   argc--;
   argv++;
   
-  //read 4D image
-  irtkRealImage image4D; 
+  irtkRealImage* image4D = new irtkRealImage(); 
   cout<<"Reading stack ... "<<argv[1]<<endl;
-  image4D.Read(argv[1]);
+  image4D->Read(argv[1]);
   argc--;
   argv++;
-  irtkImageAttributes attr = image4D.GetImageAttributes();
+  irtkImageAttributes attr = image4D->GetImageAttributes();
   nStacks = attr._t;
   cout<<"Number 0f stacks ... "<<nStacks<<endl;
-	
+
   // Create stacks 
   for (i = 0; i < nStacks;i++)
   {
-		stacks.push_back(image4D.GetRegion(0,0,0,i,attr._x, attr._y,attr._z,i+1));
-		sprintf(buffer,"stack%i.nii.gz",i);
-		stacks[i].Write(buffer);    
+	  stacks.push_back(image4D->GetRegion(0,0,0,i,attr._x, attr._y,attr._z,i+1));
+	  sprintf(buffer,"stack%i.nii.gz",i);
+	  stacks[i].Write(buffer);    
   }
+  delete image4D; // call deconstructor to save memory space
   
   // Parse options.
   while (argc > 1){
@@ -690,7 +690,7 @@ int main(int argc, char **argv)
   else reconstruction.DebugOff();
   
   //Set force excluded slices
-  reconstruction.SetForceExcludedSlices(force_excluded);
+  //reconstruction.SetForceExcludedSlices(force_excluded);
 
   //Set low intensity cutoff for bias estimation
   //reconstruction.SetLowIntensityCutoff(low_intensity_cutoff)  ;
