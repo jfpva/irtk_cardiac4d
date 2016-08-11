@@ -47,7 +47,7 @@ void irtkReconstructionfMRI::InterpolateBSpline(vector<irtkRealImage>& stacks, i
 		currentSlices.clear();
 	}
 	
-	if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "BsplineS%04iVolume%04i.nii.gz",iter,dyn);
@@ -92,7 +92,7 @@ void irtkReconstructionfMRI::InterpolateBSplineReordered(vector<irtkRealImage>& 
 		currentSlices.clear();
 	}
 	
-	if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "BSplineR%04iVolume%04i.nii.gz",iter,dyn);
@@ -183,7 +183,7 @@ void irtkReconstructionfMRI::InterpolateGaussian(vector<irtkRealImage>& stacks, 
 		_timeserie.push_back(interpolated);	
     }
     
-	if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "GaussianS%04iVolume%04i.nii.gz",iter,dyn);
@@ -301,11 +301,31 @@ void irtkReconstructionfMRI::InterpolateGaussianReordered(vector<irtkRealImage>&
 		_timeserie.push_back(interpolated);
     }
     
-	if (true) {
+	if (_debug) {
 		char buffer[256];
 		for (int dyn = 0; dyn < _timeserie.size(); dyn++) {
 			sprintf(buffer, "GaussianR%04iVolume%04i.nii.gz",iter,dyn);
 			_timeserie[dyn].Write(buffer);	
 		}
 	}   
+}
+
+void irtkReconstructionfMRI::writefMRI() {
+	
+	char buffer[256];
+	
+	irtkImageAttributes attr = _timeserie[0].GetImageAttributes();
+	attr._t = _timeserie.size();
+	irtkRealImage image(attr);
+	for(int t=0;t<attr._t;t++)
+	for(int z=0;z<attr._z;z++)
+	  for(int y=0;y<attr._y;y++)
+		for(int x=0;x<attr._x;x++)
+		{
+			image(x,y,z,t) = _timeserie[t](x,y,z);
+		}
+	
+	sprintf(buffer,"output.nii.gz");
+	image.Write(buffer);
+	
 }

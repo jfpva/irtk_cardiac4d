@@ -44,6 +44,8 @@ public:
 		
 	void InterpolateGaussianReordered(vector<irtkRealImage>& stacks, vector<int> multiband_vector , int iter);
 	
+	void writefMRI();
+	
 };
 
 #endif

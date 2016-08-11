@@ -23,10 +23,11 @@ using namespace std;
 
 void usage()
 {
-  cerr << "Usage: reconstruction [reconstructed] [Target] fMRI data <options>\n" << endl;
+  cerr << "Usage: reconstruction [Target] fMRI data <options>\n" << endl;
   cerr << endl;
 
-  cerr << "\t-target	                Volume to be used as target (starts from 0)."<<endl;
+  cerr << "                                  Final time series name is output.nii.gz" << endl;
+  cerr << "\t-target	                  Volume to be used as target (starts from 0)."<<endl;
   cerr << "\tfMRI time serie" << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
@@ -976,14 +977,13 @@ int main(int argc, char **argv)
 		  reconstruction.CoeffInitBSpline();
 	  }
 	  else {}
-		  // reconstruction.CoeffInit();
+		  // reconstruction.CoeffInit(); no need to perform this if GaussianReconstructionSF is used
 	
 	  //Initialize reconstructed image with Gaussian weighted reconstruction
 	  if (bspline) {
 		  reconstruction.BSplineReconstruction();
 	  }
 	  else
-		  //reconstruction.GaussianReconstruction();
 	  {	  
 		  reconstruction.GaussianReconstructionSF(stacks);
 	  }
@@ -1056,7 +1056,7 @@ int main(int argc, char **argv)
 		  reconstructed=reconstruction.GetReconstructed();
 		  sprintf(buffer,"super%i.nii.gz",i);
 		  reconstructed.Write(buffer);
-	  }
+	  } 
 	  
 	}//end of reconstruction iterations
 	
@@ -1089,9 +1089,10 @@ int main(int argc, char **argv)
 	//save final result
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
-	reconstructed=reconstruction.GetReconstructed();
+	reconstructed = reconstruction.GetReconstructed();
 	//reconstruction.SaveTransformations();
-	reconstruction.SaveSlices();
+	//reconstruction.SaveSlices();
+	reconstruction.writefMRI();
 	
 	// Don't know why it fails here
 	/*if ( info_filename.length() > 0 )
@@ -1099,8 +1100,8 @@ int main(int argc, char **argv)
 								 stack_files );*/
 	if(debug)
 	{
-	reconstruction.SaveWeights();
-	reconstruction.SaveBiasFields();
+		reconstruction.SaveWeights();
+		reconstruction.SaveBiasFields();
 	//reconstruction.SaveConfidenceMap();
 	// reconstruction.SimulateStacks(stacks);
 	/*for (unsigned int i=0;i<stacks.size();i++)
