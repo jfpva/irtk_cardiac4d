@@ -810,17 +810,17 @@ int main(int argc, char **argv)
 
 		vector<int> level;
 		if(iter == 1) {
-			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter);
+			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,2);
 		}
 
 		else if((iter > 1) && (iter < internal-1)){
 			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,2);
 		}
 
 		else {	
 			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,2);
 		}
 
 		if ( ! no_log ) {

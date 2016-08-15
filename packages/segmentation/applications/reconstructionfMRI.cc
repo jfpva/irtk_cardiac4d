@@ -633,12 +633,6 @@ int main(int argc, char **argv)
 	}
 	cout<<"All packages set to 1"<<endl;
   }
-  else // feel with package number from the first stack
-  {
-	for (i=1;i<nStacks;i++)	{
-	  packages.push_back(packages[0]);
-	}
-  }
 
   // set multiband to 1 if not given by user
   if (multiband_vector.size() == 0) {
@@ -646,12 +640,6 @@ int main(int argc, char **argv)
 		multiband_vector.push_back(1);
 	}
 	cout<<"Multiband set to 1 for all stacks"<<endl;
-  }
-  else // feel with multiband from the first stack
-  {
-	for (i=1;i<nStacks;i++)	{
-      multiband_vector.push_back(multiband_vector[0]);
-	}
   }
   
   // set order to ascending if not given by user
@@ -661,13 +649,7 @@ int main(int argc, char **argv)
   	}
   	cout<<"Slice ordering set to ascending for all stacks"<<endl;
   }
-  else // feel with order from the first stack
-  {
-  	for (i=1;i<nStacks;i++)	{
-        order_vector.push_back(order_vector[0]);
-  	}
-  }
-
+  
   //Initialise 2*slice thickness if not given by user
   if (thickness.size()==0)
   {
@@ -898,37 +880,37 @@ int main(int argc, char **argv)
   for (int iter=0;iter<iterations;iter++)
   {
 	  //Print iteration number on the screen
-	  	  if ( ! no_log ) {
+	  	  /*if ( ! no_log ) {
 	  		  cout.rdbuf (strm_buffer);
-	  	  }
+	  	  }*/
 	  	  
 	  	  cout<<"Iteration"<<iter<<". "<<endl;
 	  	  
 	  	  if (iter>0)
 	  	  {
-	  		if ( ! no_log ) {
+	  		/*if ( ! no_log ) {
 	  		  cerr.rdbuf(file_e.rdbuf());
 	  		  cout.rdbuf (file.rdbuf());
-	  		}
+	  		}*/
 
 	  		vector<int> level;
 	  		if(iter == 1) {
-	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter);
+	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,10);
 	  		}
 
 	  		else if((iter > 1) && (iter < internal-1)){
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,2);
 	  		}
 
 	  		else {	
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,2);
 	  		}
 
-	  		if ( ! no_log ) {
+	  		/*if ( ! no_log ) {
 	  			cerr.rdbuf (strm_buffer_e);
-	  		}
+	  		}*/
 	  	  }
 	  	  
 	  	  if ((iter>0) && (debug))
@@ -939,9 +921,9 @@ int main(int argc, char **argv)
 	  	  }
 
 	  //Write to file
-	  if ( ! no_log ) {
+	  /*if ( ! no_log ) {
 		 cout.rdbuf (file2.rdbuf());
-      }
+      }*/
 
 	  //Set smoothing parameters
 	  //amount of smoothing (given by lambda) is decreased with improving alignment
