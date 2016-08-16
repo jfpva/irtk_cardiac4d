@@ -900,12 +900,12 @@ int main(int argc, char **argv)
 
 	  		else if((iter > 1) && (iter < internal-1)){
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,4);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,3);
 	  		}
 
 	  		else {	
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,4);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,3);
 	  		}
 
 	  		if ( ! no_log ) {

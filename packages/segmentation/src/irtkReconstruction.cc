@@ -5301,6 +5301,7 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
     // other variables
 	int counter1;
 	int counter2 = 0;
+	int counter3 = 0;
     int startIterations;
     int endIterations;
     int extra;
@@ -5312,7 +5313,6 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 	
 	int doffset;
 	int count = 0;
-	int stacksDone = 0;
     
 	for (int w = 0; w < wrapper; w++)	 {
 
@@ -5325,12 +5325,11 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 				spack_num.push_back(pack_num[s+doffset]);
 				smultiband_vector.push_back(multiband_vector[s+doffset]);
 				sorder.push_back(order[s+doffset]);
-				stacksDone = stacksDone + stacks[s+doffset].GetZ();
 			}
 		}
 		
 		splitPackageswithMB(sstacks, spack_num, packages, smultiband_vector, sorder, step, rewinder);
-	
+		
 		// other variables
 		counter1 = 0;
 		startIterations = 0;
@@ -5344,10 +5343,10 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 	
 			 // slice loop
 			 for (int sl = 0; sl < firstPackage.GetZ(); sl++) {
-				t_internal_slice_order.push_back(_t_slice_order[counter2 + sl]);
+				t_internal_slice_order.push_back(_t_slice_order[counter3 + sl]);
 				internal_transformations.push_back(_transformations[counter2 + sl]);
 			 }
-	
+			 
 			 // package look
 			 for (int j = 0; j < spack_num[i]; j++) {
 	
@@ -5420,18 +5419,18 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 			 t_internal_slice_order.clear();
 			 internal_transformations.clear();
 			 counter2 = counter2 + firstPackage.GetZ();
+			 counter3 = counter3 + firstPackage.GetZ();
 		}
 		// save transformations and clear
 		_z_slice_order.clear();
 		_t_slice_order.clear();
 		
-		stacksDone = 0;
 		sstacks.clear();
 		spack_num.clear();
 		smultiband_vector.clear();
 		sorder.clear();	
 		packages.clear();	
-		
+		counter3 = 0;
 	}
 }
 
@@ -5465,6 +5464,7 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 	int counter2 = 0;
 	int counter3;
 	int counter4 = 0;
+	int counter5 = 0;
 	int startIterations;
 	int endIterations;
 	int iterations;
@@ -5524,7 +5524,7 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 			
 			 // slice loop
 			 for (int sl = 0; sl < firstChunk.GetZ(); sl++) {
-				t_internal_slice_order.push_back(_t_slice_order[counter2 + sl]);
+				t_internal_slice_order.push_back(_t_slice_order[counter5 + sl]);
 				internal_transformations.push_back(_transformations[counter2 + sl]);
 			 }
 
@@ -5565,11 +5565,6 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 				m=m*mo;
 				internal_transformations[j].PutMatrix(m);
 
-				if (_debug) {
-					sprintf(buffer,"transformation%i-%i-%i.dof",iter,i+doffset,j);
-					internal_transformations[j].irtkTransformation::Write(buffer);
-				}
-
 				// saving transformations
 				iterations = ssliceNums[counter1];
 				endIterations = endIterations + iterations;
@@ -5578,13 +5573,13 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 				  for (int l = 0; l < t_internal_slice_order.size(); l++) {
 					  
 					  if (k == t_internal_slice_order[l]) {
-						 _transformations[counter2 + l].PutTranslationX(internal_transformations[j].GetTranslationX());
-						 _transformations[counter2 + l].PutTranslationY(internal_transformations[j].GetTranslationY());
-						 _transformations[counter2 + l].PutTranslationZ(internal_transformations[j].GetTranslationZ());
-						 _transformations[counter2 + l].PutRotationX(internal_transformations[j].GetRotationX());
-						 _transformations[counter2 + l].PutRotationY(internal_transformations[j].GetRotationY());
-						 _transformations[counter2 + l].PutRotationZ(internal_transformations[j].GetRotationZ());
-						 _transformations[counter2 + l].UpdateMatrix();
+						 _transformations[counter2+l].PutTranslationX(internal_transformations[j].GetTranslationX());
+						 _transformations[counter2+l].PutTranslationY(internal_transformations[j].GetTranslationY());
+						 _transformations[counter2+l].PutTranslationZ(internal_transformations[j].GetTranslationZ());
+						 _transformations[counter2+l].PutRotationX(internal_transformations[j].GetRotationX());
+						 _transformations[counter2+l].PutRotationY(internal_transformations[j].GetRotationY());
+						 _transformations[counter2+l].PutRotationZ(internal_transformations[j].GetRotationZ());
+						 _transformations[counter2+l].UpdateMatrix();
 					  }
 				  }
 				}
@@ -5597,6 +5592,7 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 		  t_internal_slice_order.clear();
 		  internal_transformations.clear();
 		  counter2 = counter2 + firstChunk.GetZ();
+		  counter5 = counter5 + firstChunk.GetZ();
 		  counter3 = counter3 + fakePkg;
 		  fakePkg = 0;
 		  sum = 0;		  
@@ -5612,7 +5608,8 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 		ssliceNums.clear();
 		smultiband_vector.clear();
 		sorder.clear();	
-		sliceStacks.clear();		
+		sliceStacks.clear();	
+		counter5 = 0;
 	}
 }
 
