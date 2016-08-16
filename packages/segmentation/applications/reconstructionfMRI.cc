@@ -895,7 +895,7 @@ int main(int argc, char **argv)
 
 	  		vector<int> level;
 	  		if(iter == 1) {
-	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,10);
+	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,3);
 	  		}
 
 	  		else if((iter > 1) && (iter < internal-1)){
