@@ -5400,6 +5400,7 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 
 void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int> &pack_num, vector<int> sliceNums, vector<int> multiband_vector, vector<int> order, int step, int rewinder, int iter, int steps) {
 
+	char buffer[256];
 	// copying transformations from previous iterations
 	if (_previous_transformations.size() > 0)
 		_previous_transformations.clear();
@@ -5424,7 +5425,7 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 	vector<int> sorder;
 	
 	int counter1;
-	int counter2;
+	int counter2 = 0;
 	int counter3;
 	int counter4 = 0;
 	int startIterations;
@@ -5433,8 +5434,7 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 	int fakePkg;
 	int sum;
 	int sliceMB;
-	int temp;
-	
+
 	int wrapper = stacks.size()/steps;
 	if ((stacks.size()%steps) > 0)
 		wrapper++;
@@ -5442,7 +5442,6 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 	int doffset;
 	int toStartSliceNum = 0;
 	int count = 0;
-	int slicesDone = 0;
 	int stacksDone = 0;
 	for (int w = 0; w < wrapper; w++)	 {
 
@@ -5455,10 +5454,9 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 				spack_num.push_back(pack_num[s+doffset]);
 				smultiband_vector.push_back(multiband_vector[s+doffset]);
 				sorder.push_back(order[s+doffset]);
-				stacksDone = stacksDone + stacks[s+doffset].GetZ();		
+				stacksDone = stacksDone + stacks[s+doffset].GetZ();
 			}
 		}
-		
 		while(count < stacksDone) {
 			ssliceNums.push_back(sliceNums[counter4]);
 			count = count + sliceNums[counter4];
@@ -5469,7 +5467,6 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 		
 		// other variables
 		counter1 = 0;
-		counter2 = 0;
 		counter3 = 0;
 		startIterations = 0;
 		endIterations   = 0;
@@ -5477,9 +5474,7 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 		fakePkg = 0;
 		sum = 0;
 		sliceMB;
-		temp = 0;
 		
-		char buffer[256];
 		// dynamic loop
 		for (int i = 0; i < sstacks.size(); i++) {
 
@@ -5546,22 +5541,21 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 
 				for (int k = startIterations; k < endIterations; k++)	 {
 				  for (int l = 0; l < t_internal_slice_order.size(); l++) {
-
+					  
 					  if (k == t_internal_slice_order[l]) {
-						 _transformations[slicesDone + counter2+l].PutTranslationX(internal_transformations[j].GetTranslationX());
-						 _transformations[slicesDone + counter2+l].PutTranslationY(internal_transformations[j].GetTranslationY());
-						 _transformations[slicesDone + counter2+l].PutTranslationZ(internal_transformations[j].GetTranslationZ());
-						 _transformations[slicesDone + counter2+l].PutRotationX(internal_transformations[j].GetRotationX());
-						 _transformations[slicesDone + counter2+l].PutRotationY(internal_transformations[j].GetRotationY());
-						 _transformations[slicesDone + counter2+l].PutRotationZ(internal_transformations[j].GetRotationZ());
-						 _transformations[slicesDone + counter2+l].UpdateMatrix();
+						 _transformations[counter2 + l].PutTranslationX(internal_transformations[j].GetTranslationX());
+						 _transformations[counter2 + l].PutTranslationY(internal_transformations[j].GetTranslationY());
+						 _transformations[counter2 + l].PutTranslationZ(internal_transformations[j].GetTranslationZ());
+						 _transformations[counter2 + l].PutRotationX(internal_transformations[j].GetRotationX());
+						 _transformations[counter2 + l].PutRotationY(internal_transformations[j].GetRotationY());
+						 _transformations[counter2 + l].PutRotationZ(internal_transformations[j].GetRotationZ());
+						 _transformations[counter2 + l].UpdateMatrix();
 					  }
 				  }
 				}
 				startIterations = endIterations;
 				counter1++;
-		  }
-
+		  }			 
 		  // resetting variables for next dynamic
 		  startIterations = 0;
 		  endIterations = 0;
@@ -5570,15 +5564,11 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 		  counter2 = counter2 + firstChunk.GetZ();
 		  counter3 = counter3 + fakePkg;
 		  fakePkg = 0;
-		  sum = 0;
+		  sum = 0;		  
 		}
 		// save transformations and clear
 		_z_slice_order.clear();
 		_t_slice_order.clear();
-		
-		for (int s = 0; s < sstacks.size(); s++) {
-			slicesDone = slicesDone+sstacks[s].GetZ(); 
-		}
 		
 		stacksDone = 0;
 		count = 0;
@@ -5586,8 +5576,8 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 		spack_num.clear();
 		ssliceNums.clear();
 		smultiband_vector.clear();
-		sorder.clear();
-		
+		sorder.clear();	
+		sliceStacks.clear();		
 	}
 }
 

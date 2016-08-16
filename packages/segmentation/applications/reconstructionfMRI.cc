@@ -880,18 +880,18 @@ int main(int argc, char **argv)
   for (int iter=0;iter<iterations;iter++)
   {
 	  //Print iteration number on the screen
-	  	  /*if ( ! no_log ) {
+	  	  if ( ! no_log ) {
 	  		  cout.rdbuf (strm_buffer);
-	  	  }*/
+	  	  }
 	  	  
 	  	  cout<<"Iteration"<<iter<<". "<<endl;
 	  	  
 	  	  if (iter>0)
 	  	  {
-	  		/*if ( ! no_log ) {
+	  		if ( ! no_log ) {
 	  		  cerr.rdbuf(file_e.rdbuf());
 	  		  cout.rdbuf (file.rdbuf());
-	  		}*/
+	  		}
 
 	  		vector<int> level;
 	  		if(iter == 1) {
@@ -900,17 +900,17 @@ int main(int argc, char **argv)
 
 	  		else if((iter > 1) && (iter < internal-1)){
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,2);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,4);
 	  		}
 
 	  		else {	
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,2);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,4);
 	  		}
 
-	  		/*if ( ! no_log ) {
+	  		if ( ! no_log ) {
 	  			cerr.rdbuf (strm_buffer_e);
-	  		}*/
+	  		}
 	  	  }
 	  	  
 	  	  if ((iter>0) && (debug))
@@ -921,9 +921,9 @@ int main(int argc, char **argv)
 	  	  }
 
 	  //Write to file
-	  /*if ( ! no_log ) {
+	  if ( ! no_log ) {
 		 cout.rdbuf (file2.rdbuf());
-      }*/
+      }
 
 	  //Set smoothing parameters
 	  //amount of smoothing (given by lambda) is decreased with improving alignment
