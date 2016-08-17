@@ -876,10 +876,15 @@ int main(int argc, char **argv)
   else {
     cout<<"Number of iterations is :"<<iterations<<endl;
   }
- 
+  
+  int chunks = stacks.size();
   for (int iter=0;iter<iterations;iter++)
   {
-	  //Print iteration number on the screen
+	  	  if (stacks.size() > 100)  {
+	  		  chunks = 10;
+	  	  }
+	  
+	  	  //Print iteration number on the screen
 	  	  if ( ! no_log ) {
 	  		  cout.rdbuf (strm_buffer);
 	  	  }
@@ -894,18 +899,18 @@ int main(int argc, char **argv)
 	  		}
 
 	  		vector<int> level;
-	  		if(iter == 1) {
-	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,3);
+	  		if(iter == 1) {	  			
+	  			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,chunks);
 	  		}
 
 	  		else if((iter > 1) && (iter < internal-1)){
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,3);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,chunks);
 	  		}
 
 	  		else {	
 	  			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,3);
+	  			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,chunks);
 	  		}
 
 	  		if ( ! no_log ) {
@@ -916,9 +921,9 @@ int main(int argc, char **argv)
 	  	  if ((iter>0) && (debug))
 	  		  reconstruction.SaveRegistrationStep(stacks,iter);
 
-	  	  if (iter>0) {
+	  	  if ((iter>0) && (debug) && (iter < iterations - 1)) { // when iter = iterations-1, then the output is automatically saved as output.nii.gz
 	  		  reconstruction.InterpolateGaussian(stacks,iter);
-	  	  }
+	  	  }  	  
 
 	  //Write to file
 	  if ( ! no_log ) {
