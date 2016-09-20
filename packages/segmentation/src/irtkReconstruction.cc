@@ -4641,6 +4641,19 @@ void irtkReconstruction::SaveTransformations()
     }
 }
 
+void irtkReconstruction::SaveTransformationsWithTiming()
+{
+    char buffer[256];
+    cout<<"Saving transformations with timing: ";
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+       cout<<inputIndex<<" ";
+        sprintf(buffer, "transformationTime%i.dof", _slice_timing[inputIndex]);
+        _transformations[inputIndex].irtkTransformation::Write(buffer);
+    }
+    cout<<" done."<<endl;
+}
+
+
 void irtkReconstruction::GetTransformations( vector<irtkRigidTransformation> &transformations )
 {
     transformations.clear();
@@ -4975,8 +4988,8 @@ void irtkReconstruction::flexibleSplitImage(vector<irtkRealImage>& stacks, vecto
 			
 			for  (int i = 0; i < sliceStacks.size(); i++){
 
-			    sprintf( buffer, "sliceStacks%i.nii", i );
-			    sliceStacks[i].Write( buffer );			
+			    //sprintf( buffer, "sliceStacks%i.nii", i );
+			    //sliceStacks[i].Write( buffer );			
 			}
 		}
 		
@@ -5421,6 +5434,31 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 			 counter2 = counter2 + firstPackage.GetZ();
 			 counter3 = counter3 + firstPackage.GetZ();
 		}
+		
+		
+		//save overal slice order
+		irtkImageAttributes attr = stacks[0].GetImageAttributes();
+                int dyn, num;
+ 	        int slices_per_dyn = attr._z/multiband_vector[0];
+
+		//slice order should repeat for each dynamic - only take first dynamic
+		_slice_timing.clear();
+		for (dyn=0;dyn<stacks.size();dyn++)
+		  for(int i = 0; i < attr._z; i++)
+                  {
+		     _slice_timing.push_back( dyn*slices_per_dyn + _t_slice_order[i]);
+		      //cout<<"index = "<<i<<endl;
+		      //cout<<"attrz = "<<attr._z<<endl;
+		      //cout<<"dyn = "<<dyn<<endl;
+		      //cout<<"slices_per_dyn = "<<slices_per_dyn<<endl;
+		      //cout<<"t = "<<_t_slice_order[i]<<endl;
+		      cout<<"slice timing = "<<_slice_timing[i]<<endl;
+		    }
+
+		
+		
+		
+		
 		// save transformations and clear
 		_z_slice_order.clear();
 		_t_slice_order.clear();

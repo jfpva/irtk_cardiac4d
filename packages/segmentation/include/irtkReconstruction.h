@@ -157,6 +157,7 @@ class irtkReconstruction : public irtkObject
     // vector containing slice acquisition order
     vector<int> _z_slice_order;
     vector<int> _t_slice_order;
+    vector<int> _slice_timing;
   
     //forced excluded slices
     vector<int> _force_excluded;
@@ -383,6 +384,7 @@ class irtkReconstruction : public irtkObject
 
     ///Save transformations
     void SaveTransformations();
+    void SaveTransformationsWithTiming();
     void GetTransformations( vector<irtkRigidTransformation> &transformations );
     void SetTransformations( vector<irtkRigidTransformation> &transformations );
   

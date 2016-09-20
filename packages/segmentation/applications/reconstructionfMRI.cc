@@ -178,8 +178,8 @@ int main(int argc, char **argv)
   for (i = 0; i < nStacks;i++)
   {
 	  stacks.push_back(image4D->GetRegion(0,0,0,i,attr._x, attr._y,attr._z,i+1));
-	  sprintf(buffer,"stack%i.nii.gz",i);
-	  stacks[i].Write(buffer);    
+	  //sprintf(buffer,"stack%i.nii.gz",i);
+	  //stacks[i].Write(buffer);    
   }
   delete image4D; // call deconstructor to save memory space
   
@@ -1080,6 +1080,7 @@ int main(int argc, char **argv)
 	//reconstruction.SaveTransformations();
 	//reconstruction.SaveSlices();
 	reconstruction.writefMRI();
+	reconstruction.SaveTransformationsWithTiming();
 	
 	// Don't know why it fails here
 	/*if ( info_filename.length() > 0 )
@@ -1087,8 +1088,8 @@ int main(int argc, char **argv)
 								 stack_files );*/
 	if(debug)
 	{
-		reconstruction.SaveWeights();
-		reconstruction.SaveBiasFields();
+	  //reconstruction.SaveWeights();
+          //reconstruction.SaveBiasFields();
 	//reconstruction.SaveConfidenceMap();
 	// reconstruction.SimulateStacks(stacks);
 	/*for (unsigned int i=0;i<stacks.size();i++)
