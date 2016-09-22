@@ -66,6 +66,7 @@ ELSE(BUILD_CONDOR_EXE)
     
     ADD_EXECUTABLE(superheart superheart.cc)
     ADD_EXECUTABLE(profile profile.cc)
+    ADD_EXECUTABLE(write-transformations-to-file write-transformations-to-file.cc)
     
     ADD_EXECUTABLE(tensorsDTI tensorsDTI.cc)
     ADD_EXECUTABLE(signal2SH signal2SH.cc)
