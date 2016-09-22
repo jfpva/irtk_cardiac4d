@@ -780,18 +780,24 @@ int main(int argc, char **argv)
 
   //interleaved registration-reconstruction iterations
   int internal = reconstruction.giveMeDepth(stacks, packages, multiband_vector);
-  if (iterations == 0)	{
+  if (iterations == 0)	
+  {
 	  iterations = internal+1;
 	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
   }
-  else if (iterations <= internal)	{
+  else
+  {/*
+    if (iterations <= internal)	{
 	  iterations = internal+1;
 	  cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
-  }
-  else {
+    }
+    else 
+    {
 	  cout<<"Number of iterations is :"<<iterations<<endl;
-  }
- 
+    }
+    */
+	  cout<<"Number of iterations is :"<<iterations<<endl;
+  } 
   for (int iter=0;iter<iterations;iter++)
   {
 	  //Print iteration number on the screen
@@ -811,6 +817,9 @@ int main(int argc, char **argv)
 		vector<int> level;
 		if(iter == 1) {
 			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,stacks.size());
+			reconstruction.WriteSliceOrder();
+			//reconstruction.SaveSlicesWithTiming();
+			//exit(1);
 		}
 
 		else if((iter > 1) && (iter < internal-1)){
@@ -830,6 +839,8 @@ int main(int argc, char **argv)
 	  
 	  if ((iter>0) && (debug))
 		  reconstruction.SaveRegistrationStep(stacks,iter); 
+	  if(iter>0)
+	    reconstruction.SaveTransformationsWithTiming(iter);
 	
 	  //Write to file
 	  if ( ! no_log ) {
@@ -978,8 +989,9 @@ int main(int argc, char **argv)
 	reconstruction.ScaleVolume();
 	reconstructed=reconstruction.GetReconstructed();
 	reconstructed.Write(output_name); 
-	//reconstruction.SaveTransformations();
+	reconstruction.SaveTransformations();
 	reconstruction.SaveSlices();
+	reconstruction.SaveTransformationsWithTiming();
 	
 	if ( info_filename.length() > 0 )
 	  reconstruction.SlicesInfo( info_filename.c_str(),

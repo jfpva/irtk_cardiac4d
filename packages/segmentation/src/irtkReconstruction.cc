@@ -4590,6 +4590,18 @@ void irtkReconstruction::SaveSlices()
         }
 }
 
+
+void irtkReconstruction::SaveSlicesWithTiming()
+{
+    char buffer[256];
+    cout<<"Saving slices with timing: ";
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++)
+        {
+            sprintf(buffer, "sliceTime%i.nii.gz", _slice_timing[inputIndex]);
+            _slices[inputIndex].Write(buffer);
+        }
+}
+
 void irtkReconstruction::SaveSimulatedSlices()
 {
     cout<<"Saving simulated slices ...";
@@ -4648,6 +4660,18 @@ void irtkReconstruction::SaveTransformationsWithTiming()
     for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
        cout<<inputIndex<<" ";
         sprintf(buffer, "transformationTime%i.dof", _slice_timing[inputIndex]);
+        _transformations[inputIndex].irtkTransformation::Write(buffer);
+    }
+    cout<<" done."<<endl;
+}
+
+void irtkReconstruction::SaveTransformationsWithTiming(int iter)
+{
+    char buffer[256];
+    cout<<"Saving transformations with timing: ";
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+       cout<<inputIndex<<" ";
+        sprintf(buffer, "transformationTime%i-%i.dof", iter,_slice_timing[inputIndex]);
         _transformations[inputIndex].irtkTransformation::Write(buffer);
     }
     cout<<" done."<<endl;
@@ -5375,28 +5399,35 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 					 s.Write(buffer);
 				 }
 	
-				 irtkRigidTransformation offset;
-				 ResetOrigin(t,offset);
-				 irtkMatrix mo = offset.GetMatrix();
-				 irtkMatrix m = internal_transformations[j].GetMatrix();
-				 m=m*mo;
-				 internal_transformations[j].PutMatrix(m);
+	                        //check whether package is empty (all zeros)
+	                        irtkRealPixel tmin,tmax;
+				 target.GetMinMax(&tmin,&tmax);
+				 
+				 if(tmax>0)
+				 {
+				   irtkRigidTransformation offset;
+				   ResetOrigin(t,offset);
+				   irtkMatrix mo = offset.GetMatrix();
+				   irtkMatrix m = internal_transformations[j].GetMatrix();
+				   m=m*mo;
+				   internal_transformations[j].PutMatrix(m);
 	
-				 rigidregistration.SetInput(&t, &s);
-				 rigidregistration.SetOutput(&internal_transformations[j]);
-				 rigidregistration.GuessParameterPackageToVolume();
-				 rigidregistration.SetTargetPadding(0);
+				   rigidregistration.SetInput(&t, &s);
+				   rigidregistration.SetOutput(&internal_transformations[j]);
+				   rigidregistration.GuessParameterPackageToVolume();
+				   rigidregistration.SetTargetPadding(0);
 	
-				 if (_debug) {
+				   if (_debug) {
 					 rigidregistration.Write("par-packages.rreg");
+				   }
+				   rigidregistration.Run();
+	
+				   mo.Invert();
+				   m = internal_transformations[j].GetMatrix();
+				   m=m*mo;
+				   internal_transformations[j].PutMatrix(m);
 				 }
-				 rigidregistration.Run();
-	
-				 mo.Invert();
-				 m = internal_transformations[j].GetMatrix();
-				 m=m*mo;
-				 internal_transformations[j].PutMatrix(m);
-	
+				 
 				 if (_debug) {
 					 sprintf(buffer,"transformation%i-%i-%i.dof",iter,i+doffset,j);
 					 internal_transformations[j].irtkTransformation::Write(buffer); 
@@ -5457,7 +5488,15 @@ void irtkReconstruction::newPackageToVolume(vector<irtkRealImage>& stacks, vecto
 
 		
 		
+	       for(int i = 0; i < _z_slice_order.size(); i++)
+		{
+		   cout<<"z("<<i<<")="<<_z_slice_order[i]<<endl;
+		}
 		
+	       for(int i = 0; i < _t_slice_order.size(); i++)
+		{
+		   cout<<"t("<<i<<")="<<_t_slice_order[i]<<endl;
+		}
 		
 		// save transformations and clear
 		_z_slice_order.clear();
@@ -5603,6 +5642,11 @@ void irtkReconstruction::ChunkToVolume(vector<irtkRealImage>& stacks, vector<int
 				m=m*mo;
 				internal_transformations[j].PutMatrix(m);
 
+				if (_debug) {
+					 sprintf(buffer,"transformation%i-%i-%i.dof",iter,i+doffset,j);
+					 internal_transformations[j].irtkTransformation::Write(buffer); 
+				 }
+
 				// saving transformations
 				iterations = ssliceNums[counter1];
 				endIterations = endIterations + iterations;
@@ -5742,6 +5786,17 @@ vector<int> irtkReconstruction::giveMeSplittingVector(vector<irtkRealImage>& sta
 	}
 	return new_vector;
 }
+
+void irtkReconstruction::WriteSliceOrder()
+{
+  cout<<"Write Slice Order: "<<_slice_timing.size()<<endl;
+  for(int i = 0; i < _slice_timing.size(); i++)
+  {
+    cout<<_slice_timing[i]<<" ";
+  }
+  cout<<endl;
+}
+
 
 /* Package specific functions */
 void irtkReconstruction::SplitImage(irtkRealImage image, int packages, vector<irtkRealImage>& stacks)

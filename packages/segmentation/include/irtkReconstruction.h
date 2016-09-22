@@ -372,6 +372,7 @@ class irtkReconstruction : public irtkObject
   
     ///Save slices
     void SaveSlices();
+    void SaveSlicesWithTiming();
     void SlicesInfo( const char* filename, vector<string> &stack_filenames );
   
     ///Save simulated slices
@@ -385,6 +386,7 @@ class irtkReconstruction : public irtkObject
     ///Save transformations
     void SaveTransformations();
     void SaveTransformationsWithTiming();
+    void SaveTransformationsWithTiming(int iter);
     void GetTransformations( vector<irtkRigidTransformation> &transformations );
     void SetTransformations( vector<irtkRigidTransformation> &transformations );
   
@@ -430,6 +432,10 @@ class irtkReconstruction : public irtkObject
     inline void SetInterpolationRecon();
     inline void SetSlicesPerDyn(int slices);
     inline void SetMultiband(bool withMB);
+    
+    inline int GetNumberOfTransformations();
+    inline irtkRigidTransformation GetTransformation(int n);
+
 
     //utility
     ///Save intermediate results
@@ -508,6 +514,8 @@ class irtkReconstruction : public irtkObject
     // Calculate subpacking needed for tree like structure
     vector<int> giveMeSplittingVector(vector<irtkRealImage>& stacks, vector<int> &pack_num,
     		vector<int> multiband, int iterations, bool last);
+    
+    void WriteSliceOrder();
     
     // Calculate relative change of displacement field across different iterations
     double calculateResidual(int padding);
@@ -671,6 +679,21 @@ inline void irtkReconstruction::SetSlicesPerDyn(int slices)
 inline void irtkReconstruction::SetMultiband(bool withMB) 
 {
 	_withMB = withMB;
+}
+
+inline int irtkReconstruction::GetNumberOfTransformations()
+{
+  return _transformations.size();
+}
+
+inline irtkRigidTransformation irtkReconstruction::GetTransformation(int n)
+{
+  if(_transformations.size()<=n)
+  {
+    cerr<<"irtkReconstruction::GetTransformation: too large n = "<<n<<endl;
+    exit(1);
+  }
+  return _transformations[n];
 }
 
 #endif

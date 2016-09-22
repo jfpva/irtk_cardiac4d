@@ -1077,8 +1077,8 @@ int main(int argc, char **argv)
 	reconstruction.RestoreSliceIntensities();
 	reconstruction.ScaleVolume();
 	reconstructed = reconstruction.GetReconstructed();
-	//reconstruction.SaveTransformations();
-	//reconstruction.SaveSlices();
+	reconstruction.SaveTransformations();
+	reconstruction.SaveSlices();
 	reconstruction.writefMRI();
 	reconstruction.SaveTransformationsWithTiming();
 	
