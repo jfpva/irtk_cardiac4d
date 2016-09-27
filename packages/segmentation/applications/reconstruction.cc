@@ -976,6 +976,8 @@ int main(int argc, char **argv)
 		cout.rdbuf (fileEv.rdbuf());
 	}
 	reconstruction.Evaluate(iter);
+	if(iter>0)
+	  reconstruction.EvaluateWithTiming(iter);
 	cout<<endl;
 	
 	if ( ! no_log ) {
@@ -992,6 +994,7 @@ int main(int argc, char **argv)
 	reconstruction.SaveTransformations();
 	reconstruction.SaveSlices();
 	reconstruction.SaveTransformationsWithTiming();
+	reconstruction.SaveSlicesWithTiming();
 	
 	if ( info_filename.length() > 0 )
 	  reconstruction.SlicesInfo( info_filename.c_str(),

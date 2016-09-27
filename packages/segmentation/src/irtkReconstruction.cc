@@ -4397,6 +4397,43 @@ void irtkReconstruction::Evaluate(int iter)
     cout << endl << "Total: " << sum << endl;
 }
 
+void irtkReconstruction::EvaluateWithTiming(int iter)
+{
+    cout << "Iteration " << iter << ": " << endl;
+    cout << "Timings:"<<endl;
+
+    cout << "Included slices: ";
+    int sum = 0;
+    unsigned int i;
+    for (i = 0; i < _slices.size(); i++) {
+        if ((_slice_weight[i] >= 0.5) && (_slice_inside[i])) {
+            cout <<  _slice_timing[i] << " ";
+            sum++;
+        }
+    }
+    cout << endl << "Total: " << sum << endl;
+
+    cout << "Excluded slices: ";
+    sum = 0;
+    for (i = 0; i < _slices.size(); i++) {
+        if ((_slice_weight[i] < 0.5) && (_slice_inside[i])) {
+            cout <<  _slice_timing[i] << " ";
+            sum++;
+        }
+    }
+    cout << endl << "Total: " << sum << endl;
+
+    cout << "Outside slices: ";
+    sum = 0;
+    for (i = 0; i < _slices.size(); i++) {
+        if (!(_slice_inside[i])) {
+            cout <<  _slice_timing[i] << " ";
+            sum++;
+        }
+    }
+    cout << endl << "Total: " << sum << endl;
+}
+
 
 class ParallelNormaliseBias{
     irtkReconstruction* reconstructor;

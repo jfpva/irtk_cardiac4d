@@ -449,6 +449,7 @@ class irtkReconstruction : public irtkObject
     
     ///Write included/excluded/outside slices
     void Evaluate( int iter );
+    void EvaluateWithTiming( int iter );
   
     /// Read Transformations
     void ReadTransformation( char* folder );
