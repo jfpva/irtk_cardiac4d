@@ -20,6 +20,7 @@ SET(SEGMENTATION_INCLUDES
 ../include/irtkMAPatchMatchSuperResolution.h
 ../include/irtkReconstruction.h
 ../include/irtkReconstructionb0.h
+../include/irtkReconstructionCardiac4D.h
 ../include/irtkReconstructionDTI.h
 ../include/irtkDWImage.h
 ../include/irtkTensor.h
@@ -63,6 +64,7 @@ irtkMAPatchMatchSuperResolution.cc
 irtkRician.cc
 irtkReconstruction.cc
 irtkReconstructionb0.cc
+irtkReconstructionCardiac4D.cc
 irtkReconstructionDTI.cc
 irtkDWImage.cc
 irtkTensor.cc

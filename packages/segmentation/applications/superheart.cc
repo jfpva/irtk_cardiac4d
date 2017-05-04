@@ -13,15 +13,15 @@
 #include <string>
 #include <irtkImage.h>
 #include <irtkTransformation.h>
-#include <irtkReconstruction.h>
+#include <irtkReconstructionCardiac4D.h>
 
 using namespace std;
 
-//Application to perform reconstruction of volumetric MRI from thick slices.
+//Application to perform reconstruction of volumetric cardiac cine MRI from thick-slice dynamic 2D MRI
 
 void usage()
 {
-  cerr << "Usage: reconstruction [reconstructed] [N] [stack_1] .. [stack_N] <options>\n" << endl;
+  cerr << "Usage: superheart [reconstructed] [N] [stack_1] .. [stack_N] <options>\n" << endl;
   cerr << endl;
 
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
@@ -49,6 +49,9 @@ void usage()
   cerr << "\t                          and 5 (Customized)."<<endl;
   cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
+  cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
+  cerr << "\t-numcardphase             Number of cardiac phases to reconstruct. [Default: 10]."<<endl;
+  cerr << "\t-rrinterval [rr]          R-R interval. [Default: 1 s]."<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
@@ -73,6 +76,9 @@ void usage()
   cerr << "\t-debug                    Debug mode - save intermediate results."<<endl;
   cerr << "\t-no_log                   Do not redirect cout and cerr to log files."<<endl;
   cerr << "\t" << endl;
+  cerr << "\tNOTE: work in progress, use of following options is not recommended..." << endl;
+  cerr << "\t\tmultiband, packages, order, step, rewinder, rescale_stacks" << endl;
+  cerr << "\t" << endl;
   cerr << "\t" << endl;
   exit(1);
 }
@@ -83,6 +89,7 @@ int main(int argc, char **argv)
   int i, ok;
   char buffer[256];
   irtkRealImage stack; 
+  const double PI = 3.14159265358979323846;
   
   //declare variables for input
   /// Name for output volume
@@ -101,10 +108,12 @@ int main(int argc, char **argv)
   /// number of packages for each stack
   vector<int> packages;
   vector<int> order_vector;
+  // Slice cardiac phases
+  vector<double> cardPhase;
   
   int step = 1;
   int rewinder = 1;
-
+  
   // Default values.
   int templateNumber=-1;
   irtkRealImage *mask=NULL;
@@ -112,6 +121,8 @@ int main(int argc, char **argv)
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
+  int numCardPhase = 10;
+  double rrInterval = 1;
   double lambda = 0.02;
   double delta = 150;
   int levels = 3;
@@ -148,7 +159,7 @@ int main(int argc, char **argv)
   vector<int> force_excluded;
 
   //Create reconstruction object
-  irtkReconstruction reconstruction;
+  irtkReconstructionCardiac4D reconstruction;
     
   //if not enough arguments print help
   if (argc < 5)
@@ -298,6 +309,49 @@ int main(int argc, char **argv)
 	  argv++;
 	}
 
+  //Read cardiac phases
+  if ((ok == false) && (strcmp(argv[1], "-cardphase") == 0)){
+    argc--;
+    argv++;
+    int nSlices = atoi(argv[1]);
+    cout<<"Reading cardiac phase for "<<nSlices<<" slices/frames"<<endl;
+    argc--;
+    argv++;
+    cout<< "Cardiac phase values are ";
+    for (i=0;i<nSlices;i++)
+    {
+      cardPhase.push_back(atof(argv[1]));
+      cout<<i<<":"<<cardPhase[i]<<", ";
+      argc--;
+      argv++;
+    }
+    cout<<"\b\b."<<endl;
+    ok = true;
+  }
+
+  // Number of cardiac phases in reconstructed volume
+	if ((ok == false) && (strcmp(argv[1], "-numcardphase") == 0)){
+	  argc--;
+	  argv++;
+	  numCardPhase=atof(argv[1]);
+	  argc--;
+	  argv++;
+    cout<<"Reconstructing "<<numCardPhase<<" cardiac phases."<<endl;
+    ok = true;
+	}
+
+  // R-R Interval of Reconstructed Volume
+	if ((ok == false) && (strcmp(argv[1], "-rrinterval") == 0)){
+	  argc--;
+	  argv++;
+	  rrInterval=atof(argv[1]);
+	  argc--;
+	  argv++;
+    //cout<<"R-R interval of reconstructed volume is "<<rrInterval<<" s."<<endl;
+    ok = true;
+    reconstruction.SetReconstructedRRInterval(rrInterval);
+	}
+
     //Read binary mask for final volume
     if ((ok == false) && (strcmp(argv[1], "-mask") == 0)){
       argc--;
@@ -394,6 +448,7 @@ int main(int argc, char **argv)
       argv++;
       intensity_matching=false;
       ok = true;
+      cout << "No intensity matching."<<endl;
     }
     
     //Switch off robust statistics
@@ -581,51 +636,68 @@ int main(int argc, char **argv)
 
   //Output volume
   irtkRealImage reconstructed;
-
+  irtkRealImage volumeweights;
+  vector<double> reconstructedCardPhase;
+  cout<<setprecision(3);
+  cout<<"Reconstructing "<<numCardPhase<<" cardiac phases: ";
+  for (i=0;i<numCardPhase;i++)
+  {
+    reconstructedCardPhase.push_back(2*PI*i/numCardPhase);
+    cout<<" "<<reconstructedCardPhase[i]/PI<<",";
+  }
+  cout<<"\b x PI."<<endl;
+  reconstruction.SetReconstructedCardiacPhase( reconstructedCardPhase );
+  reconstruction.SetReconstructedTemporalResolution( rrInterval/numCardPhase );
+  
   //Set debug mode
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
   
   //Set force excluded slices
   reconstruction.SetForceExcludedSlices(force_excluded);
-
+  
   //Set low intensity cutoff for bias estimation
   //reconstruction.SetLowIntensityCutoff(low_intensity_cutoff)  ;
-
+  
   // Check whether the template stack can be indentified
   if (templateNumber<0)
   {
     cerr<<"Please identify the template by assigning id transformation."<<endl;
     exit(1);
   }  
+  
+  // Initialise Reconstructed Volume
+  // Check that mask is provided
+  if (mask==NULL)
+  {
+    cerr<<"Reconstruction of volumetric cardiac cine MRI from thick-slice dynamic 2D MRI requires mask to initilise reconstructed volume."<<endl;
+    exit(1);
+  }  
+  /* Unused if mask required
   //If no mask was given and flag "remove_black_background" is false, try to create mask from the template image in case it was padded
   if ((mask==NULL)&&(!remove_black_background))
   {
     mask = new irtkRealImage(stacks[templateNumber]);
     *mask = reconstruction.CreateMask(*mask);
   }
-  //Before creating the template we will crop template stack according to the given mask
-  if (mask !=NULL)
+  */
+  // Crop mask
+  irtkRealImage maskCropped = *mask;
+  reconstruction.CropImage(maskCropped,*mask);  // TODO: TBD: use CropImage or CropImageIgnoreZ
+  // Initilaise reconstructed volume with isotropic resolution 
+  // if resolution==0 it will be determined from in-plane resolution of the image
+  if (resolution <= 0) 
   {
-    //first resample the mask to the space of the stack
-    //for template stact the transformation is identity
-    irtkRealImage m = *mask;
-    reconstruction.TransformMask(stacks[templateNumber],m,stack_transformations[templateNumber]);
-    //Crop template stack
-    reconstruction.CropImageIgnoreZ(stacks[templateNumber],m);
-    if (debug)
-    {
-      m.Write("maskTemplate.nii.gz"); 
-      stacks[templateNumber].Write("croppedTemplate.nii.gz");
-    }
+    resolution = reconstruction.GetReconstructedResolutionFromTemplateStack( stacks[templateNumber] );
   }
+  if (debug)
+    cout << "Initialising volume with isotropic voxel size " << resolution << "mm" << endl;
   
-  //Create template volume with isotropic resolution 
-  //if resolution==0 it will be determined from in-plane resolution of the image
-  resolution = reconstruction.CreateTemplate(stacks[templateNumber],resolution);
+  // Create template 4D volume
+  reconstruction.CreateTemplateCardiac4DFromStaticMask( maskCropped, resolution );
   
-  //Set mask to reconstruction object. 
-  reconstruction.SetMask(mask,smooth_mask);   
+  // Set mask to reconstruction object
+  reconstruction.SetMask(mask,smooth_mask);
 
   //to redirect output from screen to text files
   
@@ -648,16 +720,12 @@ int main(int argc, char **argv)
   cout<<setprecision(3);
   cerr<<setprecision(3);
 
-  //perform volumetric registration of the stacks
   //redirect output to files
   if ( ! no_log ) {
       cerr.rdbuf(file_e.rdbuf());
       cout.rdbuf (file.rdbuf());
   }
   
-  //volumetric registration
-  reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
-
   //if remove_black_background flag is set, create mask from black background of the stacks
   if (remove_black_background)
     reconstruction.CreateMaskFromBlackBackground(stacks,stack_transformations, smooth_mask);
@@ -673,11 +741,9 @@ int main(int argc, char **argv)
   if (debug)
     average.Write("average1.nii.gz");
 
-  //Mask is transformed to the all other stacks and they are cropped
+  //Mask is transformed to the all stacks and they are cropped
   for (i=0; i<nStacks; i++)
   {
-    //template stack has been cropped already
-    if ((i==templateNumber)&&(!remove_black_background)) continue;
     //transform the mask
     irtkRealImage m=reconstruction.GetMask();
     reconstruction.TransformMask(stacks[i],m,stack_transformations[i]);
@@ -688,57 +754,10 @@ int main(int argc, char **argv)
       sprintf(buffer,"mask%i.nii.gz",i);
       m.Write(buffer); 
       sprintf(buffer,"cropped%i.nii.gz",i);
+      stacks[i].Write(buffer);
     }
   }
 
-  // we remove stacks of size 1 voxel (no intersection with ROI)
-  vector<irtkRealImage> selected_stacks;
-  vector<irtkRigidTransformation> selected_stack_transformations;
-  int new_nStacks = 0;
-  int new_templateNumber = 0;
-  for (i=0; i<nStacks; i++)
-  {
-      if (stacks[i].GetX() == 1) {
-          cerr << "stack " << i << " has no intersection with ROI" << endl;
-          continue;
-      }
-
-      // we keep it
-      selected_stacks.push_back(stacks[i]);
-      selected_stack_transformations.push_back(stack_transformations[i]);
-      
-      if (i == templateNumber)
-          new_templateNumber = templateNumber - (i-new_nStacks);
-
-      new_nStacks++;
-      
-  }
-  stacks.clear();
-  stack_transformations.clear();
-  nStacks = new_nStacks;
-  templateNumber = new_templateNumber;
-  for (i=0; i<nStacks; i++)
-  {
-      stacks.push_back(selected_stacks[i]);
-      stack_transformations.push_back(selected_stack_transformations[i]);
-  }
-  
-  //Repeat volumetric registrations with cropped stacks
-  //redirect output to files
-  if ( ! no_log ) {
-      cerr.rdbuf(file_e.rdbuf());
-      cout.rdbuf (file.rdbuf());
-  }
-  //volumetric registration
-  reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
-  cout<<endl;
-
-  //redirect output back to screen
-  if ( ! no_log ) {
-      cout.rdbuf (strm_buffer);
-      cerr.rdbuf (strm_buffer_e);
-  }
-  
   //Rescale intensities of the stacks to have the same average
   if (intensity_matching)
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue);
@@ -747,10 +766,9 @@ int main(int argc, char **argv)
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average2.nii.gz");
-  //exit(1);
 
   //Create slices and slice-dependent transformations
-  reconstruction.CreateSlicesAndTransformations(stacks,stack_transformations,thickness);
+  reconstruction.CreateSlicesAndTransformationsCardiac4D(stacks,stack_transformations,thickness);
   
   //Mask all the slices
   reconstruction.MaskSlices();
@@ -774,78 +792,71 @@ int main(int argc, char **argv)
   //if given read slice-to-volume registrations
   if (folder!=NULL)
     reconstruction.ReadTransformation(folder);
-    
+  
   //Initialise data structures for EM
   reconstruction.InitializeEM();
-
-  //interleaved registration-reconstruction iterations
-  int internal = reconstruction.giveMeDepth(stacks, packages, multiband_vector);
-  if (iterations == 0)	
+  
+  // Calculate Cardiac Phase of Each Slice
+  if ( cardPhase.size() == 0 )
   {
-	  iterations = internal+1;
-	  cout<<"Number of iterations is calculated internally: "<<iterations<<endl;
+    cerr<<"Cardiac 4D reconstruction requires cardiac phase for each slice."<<endl;
+    exit(1);
   }
   else
-  {/*
-    if (iterations <= internal)	{
-	  iterations = internal+1;
-	  cout<<"Number of iterations too small. Iterations are set to :"<<iterations<<endl;
-    }
-    else 
-    {
-	  cout<<"Number of iterations is :"<<iterations<<endl;
-    }
-    */
-	  cout<<"Number of iterations is :"<<iterations<<endl;
-  } 
+  {
+    if(debug)
+      cout<<"SetSliceCardiacPhase"<<endl;
+    reconstruction.SetSliceCardiacPhase( cardPhase );
+  }  
+  // Calculate Target Cardiac Phase in Reconstructed Volume for Slice-To-Volume Registration
+  reconstruction.CalculateSliceToVolumeTargetCardiacPhase();
+  // Calculate Temporal Weight for Each Slice
+  reconstruction.CalculateSliceTemporalWeights();  
+  
+    
+  //interleaved registration-reconstruction iterations
+  
+  if (iterations == 0)	
+      iterations = 3;
+  if(debug)
+      cout<<"Number of iterations is :"<<iterations<<endl;
+
   for (int iter=0;iter<iterations;iter++)
   {
-	  //Print iteration number on the screen
-	  if ( ! no_log ) {
-		  cout.rdbuf (strm_buffer);
-	  }
-	  
-	  cout<<"Iteration"<<iter<<". "<<endl;
-	  
-	  if (iter>0)
-	  {
-		if ( ! no_log ) {
-		  cerr.rdbuf(file_e.rdbuf());
-		  cout.rdbuf (file.rdbuf());
-		}
+    //Print iteration number on the screen
+    if ( ! no_log ) {
+      cout.rdbuf (strm_buffer);
+    }
+    
+    cout<<"Iteration"<<iter<<". "<<endl;
 
-		vector<int> level;
-		if(iter == 1) {
-			reconstruction.newPackageToVolume(stacks, packages, multiband_vector, order_vector, step, rewinder,iter,stacks.size());
-			reconstruction.WriteSliceOrder();
-			//reconstruction.SaveSlicesWithTiming();
-			//exit(1);
-		}
-
-		else if((iter > 1) && (iter < internal-1)){
-			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, false);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,stacks.size());
-		}
-
-		else {	
-			level = reconstruction.giveMeSplittingVector(stacks, packages, multiband_vector, iter, true);
-			reconstruction.ChunkToVolume(stacks, packages, level, multiband_vector, order_vector, step, rewinder,iter,stacks.size());
-		}
-
-		if ( ! no_log ) {
-			cerr.rdbuf (strm_buffer_e);
-		}
-	  }
-	  
-	  if ((iter>0) && (debug))
-		  reconstruction.SaveRegistrationStep(stacks,iter); 
-	  if(iter>0)
-	    reconstruction.SaveTransformationsWithTiming(iter);
-	
-	  //Write to file
-	  if ( ! no_log ) {
-		 cout.rdbuf (file2.rdbuf());
+    //perform slice-to-volume registrations
+    if ( iter > 0 )
+    {
+      if ( ! no_log ) {
+  		  cerr.rdbuf(file_e.rdbuf());
+  		  cout.rdbuf (file.rdbuf());
+  		}
+      cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
+      reconstruction.SliceToVolumeRegistrationCardiac4D();
+      cout<<endl;
+      if ( ! no_log ) {
+          cerr.rdbuf (strm_buffer_e);
       }
+
+    // if ((iter>0) && (debug))
+  	// 	  reconstruction.SaveRegistrationStep(stacks,iter); 
+
+      if ( ! no_log ) {
+  			cerr.rdbuf (strm_buffer_e);
+  		}
+
+    }  // if ( iter > 0 ) 
+    
+    //Write to file
+	  if ( ! no_log ) {
+      cout.rdbuf (file2.rdbuf());
+    }
 	  cout<<endl<<endl<<"Iteration "<<iter<<": "<<endl<<endl;
 	
 	  //Set smoothing parameters
@@ -855,162 +866,207 @@ int main(int argc, char **argv)
 		 reconstruction.SetSmoothingParameters(delta,lastIterLambda);
 	  else
 	  {
-		double l=lambda;
-		for (i=0;i<levels;i++)
-		{
-			if (iter==iterations*(levels-i-1)/levels)
-			  reconstruction.SetSmoothingParameters(delta, l);
-			l*=2;
-		}
+  		double l=lambda;
+  		for (i=0;i<levels;i++)
+  		{
+  			if (iter==iterations*(levels-i-1)/levels)
+  			  reconstruction.SetSmoothingParameters(delta, l);
+  			l*=2;
+  		}
 	  }
-		
-	  //Use faster reconstruction during iterations and slower for final reconstruction
+
+    //Use faster reconstruction during iterations and slower for final reconstruction
 	  if ( iter<(iterations-1) )
 		  reconstruction.SpeedupOn();
 	  else 
 		  reconstruction.SpeedupOff();
-	
-	  if(robust_slices_only)
+      
+    //Exclude whole slices only
+    if(robust_slices_only)
 		  reconstruction.ExcludeWholeSlicesOnly();
-	
+  	
 	  //Initialise values of weights, scales and bias fields
 	  reconstruction.InitializeEMValues();
-	
-	  //Calculate matrix of transformation between voxels of slices and volume
-	  if (bspline)
-		  reconstruction.CoeffInitBSpline();
-	  else
-		  reconstruction.CoeffInit();
-	
-	  //Initialize reconstructed image with Gaussian weighted reconstruction
-	  if (bspline)
-		  reconstruction.BSplineReconstruction();
-	  else
-		  reconstruction.GaussianReconstruction();
-	
-	
-	  //Simulate slices (needs to be done after Gaussian reconstruction)
-	  reconstruction.SimulateSlices();
-		
-	  //Initialize robust statistics parameters
-	  reconstruction.InitializeRobustStatistics();
-	
-	  //EStep
-	  if(robust_statistics)
-		  reconstruction.EStep();
-	
-	  //number of reconstruction iterations
-	  if ( iter==(iterations-1) ) 
-	  {
-		  rec_iterations = 30;      
-	  }
-	  else 
-		  rec_iterations = 10;
-	  
-	  if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
-		  rec_iterations=0;
-		
-	  //reconstruction iterations
-	  i=0;
-	  for (i=0;i<rec_iterations;i++)
-	  {
-		  cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
-	  
-	  if (intensity_matching)
-	  {
-		  //calculate bias fields
-		  if (sigma>0)
-			  reconstruction.Bias();
-		  //calculate scales
-		  reconstruction.Scale();
-	  }
-	  
-	  //Update reconstructed volume
-	  if (bspline)
-		  reconstruction.BSplineReconstruction();
-	  else
-		  reconstruction.Superresolution(i+1);
-	  
-	  if (intensity_matching)
-	  {
-		if((sigma>0)&&(!global_bias_correction))
-			reconstruction.NormaliseBias(i);
-	  }
-	
-	  // Simulate slices (needs to be done
-	  // after the update of the reconstructed volume)
-	  reconstruction.SimulateSlices();
-			
-	  if(robust_statistics)
-		  reconstruction.MStep(i+1);
-	  
-	  //E-step
-	  if(robust_statistics)
-		  reconstruction.EStep();
-	  
-	  //Save intermediate reconstructed image
-	  if (debug)
-	  {
-		  reconstructed=reconstruction.GetReconstructed();
-		  sprintf(buffer,"super%i.nii.gz",i);
-		  reconstructed.Write(buffer);
-	  }
-	  
-	}//end of reconstruction iterations
-	
-	//Mask reconstructed image to ROI given by the mask
-	if(!bspline)
-		reconstruction.MaskVolume();
-	
-	//Save reconstructed image
-	//if (debug)
-	//{
-	reconstructed=reconstruction.GetReconstructed();
-	sprintf(buffer,"image%i.nii.gz",iter);
-	reconstructed.Write(buffer);
-	//reconstruction.SaveConfidenceMap();
-	//}
-	
-	//Evaluate - write number of included/excluded/outside/zero slices in each iteration in the file
-	if ( ! no_log ) {
-		cout.rdbuf (fileEv.rdbuf());
-	}
-	reconstruction.Evaluate(iter);
-	if(iter>0)
-	  reconstruction.EvaluateWithTiming(iter);
-	cout<<endl;
-	
-	if ( ! no_log ) {
-	    cout.rdbuf (strm_buffer);
-	}
-	
-	}// end of interleaved registration-reconstruction iterations
-	
-	//save final result
+    
+    //Calculate matrix of transformation between voxels of slices and volume
+    if (bspline)
+    {
+      cerr<<"Cannot currently initalise b-spline for cardiac 4D reconstruction."<<endl;
+      exit(1);
+      // TODO: reconstruction.CoeffInitBSplineCardiac4D();
+    }
+    else
+      reconstruction.CoeffInitCardiac4D();
+
+    //Initialize reconstructed image with Gaussian weighted reconstruction
+    if (bspline)
+    {
+      cerr<<"Cannot currently reconstruct b-spline for cardiac 4D reconstruction."<<endl;
+      exit(1);
+      // TODO: TBD: reconstruction.BSplineReconstructionCardiac4D();
+    }
+    else
+      reconstruction.GaussianReconstructionCardiac4D();
+    
+    // Save Initialised Volume to File
+    if (debug)
+    {
+      reconstructed = reconstruction.GetReconstructedCardiac4D();
+      sprintf(buffer,"init%i.nii.gz",iter);
+      reconstructed.Write(buffer);
+      volumeweights = reconstruction.GetVolumeWeights();
+      sprintf(buffer,"volume_weights%i.nii.gz",iter);
+      volumeweights.Write(buffer);
+    }
+    
+    //Simulate slices (needs to be done after Gaussian reconstruction)
+    reconstruction.SimulateSlicesCardiac4D();
+      
+    //Initialize robust statistics parameters
+    reconstruction.InitializeRobustStatistics();
+
+    //EStep
+    if(robust_statistics)
+      reconstruction.EStep();
+        
+    //number of reconstruction iterations
+    if ( iter==(iterations-1) ) 
+    {
+      // rec_iterations = 30;
+      rec_iterations = 30;  // TBD: optimise number of reconstruction iterations    
+    }
+    else 
+      // rec_iterations = 10;  
+      rec_iterations = 10;  // TBD: optimise number of reconstruction iterations    
+    
+    if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
+      rec_iterations=0;
+    
+    //reconstruction iterations
+    i=0;
+    for (i=0;i<rec_iterations;i++)
+    {
+      cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
+    
+      if (intensity_matching)
+      {
+        //calculate bias fields
+        if (sigma>0)
+          reconstruction.Bias();
+        //calculate scales
+        reconstruction.Scale();
+      }
+      
+      //Update reconstructed volume
+      if (!bspline)
+        reconstruction.SuperresolutionCardiac4D(i+1);
+      
+      if (intensity_matching)
+      {
+      if((sigma>0)&&(!global_bias_correction))
+        reconstruction.NormaliseBiasCardiac4D(i);
+      }
+      
+      // Simulate slices (needs to be done
+      // after the update of the reconstructed volume)
+      reconstruction.SimulateSlicesCardiac4D();
+      
+      if(robust_statistics)
+        reconstruction.MStep(i+1);
+      
+      //E-step
+      if(robust_statistics)
+        reconstruction.EStep();
+      
+      //Save intermediate reconstructed image
+      if (debug)
+      {
+        reconstructed=reconstruction.GetReconstructedCardiac4D();
+        sprintf(buffer,"super%i_%i.nii.gz",iter,i);
+        reconstructed.Write(buffer);
+      }    
+      
+    }//end of reconstruction iterations
+  
+    //Mask reconstructed image to ROI given by the mask
+    if(!bspline)
+      reconstruction.StaticMaskReconstructedVolume4D();
+
+    //Save reconstructed image
+    reconstructed=reconstruction.GetReconstructedCardiac4D();
+    sprintf(buffer,"image%i.nii.gz",iter);
+    reconstructed.Write(buffer);
+
+    //Evaluate - write number of included/excluded/outside/zero slices in each iteration in the file
+    if ( ! no_log )
+      cout.rdbuf (fileEv.rdbuf());
+    reconstruction.Evaluate(iter);
+    cout<<endl;
+    if ( ! no_log )
+      cout.rdbuf (strm_buffer);
+
+    if(debug)
+    {
+      sprintf(buffer,"slice_info_%i.tsv",iter);
+      reconstruction.SlicesInfoCardiac4D( buffer, stack_files );
+    }
+
+  }// end of interleaved registration-reconstruction iterations
+
+  //save final result
+  if(debug)
+      cout<<"RestoreSliceIntensities"<<endl;
 	reconstruction.RestoreSliceIntensities();
-	reconstruction.ScaleVolume();
-	reconstructed=reconstruction.GetReconstructed();
+  if(debug)
+      cout<<"ScaleVolume"<<endl;
+  reconstruction.ScaleVolume();
+  if(debug)
+      cout<<"Saving Reconstructed Volume"<<endl;
+	reconstructed=reconstruction.GetReconstructedCardiac4D();
 	reconstructed.Write(output_name); 
+  if(debug)
+      cout<<"SaveTransformations"<<endl;
 	reconstruction.SaveTransformations();
+  if(debug)
+      cout<<"SaveSlices"<<endl;
 	reconstruction.SaveSlices();
-	reconstruction.SaveTransformationsWithTiming();
-	reconstruction.SaveSlicesWithTiming();
-	
-	if ( info_filename.length() > 0 )
-	  reconstruction.SlicesInfo( info_filename.c_str(),
-								 stack_files );
-	
+  
+  /*if(debug)
+      cout<<"SaveTransformationsWithTiming"<<endl;
+	reconstruction.SaveTransformationsWithTiming();*/
+  /*if(debug) 
+      cout<<"SaveSlicesWithTiming"<<endl;
+	reconstruction.SaveSlicesWithTiming();*/
+
+	if ( info_filename.length() > 0 ) 
+  {
+    if(debug)
+        cout<<"SlicesInfoCardiac4D"<<endl;
+    reconstruction.SlicesInfoCardiac4D( info_filename.c_str(),
+             								 stack_files );
+  }
+
 	if(debug)
 	{
-	reconstruction.SaveWeights();
-	reconstruction.SaveBiasFields();
-	//reconstruction.SaveConfidenceMap();
-	reconstruction.SimulateStacks(stacks);
-	for (unsigned int i=0;i<stacks.size();i++)
-	{
-	  sprintf(buffer,"simulated%i.nii.gz",i);
-	  stacks[i].Write(buffer);
-	}
-  }
+      if(debug)
+          cout<<"SaveWeights"<<endl;
+	    reconstruction.SaveWeights();
+      if(debug)
+          cout<<"SaveBiasFields"<<endl;
+      reconstruction.SaveBiasFields();
+      if(debug)
+          cout<<"SaveSimulatedSlices"<<endl;
+      reconstruction.SaveSimulatedSlices();
+	    //reconstruction.SaveConfidenceMap();
+  	  /* TODO: update stack simulation for 4D if required 
+      reconstruction.SimulateStacks(stacks);
+  	  for (unsigned int i=0;i<stacks.size();i++)
+  	  {
+  	      sprintf(buffer,"simulated%i.nii.gz",i);
+  	      stacks[i].Write(buffer);
+  	  }
+      */
+      cout<<"Superheart reconstruction complete."<<endl;
+  }  
   //The end of main()
 }  
