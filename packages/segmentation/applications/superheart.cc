@@ -24,6 +24,8 @@ void usage()
   cerr << "Usage: superheart [reconstructed] [N] [stack_1] .. [stack_N] <options>\n" << endl;
   cerr << endl;
 
+  cerr << "NOTE: using temporal PSF = sinc(PI*angdiff/dtrad)*win_Tukey(angdiff,0.3)\n" << endl;
+
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
   cerr << "\t[N]                     Number of stacks." << endl;
   cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format (first taken as reference)." << endl;
@@ -108,6 +110,8 @@ int main(int argc, char **argv)
   /// number of packages for each stack
   vector<int> packages;
   vector<int> order_vector;
+  // Slice R-R Intervals
+  vector<double> rr;
   // Slice cardiac phases
   vector<double> cardPhase;
   
@@ -652,6 +656,17 @@ int main(int argc, char **argv)
   //Set debug mode
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
+  
+  // For now, set R-R for each slice/frame to reconstructed R-R Interval
+  // TODO: set R-R interval of each slice/frame based on cardiac trigger times
+  for (i=0;i<reconstructedCardPhase.size();i++)
+  {
+    rr.push_back(rrInterval);
+  }
+  reconstruction.SetSliceRRInterval(rr);
+  
+  // Investigate Temporal Weight Calculation
+  // reconstruction.TestTemporalWeightCalculation();
   
   //Set force excluded slices
   reconstruction.SetForceExcludedSlices(force_excluded);

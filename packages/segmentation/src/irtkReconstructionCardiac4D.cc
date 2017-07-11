@@ -16,6 +16,7 @@
 #include <irtkImageRigidRegistration.h>
 #include <irtkImageRigidRegistrationWithPadding.h>
 #include <irtkTransformation.h>
+#include <math.h>
 
 
 // -----------------------------------------------------------------------------
@@ -30,6 +31,14 @@ irtkReconstructionCardiac4D::irtkReconstructionCardiac4D():irtkReconstruction()
 // Destructor
 // -----------------------------------------------------------------------------
 irtkReconstructionCardiac4D::~irtkReconstructionCardiac4D() { }
+
+// -----------------------------------------------------------------------------
+// Set Slice R-R Intervals
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SetSliceRRInterval( vector<double> rr )
+{
+    _slice_rr = rr;
+}
 
 
 // -----------------------------------------------------------------------------
@@ -224,7 +233,7 @@ void irtkReconstructionCardiac4D::CalculateSliceTemporalWeights()
     {
         for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
         {
-            _slice_temporal_weight[outputIndex][inputIndex] = CalculateTemporalWeight( _reconstructed_cardiac_phases[outputIndex], _slice_cardphase[inputIndex], _slice_dt[inputIndex] ); 
+            _slice_temporal_weight[outputIndex][inputIndex] = CalculateTemporalWeight( _reconstructed_cardiac_phases[outputIndex], _slice_cardphase[inputIndex], _slice_dt[inputIndex], _slice_rr[inputIndex], _wintukeypct ); 
         }      
     }
     /* OBSOLETE
@@ -262,29 +271,50 @@ double irtkReconstructionCardiac4D::CalculateAngularDifference( double cardphase
 // -----------------------------------------------------------------------------
 // Calculate Temporal Weight
 // -----------------------------------------------------------------------------
-double irtkReconstructionCardiac4D::CalculateTemporalWeight( double cardphase0, double cardphase, double dt )
-{
-    double angdiff, temporalweight;
+double irtkReconstructionCardiac4D::CalculateTemporalWeight( double cardphase0, double cardphase, double dt, double rr, double alpha )
+{  
+    // Angular Difference
+    double angdiff = CalculateAngularDifference( cardphase0, cardphase );
     
-    // Angular difference
-    angdiff = CalculateAngularDifference( cardphase0, cardphase );
-    
-    // Temporal weighting value 
-    // TODO: update temporal weighting kernel; Gaussian-weighted for now
-    // double rr = _reconstructed_temporal_resolution * _reconstructed_cardiac_phases.size();  // rr interval
-    double sigma = ( 2 * PI * dt / _reconstructed_rr_interval ) / 2.355;  // sigma = ~ FWHM/2.355 for normal distribution
-    temporalweight = exp( -angdiff * angdiff / (2 * sigma * sigma ) );  // ignore scaling here as 
+    // Temporal Resolution in Radians
+    double dtrad = 2 * PI * dt / rr;
         
-    return temporalweight;
+    // Temporal Weight
+    return sinc( PI * angdiff / dtrad ) * wintukey( angdiff, alpha );
 }
 
 
-/* OBSOLETE
+// -----------------------------------------------------------------------------
+// Sinc Function
+// -----------------------------------------------------------------------------
+double irtkReconstructionCardiac4D::sinc(double x)
+{
+    if (x == 0)
+        return 1;
+    return sin(x)/x;
+}
+
+// -----------------------------------------------------------------------------
+// Tukey Window Function
+// -----------------------------------------------------------------------------
+double irtkReconstructionCardiac4D::wintukey( double angdiff, double alpha )
+{  
+    // angdiff = angular difference (-PI to +PI)
+    // alpha   = amount of window with tapered cosine edges (0 to 1)
+    if ( fabs( angdiff ) > PI * ( 1 - alpha ) )
+       return ( 1 + cos( ( fabs( angdiff ) - PI * ( 1 - alpha ) ) / alpha ) ) / 2;
+    return 1;
+}
+
+
 // -----------------------------------------------------------------------------
 // Test Temporal Weight Calculation
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::TestTemporalWeightCalculation()
 {
+    double dt = 75;
+    double rr = 400;
+    double alpha = 0.3;
     cout<<endl;
     cout<<"TestTemporalWeightCalculation"<<endl;
     cout<<"cardphase0, cardphase1, angular difference, temporal weight"<<endl;
@@ -297,13 +327,12 @@ void irtkReconstructionCardiac4D::TestTemporalWeightCalculation()
         {
             cardphase = double( 2 * PI * i / 100 );
             angdiff = CalculateAngularDifference( cardphase0, cardphase );
-            temporalweight = CalculateTemporalWeight( cardphase0, cardphase ); 
+            temporalweight = CalculateTemporalWeight( cardphase0, cardphase, dt, rr, alpha ); 
             cout<<cardphase0<<", "<<cardphase<<", "<<angdiff<<", "<<temporalweight<<endl;
         }
     }
     cout<<endl;
 }
-*/
 
 
 // -----------------------------------------------------------------------------
