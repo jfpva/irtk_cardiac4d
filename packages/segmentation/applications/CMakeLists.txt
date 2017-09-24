@@ -64,7 +64,7 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(normalizeLCC normalizeLCC.cc)
     ADD_EXECUTABLE(correlation correlation.cc)
     
-    ADD_EXECUTABLE(superheart superheart.cc)
+    ADD_EXECUTABLE(reconstructionCardiac reconstructionCardiac.cc)
     ADD_EXECUTABLE(profile profile.cc)
     ADD_EXECUTABLE(write-transformations-to-file write-transformations-to-file.cc)
     
