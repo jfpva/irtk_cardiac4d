@@ -52,6 +52,9 @@ protected:
    // Slice Temporal Resolution
    vector<double> _slice_dt;
    
+   // Slice R-R interval
+   vector<double> _slice_rr; 
+   
    // Slice Cardiac Phase
    vector<double> _slice_cardphase;
    
@@ -68,8 +71,17 @@ protected:
    // Calculate Angular Difference
    double CalculateAngularDifference( double cardphase0, double cardphase );
 
+   // Temporal Weighting Tukey Window Edge Percent
+   double _wintukeypct = 0.3;
+   
+   // Sinc Function
+   double sinc( double x );
+
+   // Tukey Window Function
+   double wintukey( double angdiff, double alpha );
+   
    // Calculate Temporal Weight
-   double CalculateTemporalWeight( double cardphase0, double cardphase, double dt );
+   double CalculateTemporalWeight( double cardphase0, double cardphase, double dt, double rr, double alpha );
   
  public:
    
@@ -84,6 +96,9 @@ protected:
 
    // Get Volume Weights
    inline irtkRealImage GetVolumeWeights();
+
+   // Set Slice R-R Intervals
+   void SetSliceRRInterval( vector<double> rr );
 
    // Set Slice Cardiac Phases
    void SetSliceCardiacPhase( vector<double> cardiacphases );
@@ -115,9 +130,9 @@ protected:
    
    // Calculate Slice Temporal Weights
    void CalculateSliceTemporalWeights();
-   /* OBSOLETE
+
    void TestTemporalWeightCalculation();
-   */
+
    
    // Calculate Transformation Matrix Between Slices and Voxels
    void CoeffInitCardiac4D();
