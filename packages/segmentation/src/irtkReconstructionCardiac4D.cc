@@ -153,6 +153,7 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
 {
 
     double sliceAcqTime;
+    int loc_index = 0;
 
     if (_debug)
         cout << "CreateSlicesAndTransformations" << endl;
@@ -182,8 +183,11 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                 _simulated_slices.push_back(slice);
                 _simulated_weights.push_back(slice);
                 _simulated_inside.push_back(slice);
-                //remeber stack index for this slice
+                //remeber stack indices for this slice
                 _stack_index.push_back(i);
+                _loc_index.push_back(loc_index);
+                _stack_loc_index.push_back(j);
+                _stack_dyn_index.push_back(k);
                 //initialize slice transformation with the stack transformation
                 _transformations.push_back(stack_transformations[i]);
                 if ( probability_maps.size() > 0 ) {
@@ -191,13 +195,11 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                     proba.PutPixelSize(attr._dx, attr._dy, thickness[i], attr._dt);
                     _probability_maps.push_back(proba);
                 }
-                
-                // TODO: TBD: get slice/frame timing from stack torigin and dt, if possible
-                
             }
+            loc_index++;
         }
     }
-    cout << "Number of slices: " << _slices.size() << endl;
+    cout << "Number of images: " << _slices.size() << endl;
 }
 
 

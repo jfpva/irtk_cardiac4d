@@ -31,6 +31,11 @@ class irtkReconstructionCardiac4D : public irtkReconstruction
 
 protected:
    
+  // Stacks
+  vector<int> _loc_index;        // running index of all 2D slice locations
+  vector<int> _stack_loc_index;  // index of 2D slice location in M2D stack
+  vector<int> _stack_dyn_index;  // index of dynamic in M2D stack
+
    // PI
    const double PI = 3.14159265358979323846;
    
