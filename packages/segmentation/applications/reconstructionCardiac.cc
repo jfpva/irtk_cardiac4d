@@ -54,6 +54,7 @@ void usage()
   cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
   cerr << "\t-numcardphase             Number of cardiac phases to reconstruct. [Default: 10]."<<endl;
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: 1 s]."<<endl;
+  cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
@@ -110,6 +111,8 @@ int main(int argc, char **argv)
   /// number of packages for each stack
   vector<int> packages;
   vector<int> order_vector;
+  // Location R-R Intervals;
+  vector<double> rr_loc;
   // Slice R-R Intervals
   vector<double> rr;
   // Slice cardiac phases
@@ -126,7 +129,8 @@ int main(int argc, char **argv)
   double sigma=20;
   double resolution = 0.75;
   int numCardPhase = 10;
-  double rrInterval = 1;
+  double rrDefault = 1;
+  double rrInterval = rrDefault;
   double lambda = 0.02;
   double delta = 150;
   int levels = 3;
@@ -312,6 +316,26 @@ int main(int argc, char **argv)
 	  argc--;
 	  argv++;
 	}
+
+  //Read stack location R-R Intervals
+  if ((ok == false) && (strcmp(argv[1], "-rrintervals") == 0)){
+    argc--;
+    argv++;
+    int nLocs = atoi(argv[1]);
+    cout<<"Reading R-R intervals for "<<nLocs<<" slice locations"<<endl;
+    argc--;
+    argv++;
+    cout<< "R-R intervals are ";
+    for (i=0;i<nLocs;i++)
+    {
+      rr_loc.push_back(atof(argv[1]));
+      cout<<i<<":"<<rr_loc[i]<<", ";
+      argc--;
+      argv++;
+    }
+    cout<<"\b\b."<<endl;
+    ok = true;
+  }
 
   //Read cardiac phases
   if ((ok == false) && (strcmp(argv[1], "-cardphase") == 0)){
@@ -657,14 +681,6 @@ int main(int argc, char **argv)
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
   
-  // For now, set R-R for each slice/frame to reconstructed R-R Interval
-  // TODO: set R-R interval of each slice/frame based on cardiac trigger times
-  for (i=0;i<reconstructedCardPhase.size();i++)
-  {
-    rr.push_back(rrInterval);
-  }
-  reconstruction.SetSliceRRInterval(rr);
-  
   // Investigate Temporal Weight Calculation
   // reconstruction.TestTemporalWeightCalculation();
   
@@ -787,6 +803,16 @@ int main(int argc, char **argv)
   
   //Mask all the slices
   reconstruction.MaskSlices();
+  
+  // Set R-R for each image
+  if (rr_loc.empty()) 
+  {
+    reconstruction.SetSliceRRInterval(rrInterval);
+    if (debug)
+      cout<<"No R-R intervals specified. All R-R intervals set to "<<rrInterval<<" s."<<endl;
+  }  
+  else
+    reconstruction.SetLocRRInterval(rr_loc);
   
   //Set sigma for the bias field smoothing
   if (sigma>0)

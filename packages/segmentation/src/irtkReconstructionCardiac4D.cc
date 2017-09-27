@@ -40,6 +40,30 @@ void irtkReconstructionCardiac4D::SetSliceRRInterval( vector<double> rr )
     _slice_rr = rr;
 }
 
+void irtkReconstructionCardiac4D::SetSliceRRInterval( double rr )
+{
+    vector<double> slice_rr;
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
+    {
+        slice_rr.push_back(rr);
+    }
+    _slice_rr = slice_rr;
+}
+
+
+// -----------------------------------------------------------------------------
+// Set Slice R-R Intervals
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SetLocRRInterval( vector<double> rr )
+{
+    vector<double> slice_rr;
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
+    {
+        slice_rr.push_back(rr[_loc_index[inputIndex]]);
+    }
+    _slice_rr = slice_rr;
+}
+
 
 // -----------------------------------------------------------------------------
 // Set Slice Cardiac Phases

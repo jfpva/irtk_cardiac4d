@@ -104,6 +104,10 @@ protected:
 
    // Set Slice R-R Intervals
    void SetSliceRRInterval( vector<double> rr );
+   void SetSliceRRInterval( double rr );
+   
+   // Set Loc R-R Intervals
+   void SetLocRRInterval( vector<double> rr );
 
    // Set Slice Cardiac Phases
    void SetSliceCardiacPhase( vector<double> cardiacphases );
