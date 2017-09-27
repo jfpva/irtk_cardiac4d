@@ -1627,50 +1627,56 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
     info<<setprecision(3);
 
     // header
-    info << "slice_index" << "\t"
-         << "stack_index" << "\t"
-         << "stack_name" << "\t"
-         << "included" << "\t" // Included slices
-         << "excluded" << "\t"  // Excluded slices
-         << "outside" << "\t"  // Outside slices
-         << "weight" << "\t"
-         << "scale" << "\t"
-        // << _stack_factor[i] << "\t"
+    info << "StackIndex" << "\t"
+         << "StackLocIndex" << "\t"
+         << "StackDynIndex" << "\t"
+         << "LocIndex" << "\t"
+         << "InputIndex" << "\t"
+         << "File" << "\t"
+         << "Scale" << "\t"
+         << "StackFactor" << "\t"
+         << "Time" << "\t"
+         << "TemporalResolution" << "\t"
+         << "CardiacPhase" << "\t"
+         << "ReconCardPhaseIndex" << "\t"
+         << "Included" << "\t" // Included slices
+         << "Excluded" << "\t"  // Excluded slices
+         << "Outside" << "\t"  // Outside slices
+         << "Weight" << "\t"
          << "TranslationX" << "\t"
          << "TranslationY" << "\t"
          << "TranslationZ" << "\t"
          << "RotationX" << "\t"
          << "RotationY" << "\t"
-         << "RotationZ" << "\t"
-         << "Time" << "\t"
-         << "TemporalResolution" << "\t"
-         << "CardiacPhase" << "\t"
-         << "SvrReferenceCardIndex" << "\t";
+         << "RotationZ" << "\t";
          for (int j = 0; j < _reconstructed4D.GetT(); j++)
-            info << "TemporalWeightOutputCardPhase" << j << "\t";
+            info << "TemporalWeightReconCardPhaseIndex" << j << "\t";
          info << "\b" << endl;       
     
     for (unsigned int i = 0; i < _slices.size(); i++) {
         irtkRigidTransformation& t = _transformations[i];
-        info << i << "\t"
-	           << _stack_index[i] << "\t"
+        info << _stack_index[i] << "\t"
+             << _stack_loc_index[i] << "\t" 
+             << _stack_dyn_index[i] << "\t" 
+             << _loc_index[i] << "\t"
+             << i << "\t"
              << stack_files[_stack_index[i]] << "\t"
+             << _scale[i] << "\t"
+             << _stack_factor[i] << "\t"
+             << _slice_time[i] << "\t"
+             << _slice_dt[i] << "\t"
+             << _slice_cardphase[i] << "\t"
+             << _slice_svr_card_index[i] << "\t"
              << (((_slice_weight[i] >= 0.5) && (_slice_inside[i]))?1:0) << "\t" // Included slices
              << (((_slice_weight[i] < 0.5) && (_slice_inside[i]))?1:0) << "\t"  // Excluded slices
              << ((!(_slice_inside[i]))?1:0) << "\t"  // Outside slices
              << _slice_weight[i] << "\t"
-             << _scale[i] << "\t"
-            // << _stack_factor[i] << "\t"
              << t.GetTranslationX() << "\t"
              << t.GetTranslationY() << "\t"
              << t.GetTranslationZ() << "\t"
              << t.GetRotationX() << "\t"
              << t.GetRotationY() << "\t"
-             << t.GetRotationZ() << "\t"
-             << _slice_time[i] << "\t"
-             << _slice_dt[i] << "\t"
-             << _slice_cardphase[i] << "\t"
-             << _slice_svr_card_index[i] << "\t";
+             << t.GetRotationZ() << "\t";
              for (int j = 0; j < _reconstructed4D.GetT(); j++)
                 info << _slice_temporal_weight[j][i] << "\t";
              info << "\b" << endl;
