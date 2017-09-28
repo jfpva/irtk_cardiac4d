@@ -1616,6 +1616,273 @@ void irtkReconstructionCardiac4D::AdaptiveRegularizationCardiac4D(int iter, irtk
 
 
 // -----------------------------------------------------------------------------
+// ReadTransformation
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::ReadTransformation(char* folder)
+{
+    int n = _slices.size();
+    char name[256];
+    char path[256];
+    irtkTransformation *transformation;
+    irtkRigidTransformation *rigidTransf;
+
+    if (n == 0) {
+        cerr << "Please create slices before reading transformations!" << endl;
+        exit(1);
+    }
+    cout << "Reading transformations:" << endl;
+
+    _transformations.clear();
+    for (int i = 0; i < n; i++) {
+        if (folder != NULL) {
+            sprintf(name, "/transformation%05i.dof", i);
+            strcpy(path, folder);
+            strcat(path, name);
+        }
+        else {
+            sprintf(path, "transformation%05i.dof", i);
+        }
+        transformation = irtkTransformation::New(path);
+        rigidTransf = dynamic_cast<irtkRigidTransformation*>(transformation);
+        _transformations.push_back(*rigidTransf);
+        delete transformation;
+        cout << path << endl;
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+// SaveTransformations
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveTransformations()
+{
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+        sprintf(buffer, "transformation%05i.dof", inputIndex);
+        _transformations[inputIndex].irtkTransformation::Write(buffer);
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+// SaveSimulatedSlices
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveSimulatedSlices()
+{
+    if (_debug)
+        cout<<"Saving simulated images ...";
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++)
+        {
+            sprintf(buffer, "simimage%05i.nii.gz", inputIndex);
+            _simulated_slices[inputIndex].Write(buffer);
+        }
+        cout<<"done."<<endl;
+}
+
+void irtkReconstructionCardiac4D::SaveSimulatedSlices( vector<irtkRealImage> &stacks )
+{      
+  
+    if (_debug)
+        cout << "Saving simulated images as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> simstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          simstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _simulated_slices.size(); ++inputIndex) { 
+      for (int i = 0; i < _simulated_slices[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _simulated_slices[inputIndex].GetY(); j++) {
+              simstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _simulated_slices[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+      sprintf(buffer, "simstack%03i.nii.gz", i);
+      simstacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveSimulatedSlices( vector<irtkRealImage> &stacks, int iter, int rec_iter )
+{      
+  
+    if (_debug)
+        cout << "Saving simulated images as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> simstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          simstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _simulated_slices.size(); ++inputIndex) { 
+      for (int i = 0; i < _simulated_slices[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _simulated_slices[inputIndex].GetY(); j++) {
+              simstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _simulated_slices[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+      sprintf(buffer, "simstack%03i_mc%02isr%02i.nii.gz", i, iter, rec_iter);
+      simstacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+
+// -----------------------------------------------------------------------------
+// SaveSlices
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveSlices()
+{
+
+    if (_debug)
+        cout << "SaveSlices" << endl;
+      
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++)
+        {
+            sprintf(buffer, "image%05i.nii.gz", inputIndex);
+            _slices[inputIndex].Write(buffer);
+        }
+}
+
+void irtkReconstructionCardiac4D::SaveSlices( vector<irtkRealImage> &stacks )
+{
+        
+    if (_debug)
+        cout << "SaveSlices as stacks ...";
+    
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> imagestacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        irtkImageAttributes attr = stacks[i].GetImageAttributes();
+        stack.Initialize( attr );
+        imagestacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) { 
+        for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+            for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+                imagestacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _slices[inputIndex](i,j,0);
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        sprintf(buffer, "stack%03i.nii.gz", i);
+        imagestacks[i].Write(buffer);
+    }
+    
+    if (_debug)
+        cout << " done." << endl;
+
+}
+
+
+// -----------------------------------------------------------------------------
+// SaveWeights
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveWeights()
+{
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+        sprintf(buffer, "weights%05i.nii.gz", inputIndex);
+        _weights[inputIndex].Write(buffer);
+    }
+}
+
+void irtkReconstructionCardiac4D::SaveWeights( vector<irtkRealImage> &stacks )
+{
+        
+    if (_debug)
+        cout << "SaveWeights as stacks ...";
+    
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> weightstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        irtkImageAttributes attr = stacks[i].GetImageAttributes();
+        stack.Initialize( attr );
+        weightstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) { 
+        for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+            for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+                weightstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _weights[inputIndex](i,j,0);
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        sprintf(buffer, "weight%03i.nii.gz", i);
+        weightstacks[i].Write(buffer);
+    }
+    
+    if (_debug)
+        cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveWeights( vector<irtkRealImage> &stacks, int iter, int rec_iter )
+{
+        
+    if (_debug)
+        cout << "SaveWeights as stacks ...";
+    
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> weightstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        irtkImageAttributes attr = stacks[i].GetImageAttributes();
+        stack.Initialize( attr );
+        weightstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) { 
+        for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+            for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+                weightstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _weights[inputIndex](i,j,0);
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        sprintf(buffer, "weights%03i_mc%02isr%02i.nii.gz", i, iter, rec_iter);
+        weightstacks[i].Write(buffer);
+    }
+    
+    if (_debug)
+        cout << " done." << endl;
+
+}
+
+
+// -----------------------------------------------------------------------------
 // SlicesInfo
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,

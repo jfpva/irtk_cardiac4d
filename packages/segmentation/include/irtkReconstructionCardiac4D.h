@@ -171,6 +171,32 @@ protected:
    /// Edge-Preserving Regularization with Confidence Map
    void AdaptiveRegularizationCardiac4D(int iter, irtkRealImage& original);
 
+   
+   /// Read Transformations
+   void ReadTransformation( char* folder );
+
+   ///Save transformations
+   void SaveTransformations();
+
+   // Save Bias Fields
+   void SaveBiasFields();
+   void SaveBiasFields(vector<irtkRealImage>& stacks);
+   void SaveBiasFields(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+
+   // Save Slices
+   void SaveSimulatedSlices();
+   void SaveSimulatedSlices(vector<irtkRealImage>& stacks);
+   void SaveSimulatedSlices(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+   
+   // Save Slices
+   void SaveSlices();
+   void SaveSlices(vector<irtkRealImage>& stacks);
+   
+   // Save Weights
+   void SaveWeights();
+   void SaveWeights(vector<irtkRealImage>& stacks);
+   void SaveWeights(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+
    // Slice Info 
    void SlicesInfoCardiac4D( const char* filename, vector<string> &stack_filenames );
 

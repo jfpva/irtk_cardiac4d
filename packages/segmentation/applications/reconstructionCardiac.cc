@@ -782,9 +782,9 @@ int main(int argc, char **argv)
     reconstruction.CropImageIgnoreZ(stacks[i],m);
     if (debug)
     {
-      sprintf(buffer,"mask%i.nii.gz",i);
+      sprintf(buffer,"mask%03i.nii.gz",i);
       m.Write(buffer); 
-      sprintf(buffer,"cropped%i.nii.gz",i);
+      sprintf(buffer,"cropped%03i.nii.gz",i);
       stacks[i].Write(buffer);
     }
   }
@@ -813,6 +813,7 @@ int main(int argc, char **argv)
   }  
   else
     reconstruction.SetLocRRInterval(rr_loc);
+  reconstruction.SaveSlices(stacks);
   
   //Set sigma for the bias field smoothing
   if (sigma>0)
@@ -953,28 +954,37 @@ int main(int argc, char **argv)
     if (debug)
     {
       reconstructed = reconstruction.GetReconstructedCardiac4D();
-      sprintf(buffer,"init%i.nii.gz",iter);
+      sprintf(buffer,"init_mc%02i.nii.gz",iter);
       reconstructed.Write(buffer);
       volumeweights = reconstruction.GetVolumeWeights();
-      sprintf(buffer,"volume_weights%i.nii.gz",iter);
+      sprintf(buffer,"volumeweights_mc%02i.nii.gz",iter);
       volumeweights.Write(buffer);
     }
     
     //Simulate slices (needs to be done after Gaussian reconstruction)
     reconstruction.SimulateSlicesCardiac4D();
       
+    //Save intermediate simulated slices
+    if(debug)
+        reconstruction.SaveSimulatedSlices(stacks,iter,0);
+
     //Initialize robust statistics parameters
     reconstruction.InitializeRobustStatistics();
 
     //EStep
     if(robust_statistics)
       reconstruction.EStep();
+
+    if(debug)
+        reconstruction.SaveWeights(stacks,iter,0);
         
     //number of reconstruction iterations
     if ( iter==(iterations-1) ) 
     {
       // rec_iterations = 30;
       rec_iterations = 30;  // TBD: optimise number of reconstruction iterations    
+      if (debug)
+          cout << "NOTE: last iteration, rec_iterations = " << rec_iterations << endl;
     }
     else 
       // rec_iterations = 10;  
@@ -1002,6 +1012,15 @@ int main(int argc, char **argv)
       if (!bspline)
         reconstruction.SuperresolutionCardiac4D(i+1);
       
+      //Save intermediate reconstructed image
+      if (debug)
+      {
+        reconstructed=reconstruction.GetReconstructedCardiac4D();
+        reconstructed=reconstruction.StaticMaskVolume4D(reconstructed,-1);
+        sprintf(buffer,"super_mc%02ir%02i.nii.gz",iter,i);
+        reconstructed.Write(buffer);
+      }    
+        
       if (intensity_matching)
       {
       if((sigma>0)&&(!global_bias_correction))
@@ -1011,21 +1030,21 @@ int main(int argc, char **argv)
       // Simulate slices (needs to be done
       // after the update of the reconstructed volume)
       reconstruction.SimulateSlicesCardiac4D();
-      
+
+      //Save intermediate simulated slices
+      if(debug)
+          reconstruction.SaveSimulatedSlices(stacks,iter,i+1);
+
       if(robust_statistics)
         reconstruction.MStep(i+1);
       
       //E-step
       if(robust_statistics)
         reconstruction.EStep();
-      
-      //Save intermediate reconstructed image
-      if (debug)
-      {
-        reconstructed=reconstruction.GetReconstructedCardiac4D();
-        sprintf(buffer,"super%i_%i.nii.gz",iter,i);
-        reconstructed.Write(buffer);
-      }    
+
+      //Save intermediate weights
+      if(debug)
+          reconstruction.SaveWeights(stacks,iter,i+1);      
       
     }//end of reconstruction iterations
   
@@ -1035,7 +1054,7 @@ int main(int argc, char **argv)
 
     //Save reconstructed image
     reconstructed=reconstruction.GetReconstructedCardiac4D();
-    sprintf(buffer,"image%i.nii.gz",iter);
+    sprintf(buffer,"reconstructed_mc%02i.nii.gz",iter);
     reconstructed.Write(buffer);
 
     //Evaluate - write number of included/excluded/outside/zero slices in each iteration in the file
@@ -1048,8 +1067,8 @@ int main(int argc, char **argv)
 
     if(debug)
     {
-      sprintf(buffer,"slice_info_%i.tsv",iter);
       reconstruction.SlicesInfoCardiac4D( buffer, stack_files );
+      sprintf(buffer,"slice_info_mc%02i.tsv",iter);
     }
 
   }// end of interleaved registration-reconstruction iterations
@@ -1068,9 +1087,6 @@ int main(int argc, char **argv)
   if(debug)
       cout<<"SaveTransformations"<<endl;
 	reconstruction.SaveTransformations();
-  if(debug)
-      cout<<"SaveSlices"<<endl;
-	reconstruction.SaveSlices();
   
   /*if(debug)
       cout<<"SaveTransformationsWithTiming"<<endl;
@@ -1089,25 +1105,14 @@ int main(int argc, char **argv)
 
 	if(debug)
 	{
-      if(debug)
-          cout<<"SaveWeights"<<endl;
-	    reconstruction.SaveWeights();
-      if(debug)
-          cout<<"SaveBiasFields"<<endl;
-      reconstruction.SaveBiasFields();
-      if(debug)
-          cout<<"SaveSimulatedSlices"<<endl;
-      reconstruction.SaveSimulatedSlices();
+      cout<<"SaveWeights"<<endl; 
+	    reconstruction.SaveWeights(stacks);
+      cout<<"SaveBiasFields"<<endl; 
+      reconstruction.SaveBiasFields(stacks); 
+      cout<<"SaveSimulatedSlices"<<endl;     
+      reconstruction.SaveSimulatedSlices(stacks);
 	    //reconstruction.SaveConfidenceMap();
-  	  /* TODO: update stack simulation for 4D if required 
-      reconstruction.SimulateStacks(stacks);
-  	  for (unsigned int i=0;i<stacks.size();i++)
-  	  {
-  	      sprintf(buffer,"simulated%i.nii.gz",i);
-  	      stacks[i].Write(buffer);
-  	  }
-      */
-      cout<<"Superheart reconstruction complete."<<endl;
+      cout<<"ReconstructionCardiac complete."<<endl;
   }  
   //The end of main()
 }  
