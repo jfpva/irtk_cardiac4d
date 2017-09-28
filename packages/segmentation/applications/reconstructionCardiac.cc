@@ -1107,8 +1107,8 @@ int main(int argc, char **argv)
 	{
       cout<<"SaveWeights"<<endl; 
 	    reconstruction.SaveWeights(stacks);
-      cout<<"SaveBiasFields"<<endl; 
-      reconstruction.SaveBiasFields(stacks); 
+      //cout<<"SaveBiasFields"<<endl; 
+      //reconstruction.SaveBiasFields(stacks); 
       cout<<"SaveSimulatedSlices"<<endl;     
       reconstruction.SaveSimulatedSlices(stacks);
 	    //reconstruction.SaveConfidenceMap();
