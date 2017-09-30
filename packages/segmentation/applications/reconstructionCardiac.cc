@@ -1017,7 +1017,7 @@ int main(int argc, char **argv)
       {
         reconstructed=reconstruction.GetReconstructedCardiac4D();
         reconstructed=reconstruction.StaticMaskVolume4D(reconstructed,-1);
-        sprintf(buffer,"super_mc%02ir%02i.nii.gz",iter,i);
+        sprintf(buffer,"super_mc%02isr%02i.nii.gz",iter,i);
         reconstructed.Write(buffer);
       }    
         
