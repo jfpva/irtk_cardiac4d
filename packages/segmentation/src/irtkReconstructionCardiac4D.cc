@@ -167,6 +167,135 @@ void irtkReconstructionCardiac4D::CreateTemplateCardiac4DFromStaticMask( irtkRea
     }
 }
 
+
+// -----------------------------------------------------------------------------
+// Match Stack Intensities With Masking
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRealImage>& stacks,
+                                               vector<irtkRigidTransformation>& stack_transformations, double averageValue, bool together)
+{
+    if (_debug)
+        cout << "Matching intensities of stacks. ";
+
+    //Calculate the averages of intensities for all stacks
+    double sum, num;
+    char buffer[256];
+    unsigned int ind;
+    int i, j, k;
+    double x, y, z;
+    vector<double> stack_average;
+    irtkRealImage m;
+        
+    //remember the set average value
+    _average_value = averageValue;
+    
+    //averages need to be calculated only in ROI
+    for (ind = 0; ind < stacks.size(); ind++) {
+        irtkImageAttributes attr = stacks[ind].GetImageAttributes();
+        attr._t = 1;
+        m.Initialize(attr);
+        m = 0;
+        sum = 0;
+        num = 0;
+        for (i = 0; i < stacks[ind].GetX(); i++)
+            for (j = 0; j < stacks[ind].GetY(); j++)
+                for (k = 0; k < stacks[ind].GetZ(); k++) {
+                    //image coordinates of the stack voxel
+                    x = i;
+                    y = j;
+                    z = k;
+                    //change to world coordinates
+                    stacks[ind].ImageToWorld(x, y, z);
+                    //transform to template (and also _mask) space
+                    stack_transformations[ind].Transform(x, y, z);
+                    //change to mask image coordinates - mask is aligned with template
+                    _mask.WorldToImage(x, y, z);
+                    x = round(x);
+                    y = round(y);
+                    z = round(z);
+                    //if the voxel is inside mask ROI include it
+                     if ((x >= 0) && (x < _mask.GetX()) && (y >= 0) && (y < _mask.GetY()) && (z >= 0)
+                          && (z < _mask.GetZ()))
+                          {
+                            if (_mask(x, y, z) == 1)
+                            {
+      			                  m(i,j,k)=1;
+                              for ( int f = 0; f < stacks[ind].GetT(); f++) 
+                              {
+                                sum += stacks[ind](i, j, k, f);
+                                num++;
+                              }
+                            }
+                    }
+                }
+         if(_debug)
+	 {
+           sprintf(buffer,"mask-for-matching%i.nii.gz",ind);   
+	   m.Write(buffer);
+	 }
+        //calculate average for the stack
+        if (num > 0)
+            stack_average.push_back(sum / num);
+        else {
+            cerr << "Stack " << ind << " has no overlap with ROI" << endl;
+            exit(1);
+        }
+    }
+    
+    double global_average;
+    if (together) {
+        global_average = 0;
+        for(i=0;i<stack_average.size();i++)
+            global_average += stack_average[i];
+        global_average/=stack_average.size();
+    }
+
+    if (_debug) {
+        cout << "Stack average intensities are ";
+        for (ind = 0; ind < stack_average.size(); ind++)
+            cout << stack_average[ind] << " ";
+        cout << endl;
+        cout << "The new average value is " << averageValue << endl;
+    }
+
+    //Rescale stacks
+    irtkRealPixel *ptr;
+    double factor;
+    for (ind = 0; ind < stacks.size(); ind++) {
+        if (together) {
+            factor = averageValue / global_average;
+            _stack_factor.push_back(factor);
+        }
+        else {
+            factor = averageValue / stack_average[ind];
+            _stack_factor.push_back(factor);
+
+        }
+
+        ptr = stacks[ind].GetPointerToVoxels();
+        for (i = 0; i < stacks[ind].GetNumberOfVoxels(); i++) {
+            if (*ptr > 0)
+                *ptr *= factor;
+            ptr++;
+        }
+    }
+
+    if (_debug) {
+        for (ind = 0; ind < stacks.size(); ind++) {
+            sprintf(buffer, "rescaled-stack%i.nii.gz", ind);
+            stacks[ind].Write(buffer);
+        }
+
+        cout << "Slice intensity factors are ";
+        for (ind = 0; ind < stack_average.size(); ind++)
+            cout << _stack_factor[ind] << " ";
+        cout << endl;
+        cout << "The new average value is " << averageValue << endl;
+    }
+
+}
+
+
 // -----------------------------------------------------------------------------
 // Create Slices and Associated Transformations
 // -----------------------------------------------------------------------------

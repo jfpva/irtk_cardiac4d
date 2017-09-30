@@ -127,6 +127,12 @@ protected:
    // Initialise Reconstructed Volume from Static Mask
    void CreateTemplateCardiac4DFromStaticMask( irtkRealImage mask, double resolution );
   
+   ///Match stack intensities with masking
+   void MatchStackIntensitiesWithMasking (vector<irtkRealImage>& stacks,
+                               vector<irtkRigidTransformation>& stack_transformations,
+                               double averageValue,
+                               bool together=false);
+                               
    // Create slices from the stacks and 
    // slice-dependent transformations from stack transformations
    void CreateSlicesAndTransformationsCardiac4D( vector<irtkRealImage>& stacks,
