@@ -1254,11 +1254,11 @@ void irtkReconstructionCardiac4D::StaticMaskReconstructedVolume4D()
 // -----------------------------------------------------------------------------
 irtkRealImage irtkReconstructionCardiac4D::StaticMaskVolume4D(irtkRealImage volume, double padding)
 {
-  for ( int i = 0; i < _mask.GetX(); i++) {
-    for ( int j = 0; j < _mask.GetY(); j++) {
-      for ( int k = 0; k < _mask.GetZ(); k++) {
+  for ( int i = 0; i < volume.GetX(); i++) {
+    for ( int j = 0; j < volume.GetY(); j++) {
+      for ( int k = 0; k < volume.GetZ(); k++) {
         if ( _mask(i,j,k) == 0 ) {
-          for ( int t = 0; t < _reconstructed4D.GetT(); t++) {
+          for ( int t = 0; t < volume.GetT(); t++) {
             volume(i,j,k,t) = padding;
           }
         }
