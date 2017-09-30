@@ -987,6 +987,7 @@ class ParallelNormaliseBiasCardiac4D{
 
 public:
     irtkRealImage bias;
+    irtkRealImage volweight3d;
 
 void operator()( const blocked_range<size_t>& r ) {
     for ( size_t inputIndex = r.begin(); inputIndex < r.end(); ++inputIndex) {
@@ -1024,9 +1025,8 @@ void operator()( const blocked_range<size_t>& r ) {
                     //to which it contributes
                     for (int k = 0; k < n; k++) {
                         p = reconstructor->_volcoeffs[inputIndex][i][j][k];
-                        for (int t = 0; t < reconstructor->_reconstructed4D.GetT(); t++) {
-                          bias(p.x, p.y, p.z, t) += reconstructor->_slice_temporal_weight[t][inputIndex] * p.value * b(i, j, 0);
-                        }
+                        bias(p.x, p.y, p.z) += p.value * b(i, j, 0);
+                        volweight3d(p.x,p.y,p.z) += p.value;
                     }
                 }
         //end of loop for a slice inputIndex                
@@ -1036,19 +1036,28 @@ void operator()( const blocked_range<size_t>& r ) {
 ParallelNormaliseBiasCardiac4D( ParallelNormaliseBiasCardiac4D& x, split ) :
     reconstructor(x.reconstructor)
 {
-    bias.Initialize( reconstructor->_reconstructed4D.GetImageAttributes() );
-    bias = 0;    
+    irtkImageAttributes attr = reconstructor->_reconstructed4D.GetImageAttributes();
+    attr._t = 1;
+    bias.Initialize( attr );
+    bias = 0;   
+    volweight3d.Initialize( attr );
+    volweight3d = 0;
 }
 
 void join( const ParallelNormaliseBiasCardiac4D& y ) {       
     bias += y.bias;
+    volweight3d += y.volweight3d;
 }
          
 ParallelNormaliseBiasCardiac4D( irtkReconstructionCardiac4D *reconstructor ) :
 reconstructor(reconstructor)
 {
-    bias.Initialize( reconstructor->_reconstructed4D.GetImageAttributes() );
-    bias = 0;    
+    irtkImageAttributes attr = reconstructor->_reconstructed4D.GetImageAttributes();
+    attr._t = 1;
+    bias.Initialize( attr );
+    bias = 0; 
+    volweight3d.Initialize( attr );
+    volweight3d = 0;
 }
 
 // execute
@@ -1064,7 +1073,7 @@ void operator() () {
 // -----------------------------------------------------------------------------
 // Normalise Bias
 // -----------------------------------------------------------------------------
-void irtkReconstructionCardiac4D::NormaliseBiasCardiac4D(int iter)
+void irtkReconstructionCardiac4D::NormaliseBiasCardiac4D(int iter, int rec_iter)
 {
     if(_debug)
         cout << "Normalise Bias ... ";
@@ -1072,9 +1081,10 @@ void irtkReconstructionCardiac4D::NormaliseBiasCardiac4D(int iter)
     ParallelNormaliseBiasCardiac4D parallelNormaliseBias(this);
     parallelNormaliseBias();
     irtkRealImage bias = parallelNormaliseBias.bias;
-    
+    irtkRealImage volweight3d = parallelNormaliseBias.volweight3d;
+
     // normalize the volume by proportion of contributing slice voxels for each volume voxel
-    bias /= _volume_weights;
+    bias /= volweight3d;
         
     if(_debug)
         cout << "done." << endl;
@@ -1088,31 +1098,22 @@ void irtkReconstructionCardiac4D::NormaliseBiasCardiac4D(int iter)
     gb.SetInput(&m);
     gb.SetOutput(&m);
     gb.Run();
-    irtkRealImage mask4d;
-    mask4d.Initialize( _reconstructed4D.GetImageAttributes());
-    for (int i=0; i<_reconstructed4D.GetX(); i++)
-      for (int j=0; j<_reconstructed4D.GetY(); j++)
-        for (int k=0; k<_reconstructed4D.GetZ(); k++)
-          for (int t=0; t<_reconstructed4D.GetT(); t++)
-            mask4d(i,j,k,t) = m(i,j,k);
-      
-    bias/=mask4d;  // replaces: bias/=m;
+    
+    bias/=m;
     
     if (_debug) {
         char buffer[256];
-        sprintf(buffer,"averagebias%i.nii.gz",iter);
+        sprintf(buffer,"averagebias_mc%02isr%02i.nii.gz",iter,rec_iter);
         bias.Write(buffer);
     }
     
-    irtkRealPixel *pi, *pb;
-    pi = _reconstructed4D.GetPointerToVoxels();
-    pb = bias.GetPointerToVoxels();
-    for (int i = 0; i<_reconstructed4D.GetNumberOfVoxels();i++) {
-        if(*pi!=-1)
-            *pi /=exp(-(*pb));
-        pi++;
-        pb++;
-    }
+    for ( int i = 0; i < _reconstructed4D.GetX(); i++)  
+      for ( int j = 0; j < _reconstructed4D.GetY(); j++)  
+        for ( int k = 0; k < _reconstructed4D.GetZ(); k++)  
+          for ( int f = 0; f < _reconstructed4D.GetT(); f++)  
+            if(_reconstructed4D(i,j,k,f)!=-1) 
+            _reconstructed4D(i,j,k,f) /=exp(-bias(i,j,k));
+
 }
 
 
@@ -1661,6 +1662,88 @@ void irtkReconstructionCardiac4D::SaveTransformations()
         sprintf(buffer, "transformation%05i.dof", inputIndex);
         _transformations[inputIndex].irtkTransformation::Write(buffer);
     }
+}
+
+
+
+// -----------------------------------------------------------------------------
+// SaveBiasFields
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveBiasFields()
+{
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+        sprintf(buffer, "bias%05i.nii.gz", inputIndex);
+        _bias[inputIndex].Write(buffer);
+    }
+}
+
+void irtkReconstructionCardiac4D::SaveBiasFields( vector<irtkRealImage> &stacks )
+{
+        
+    if (_debug)
+        cout << "SaveBiasFields as stacks ...";
+    
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> biasstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        irtkImageAttributes attr = stacks[i].GetImageAttributes();
+        stack.Initialize( attr );
+        biasstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) { 
+        for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+            for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+                biasstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _bias[inputIndex](i,j,0);
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        sprintf(buffer, "bias%03i.nii.gz", i);
+        biasstacks[i].Write(buffer);
+    }
+    
+    if (_debug)
+        cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveBiasFields( vector<irtkRealImage> &stacks, int iter, int rec_iter )
+{
+        
+    if (_debug)
+        cout << "SaveBiasFields as stacks ...";
+    
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> biasstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        irtkImageAttributes attr = stacks[i].GetImageAttributes();
+        stack.Initialize( attr );
+        biasstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) { 
+        for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+            for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+                biasstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _bias[inputIndex](i,j,0);
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+        sprintf(buffer, "bias%03i_mc%02isr%02i.nii.gz", i, iter, rec_iter);
+        biasstacks[i].Write(buffer);
+    }
+    
+    if (_debug)
+        cout << " done." << endl;
+
 }
 
 

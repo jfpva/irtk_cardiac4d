@@ -153,7 +153,7 @@ protected:
    void SimulateSlicesCardiac4D();
    
    // Normalise Bias
-   void NormaliseBiasCardiac4D(int iter);
+   void NormaliseBiasCardiac4D(int iter, int rec_inter);
   
    // Slice-to-Volume Registration
    void CalculateSliceToVolumeTargetCardiacPhase();

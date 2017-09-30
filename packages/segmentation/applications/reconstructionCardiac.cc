@@ -1024,7 +1024,7 @@ int main(int argc, char **argv)
       if (intensity_matching)
       {
       if((sigma>0)&&(!global_bias_correction))
-        reconstruction.NormaliseBiasCardiac4D(i);
+        reconstruction.NormaliseBiasCardiac4D(iter,i);
       }
       
       // Simulate slices (needs to be done
@@ -1107,8 +1107,8 @@ int main(int argc, char **argv)
 	{
       cout<<"SaveWeights"<<endl; 
 	    reconstruction.SaveWeights(stacks);
-      //cout<<"SaveBiasFields"<<endl; 
-      //reconstruction.SaveBiasFields(stacks); 
+      cout<<"SaveBiasFields"<<endl; 
+      reconstruction.SaveBiasFields(stacks); 
       cout<<"SaveSimulatedSlices"<<endl;     
       reconstruction.SaveSimulatedSlices(stacks);
 	    //reconstruction.SaveConfidenceMap();
