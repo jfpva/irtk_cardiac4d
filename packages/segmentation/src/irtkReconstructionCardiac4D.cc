@@ -2141,7 +2141,7 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
              << i << "\t"
              << stack_files[_stack_index[i]] << "\t"
              << _scale[i] << "\t"
-             << _stack_factor[i] << "\t"
+             << _stack_factor[_stack_index[i]] << "\t"
              << _slice_time[i] << "\t"
              << _slice_dt[i] << "\t"
              << _slice_cardphase[i] << "\t"

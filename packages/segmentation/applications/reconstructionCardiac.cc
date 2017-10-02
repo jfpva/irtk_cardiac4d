@@ -1067,8 +1067,9 @@ int main(int argc, char **argv)
 
     if(debug)
     {
-      reconstruction.SlicesInfoCardiac4D( buffer, stack_files );
+      cout<<"SlicesInfoCardiac4D"<<endl;
       sprintf(buffer,"slice_info_mc%02i.tsv",iter);
+      reconstruction.SlicesInfoCardiac4D( buffer, stack_files );
     }
 
   }// end of interleaved registration-reconstruction iterations
