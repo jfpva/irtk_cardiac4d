@@ -28,16 +28,16 @@ void usage()
 
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
   cerr << "\t[N]                     Number of stacks." << endl;
-  cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format (first taken as reference)." << endl;
+  cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format." << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
+  cerr << "\t-target_stack [stack_no]  Stack number (zero-indexed) of target for stack-stack registration." << endl;
   cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
   cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
   cerr << "\t                          some overlap is needed." << endl;
-  cerr << "\t                          Use \'id\' for an identity transformation for at least" << endl;
-  cerr << "\t                          one stack. The first stack with \'id\' transformation" << endl;
-  cerr << "\t                          will be resampled as template." << endl;
+  cerr << "\t                          Use \'id\' for an identity transformation." << endl;
+  cerr << "\t-stack_registration       Do stack-stack regisrtation." << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
   cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
   cerr << "\t-multiband [num_1] .. [num_N]  Multiband factor for each stack for each stack. [Default: 1]"<<endl;
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
   int rewinder = 1;
   
   // Default values.
-  int templateNumber=-1;
+  int templateNumber = 0;
   irtkRealImage *mask=NULL;
   int iterations = 0;
   bool debug = false;
@@ -147,6 +147,7 @@ int main(int argc, char **argv)
   //flag to swich the intensity matching on and off
   bool intensity_matching = true;
   bool rescale_stacks = false;
+  bool stack_registration = false;
 
   //flag to swich the robust statistics on and off
   bool robust_statistics = true;
@@ -202,6 +203,17 @@ int main(int argc, char **argv)
   while (argc > 1){
     ok = false;
     
+    // Target stack
+    if ((ok == false) && (strcmp(argv[1], "-target_stack") == 0)){
+      argc--;
+      argv++;
+      templateNumber=atof(argv[1]);
+      argc--;
+      argv++;
+      cout<<"Target stack is "<<templateNumber<<"."<<endl;
+      ok = true;
+    }
+
     //Read stack transformations
     if ((ok == false) && (strcmp(argv[1], "-dofin") == 0)){
       argc--;
@@ -215,7 +227,6 @@ int main(int argc, char **argv)
         if (strcmp(argv[1], "id") == 0)
         {
           transformation = new irtkRigidTransformation;
-          if ( templateNumber < 0) templateNumber = i;
         }
         else
         {
@@ -231,6 +242,15 @@ int main(int argc, char **argv)
       }
       reconstruction.InvertStackTransformations(stack_transformations);
       have_stack_transformations = true;
+    }
+    
+    //Stack registration
+    if ((ok == false) && (strcmp(argv[1], "-stack_registration") == 0)){
+      argc--;
+      argv++;
+      stack_registration=true;
+      ok = true;
+      cout << "Stack-stack registrations, if possible."<<endl;
     }
 
     //Read slice thickness
@@ -645,7 +665,6 @@ int main(int argc, char **argv)
       stack_transformations.push_back(*rigidTransf);
       delete rigidTransf;
     }
-    templateNumber = 0;  
   }
  
   //Initialise 2*slice thickness if not given by user
@@ -755,6 +774,20 @@ int main(int argc, char **argv)
   if ( ! no_log ) {
       cerr.rdbuf(file_e.rdbuf());
       cout.rdbuf (file.rdbuf());
+  }
+  
+  //volumetric registration if input stacks are single time frame
+  if (stack_registration)
+  {
+    irtkImageAttributes attr = stacks[templateNumber].GetImageAttributes();
+    if (attr._t > 1)
+      cout << "Skipping stack-stack registration; target stack has more than one time frame." << endl;
+    else
+    {
+      if (debug)
+        cout << "StackRegistrations" << endl;
+      reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
+    }
   }
   
   //if remove_black_background flag is set, create mask from black background of the stacks
