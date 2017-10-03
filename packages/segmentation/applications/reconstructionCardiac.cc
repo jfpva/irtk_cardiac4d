@@ -787,6 +787,14 @@ int main(int argc, char **argv)
       if (debug)
         cout << "StackRegistrations" << endl;
       reconstruction.StackRegistrations(stacks,stack_transformations,templateNumber);
+      if (debug)
+      {
+        for (i=0;i<nStacks;i++)
+        {
+          sprintf(buffer, "stack-transformation%03i.dof", i);
+          stack_transformations[i].irtkTransformation::Write(buffer);
+        }
+      }
     }
   }
   
