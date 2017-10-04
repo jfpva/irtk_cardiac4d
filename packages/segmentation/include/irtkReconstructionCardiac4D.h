@@ -158,6 +158,9 @@ protected:
    // PSF-Weighted Reconstruction
    void GaussianReconstructionCardiac4D();
    
+   ///Scale volume to match the slice intensities
+   void ScaleVolumeCardiac4D();
+   
    // Simulate Slices
    void SimulateSlicesCardiac4D();
    

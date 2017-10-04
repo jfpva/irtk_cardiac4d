@@ -876,7 +876,6 @@ int main(int argc, char **argv)
   }  
   else
     reconstruction.SetLocRRInterval(rr_loc);
-  reconstruction.SaveSlices(stacks);
   
   //Set sigma for the bias field smoothing
   if (sigma>0)
@@ -1146,22 +1145,18 @@ int main(int argc, char **argv)
       cout<<"RestoreSliceIntensities"<<endl;
 	reconstruction.RestoreSliceIntensities();
   if(debug)
-      cout<<"ScaleVolume"<<endl;
-  reconstruction.ScaleVolume();
+      cout<<"ScaleVolumeCardiac4D"<<endl;
+  reconstruction.ScaleVolumeCardiac4D();
   if(debug)
       cout<<"Saving Reconstructed Volume"<<endl;
 	reconstructed=reconstruction.GetReconstructedCardiac4D();
 	reconstructed.Write(output_name); 
   if(debug)
+      cout<<"SaveSlices"<<endl;
+  reconstruction.SaveSlices(stacks);
+  if(debug)
       cout<<"SaveTransformations"<<endl;
 	reconstruction.SaveTransformations();
-  
-  /*if(debug)
-      cout<<"SaveTransformationsWithTiming"<<endl;
-	reconstruction.SaveTransformationsWithTiming();*/
-  /*if(debug) 
-      cout<<"SaveSlicesWithTiming"<<endl;
-	reconstruction.SaveSlicesWithTiming();*/
 
 	if ( info_filename.length() > 0 ) 
   {
@@ -1179,7 +1174,6 @@ int main(int argc, char **argv)
       reconstruction.SaveBiasFields(stacks); 
       cout<<"SaveSimulatedSlices"<<endl;     
       reconstruction.SaveSimulatedSlices(stacks);
-	    //reconstruction.SaveConfidenceMap();
       cout<<"ReconstructionCardiac complete."<<endl;
   }  
   //The end of main()

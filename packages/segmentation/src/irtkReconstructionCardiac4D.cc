@@ -1081,6 +1081,54 @@ void irtkReconstructionCardiac4D::GaussianReconstructionCardiac4D()
 
 
 // -----------------------------------------------------------------------------
+// Scale Volume
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::ScaleVolumeCardiac4D()
+{
+    if (_debug)
+        cout << "Scaling volume: ";
+    
+    unsigned int inputIndex;
+    int i, j;
+    double scalenum = 0, scaleden = 0;
+
+    for (inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+        // alias for the current slice
+        irtkRealImage& slice = _slices[inputIndex];
+
+        //alias for the current weight image
+        irtkRealImage& w = _weights[inputIndex];
+
+        // alias for the current simulated slice
+        irtkRealImage& sim = _simulated_slices[inputIndex];
+        
+        for (i = 0; i < slice.GetX(); i++)
+            for (j = 0; j < slice.GetY(); j++)
+                if (slice(i, j, 0) != -1) {
+                    //scale - intensity matching
+                    if ( _simulated_weights[inputIndex](i,j,0) > 0.99 ) {
+                        scalenum += w(i, j, 0) * _slice_weight[inputIndex] * slice(i, j, 0) * sim(i, j, 0);
+                        scaleden += w(i, j, 0) * _slice_weight[inputIndex] * sim(i, j, 0) * sim(i, j, 0);
+                    }
+                }
+    } //end of loop for a slice inputIndex
+    
+    //calculate scale for the volume
+    double scale = scalenum / scaleden;
+  
+    if(_debug)
+        cout<<" scale = "<<scale;
+  
+    irtkRealPixel *ptr = _reconstructed4D.GetPointerToVoxels();
+    for(i=0;i<_reconstructed4D.GetNumberOfVoxels();i++) {
+        if(*ptr>0) *ptr = *ptr * scale;
+        ptr++;
+    }
+    cout<<endl;
+}
+
+
+// -----------------------------------------------------------------------------
 // Parallel Simulate Slices
 // -----------------------------------------------------------------------------
 class ParallelSimulateSlicesCardiac4D {
