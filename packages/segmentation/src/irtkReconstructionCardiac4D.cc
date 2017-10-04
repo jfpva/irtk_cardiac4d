@@ -92,6 +92,55 @@ double irtkReconstructionCardiac4D::GetReconstructedResolutionFromTemplateStack(
 
 
 // -----------------------------------------------------------------------------
+// Get Slice-Location Transformations
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::ReadSliceTransformation(char* slice_transformations_folder)
+{
+    if (_slices.size()==0) 
+    {
+      cerr << "Please create slices before reading transformations!" << endl;
+      exit(1);
+    }
+    
+    int nLoc = _loc_index.back() + 1;
+
+    char name[256];
+    char path[256];
+    vector<irtkRigidTransformation> loc_transformations;
+    irtkTransformation *transformation;
+    irtkRigidTransformation *rigidTransf;
+
+    // Read transformations from file
+    cout << "Reading transformations:" << endl;
+    for (int iLoc = 0; iLoc < nLoc; iLoc++) {
+        if (slice_transformations_folder != NULL) {
+            sprintf(name, "/transformation%05i.dof", iLoc);
+            strcpy(path, slice_transformations_folder);
+            strcat(path, name);
+        }
+        else {
+            sprintf(path, "transformation%03i.dof", iLoc);
+        }
+        transformation = irtkTransformation::New(path);
+        rigidTransf = dynamic_cast<irtkRigidTransformation*>(transformation);
+        loc_transformations.push_back(*rigidTransf);
+        delete transformation;
+        cout << path << endl;
+    }
+    
+    // Assign transformations to single-frame images
+    _transformations.clear();
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
+    { 
+        cout << "inputIndex:" << inputIndex << ", _loc_index: " << _loc_index[inputIndex] << endl;
+        _transformations.push_back(loc_transformations[_loc_index[inputIndex]]);
+    }
+    cout << "ReadSliceTransformations complete." << endl;
+    
+}
+
+
+// -----------------------------------------------------------------------------
 // Set Reconstructed Cardiac Phases
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::SetReconstructedCardiacPhase( vector<double> cardiacphases )

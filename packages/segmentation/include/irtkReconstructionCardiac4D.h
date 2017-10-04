@@ -102,6 +102,9 @@ protected:
    // Get Volume Weights
    inline irtkRealImage GetVolumeWeights();
 
+   // Get Slice-Location transformations
+   void ReadSliceTransformation(char* slice_transformations_folder);
+
    // Set Slice R-R Intervals
    void SetSliceRRInterval( vector<double> rr );
    void SetSliceRRInterval( double rr );

@@ -32,14 +32,15 @@ void usage()
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
   cerr << "\t-target_stack [stack_no]  Stack number (zero-indexed) of target for stack-stack registration." << endl;
+  cerr << "\t-stack_registration       Perform stack-stack regisrtation." << endl;
   cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
   cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
   cerr << "\t                          some overlap is needed." << endl;
   cerr << "\t                          Use \'id\' for an identity transformation." << endl;
-  cerr << "\t-stack_registration       Do stack-stack regisrtation." << endl;
   cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
-  cerr << "\t-mask [mask]              Binary mask to define the region od interest. [Default: whole image]"<<endl;
+  cerr << "\t-mask [mask]              Binary mask to define the region of interest. [Default: whole image]"<<endl;
+  cerr << "\t-slice_transformations [folder] Use existing slice-location transformations to initialize the reconstruction."<<endl;
   cerr << "\t-multiband [num_1] .. [num_N]  Multiband factor for each stack for each stack. [Default: 1]"<<endl;
   cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
   cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
@@ -140,6 +141,8 @@ int main(int argc, char **argv)
   double smooth_mask = 4;
   bool global_bias_correction = false;
   double low_intensity_cutoff = 0.01;
+  //folder for slice-location registrations, if given
+  char *slice_transformations_folder=NULL;
   //folder for slice-to-volume registrations, if given
   char *folder=NULL;
   //flag to remove black background, e.g. when neonatal motion correction is performed
@@ -584,6 +587,16 @@ int main(int argc, char **argv)
         argc--;
         argv++;
     }
+
+    //Read slice-location transformations from this folder
+    if ((ok == false) && (strcmp(argv[1], "-slice_transformations") == 0)){
+      argc--;
+      argv++;
+      slice_transformations_folder=argv[1];
+      ok = true;
+      argc--;
+      argv++;
+    }
  
     //Read transformations from this folder
     if ((ok == false) && (strcmp(argv[1], "-transformations") == 0)){
@@ -627,6 +640,13 @@ int main(int argc, char **argv)
       cerr << "Can not parse argument " << argv[1] << endl;
       usage();
     }
+  }
+
+  // check that conflicting transformation folders haven't been given
+  if ((folder!=NULL)&(slice_transformations_folder!=NULL))
+  {
+      cerr << "Can not use both -transformations and -slice_transformations arguments." << endl;
+      exit(1);
   }
 
   if (rescale_stacks)
@@ -873,8 +893,12 @@ int main(int argc, char **argv)
     reconstruction.GlobalBiasCorrectionOn();
   else 
     reconstruction.GlobalBiasCorrectionOff();
+  
+  //if given read slice-location to volume registrations
+  if (slice_transformations_folder!=NULL)
+    reconstruction.ReadSliceTransformation(slice_transformations_folder);
     
-  //if given read slice-to-volume registrations
+  //if given read image-frame to volume registrations
   if (folder!=NULL)
     reconstruction.ReadTransformation(folder);
   
