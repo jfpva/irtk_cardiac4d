@@ -907,15 +907,23 @@ int main(int argc, char **argv)
   // Calculate Cardiac Phase of Each Slice
   if ( cardPhase.size() == 0 )
   {
-    cerr<<"Cardiac 4D reconstruction requires cardiac phase for each slice."<<endl;
-    exit(1);
+    irtkImageAttributes attr = stacks[templateNumber].GetImageAttributes();
+    if (attr._t > 1)
+    {
+      cerr<<"Cardiac 4D reconstruction requires cardiac phase for each slice."<<endl;
+      exit(1);
+    }
+    else
+    {
+      reconstruction.SetSliceCardiacPhase();
+    }
   }
   else
   {
     if(debug)
       cout<<"SetSliceCardiacPhase"<<endl;
-    reconstruction.SetSliceCardiacPhase( cardPhase );
-  }  
+      reconstruction.SetSliceCardiacPhase( cardPhase );
+  }
   // Calculate Target Cardiac Phase in Reconstructed Volume for Slice-To-Volume Registration
   reconstruction.CalculateSliceToVolumeTargetCardiacPhase();
   // Calculate Temporal Weight for Each Slice

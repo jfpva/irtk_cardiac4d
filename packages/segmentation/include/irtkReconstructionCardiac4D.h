@@ -114,6 +114,7 @@ protected:
 
    // Set Slice Cardiac Phases
    void SetSliceCardiacPhase( vector<double> cardiacphases );
+   void SetSliceCardiacPhase();
    
    // Set Reconstructed R-R Interval
    void SetReconstructedRRInterval( double rrinterval );

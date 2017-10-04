@@ -73,6 +73,13 @@ void irtkReconstructionCardiac4D::SetSliceCardiacPhase( vector<double> cardiacph
     _slice_cardphase = cardiacphases;
 }
 
+void irtkReconstructionCardiac4D::SetSliceCardiacPhase()
+{
+    _slice_cardphase.clear();
+    for (unsigned int i=0; i<_slices.size(); i++)
+      _slice_cardphase.push_back( 0 );
+}
+
 // -----------------------------------------------------------------------------
 // Determine Reconstructed Spatial Resolution
 // -----------------------------------------------------------------------------
