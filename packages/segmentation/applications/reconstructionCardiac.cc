@@ -31,8 +31,8 @@ void usage()
   cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format." << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
-  cerr << "\t-target_stack [stack_no]  Stack number (zero-indexed) of target for stack-stack registration." << endl;
   cerr << "\t-stack_registration       Perform stack-stack regisrtation." << endl;
+  cerr << "\t-target_stack [stack_no]  Stack number of target for stack-stack registration." << endl;
   cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
   cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
   cerr << "\t                          Only rough alignment with correct orienation and " << endl;
@@ -210,10 +210,10 @@ int main(int argc, char **argv)
     if ((ok == false) && (strcmp(argv[1], "-target_stack") == 0)){
       argc--;
       argv++;
-      templateNumber=atof(argv[1]);
+      templateNumber=atof(argv[1])-1;
+      cout<<"Target stack no. is "<<atof(argv[1])<<" (zero-indexed stack no. "<<templateNumber<<")."<<endl;
       argc--;
       argv++;
-      cout<<"Target stack is "<<templateNumber<<"."<<endl;
       ok = true;
     }
 
