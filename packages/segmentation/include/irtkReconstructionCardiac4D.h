@@ -188,6 +188,9 @@ protected:
    /// Read Transformations
    void ReadTransformation( char* folder );
 
+   /// Calculate Entropy
+   double CalculateEntropy();
+
    ///Save transformations
    void SaveTransformations();
 

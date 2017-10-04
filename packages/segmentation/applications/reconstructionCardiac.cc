@@ -173,6 +173,10 @@ int main(int argc, char **argv)
   //Create reconstruction object
   irtkReconstructionCardiac4D reconstruction;
     
+  //Entropy of reconstructed volume
+  vector<double> e;
+  vector< vector<double> > entropy;
+  
   //if not enough arguments print help
   if (argc < 5)
     usage();
@@ -1024,6 +1028,10 @@ int main(int argc, char **argv)
     else
       reconstruction.GaussianReconstructionCardiac4D();
     
+    // Calculate Entropy
+    e.clear();
+    e.push_back(reconstruction.CalculateEntropy());
+    
     // Save Initialised Volume to File
     if (debug)
     {
@@ -1084,9 +1092,15 @@ int main(int argc, char **argv)
       
       //Update reconstructed volume
       if (!bspline)
-        reconstruction.SuperresolutionCardiac4D(i+1);
+        reconstruction.SuperresolutionCardiac4D(i);
       
-      //Save intermediate reconstructed image
+      if (intensity_matching)
+      {
+      if((sigma>0)&&(!global_bias_correction))
+        reconstruction.NormaliseBiasCardiac4D(iter,i);
+      }
+      
+      //Save intermediate reconstructed volume
       if (debug)
       {
         reconstructed=reconstruction.GetReconstructedCardiac4D();
@@ -1094,31 +1108,31 @@ int main(int argc, char **argv)
         sprintf(buffer,"super_mc%02isr%02i.nii.gz",iter,i);
         reconstructed.Write(buffer);
       }    
-        
-      if (intensity_matching)
-      {
-      if((sigma>0)&&(!global_bias_correction))
-        reconstruction.NormaliseBiasCardiac4D(iter,i);
-      }
+
+      // Calculate Entropy
+      e.push_back(reconstruction.CalculateEntropy());
       
       // Simulate slices (needs to be done
       // after the update of the reconstructed volume)
       reconstruction.SimulateSlicesCardiac4D();
 
-      //Save intermediate simulated slices
-      if(debug)
-          reconstruction.SaveSimulatedSlices(stacks,iter,i+1);
+      if ((i+1)<rec_iterations)
+      { 
+          //Save intermediate simulated slices
+          if(debug)
+              reconstruction.SaveSimulatedSlices(stacks,iter,i+1);
 
-      if(robust_statistics)
-        reconstruction.MStep(i+1);
-      
-      //E-step
-      if(robust_statistics)
-        reconstruction.EStep();
+          if(robust_statistics)
+            reconstruction.MStep(i+1);
+          
+          //E-step
+          if(robust_statistics)
+            reconstruction.EStep();
 
-      //Save intermediate weights
-      if(debug)
-          reconstruction.SaveWeights(stacks,iter,i+1);      
+          //Save intermediate weights
+          if(debug)
+              reconstruction.SaveWeights(stacks,iter,i+1);      
+      }
       
     }//end of reconstruction iterations
   
@@ -1128,9 +1142,13 @@ int main(int argc, char **argv)
 
     //Save reconstructed image
     reconstructed=reconstruction.GetReconstructedCardiac4D();
+    reconstructed=reconstruction.StaticMaskVolume4D(reconstructed,-1);
     sprintf(buffer,"reconstructed_mc%02i.nii.gz",iter);
     reconstructed.Write(buffer);
-
+    
+    //Save Calculated Entropy
+    entropy.push_back(e);
+    
     //Evaluate - write number of included/excluded/outside/zero slices in each iteration in the file
     if ( ! no_log )
       cout.rdbuf (fileEv.rdbuf());
@@ -1147,6 +1165,23 @@ int main(int argc, char **argv)
     }
 
   }// end of interleaved registration-reconstruction iterations
+  
+  //Display Entropy Values
+  if(debug)
+  {
+    cout<<setprecision(9);
+    cout << "Calculated Entropy:" << endl;
+    for(unsigned int iter_mc=0; iter_mc<entropy.size(); iter_mc++)
+    {
+      cout << iter_mc << ": ";
+      for(unsigned int iter_sr=0; iter_sr<entropy[iter_mc].size(); iter_sr++)
+      {
+        cout << entropy[iter_mc][iter_sr] << " ";
+      }
+      cout << endl;
+    }
+    cout<<setprecision(3);
+  }
 
   //save final result
   if(debug)

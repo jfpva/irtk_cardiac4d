@@ -1884,6 +1884,46 @@ void irtkReconstructionCardiac4D::ReadTransformation(char* folder)
     }
 }
 
+// -----------------------------------------------------------------------------
+// Calculate Entropy
+// -----------------------------------------------------------------------------
+double irtkReconstructionCardiac4D::CalculateEntropy()
+{
+  
+  double x;
+  double sum_x_sq = 0;
+  double x_max = 0;
+  double entropy = 0;
+  
+  for ( int i = 0; i < _reconstructed4D.GetX(); i++)  
+    for ( int j = 0; j < _reconstructed4D.GetY(); j++)  
+      for ( int k = 0; k < _reconstructed4D.GetZ(); k++)  
+        if ( _mask(i,j,k) == 1 )
+          for ( int f = 0; f < _reconstructed4D.GetT(); f++)  
+            {
+              x = _reconstructed4D(i,j,k,f);
+              sum_x_sq += x*x;
+            }
+            
+  x_max = sqrt( sum_x_sq );
+  
+  for ( int i = 0; i < _reconstructed4D.GetX(); i++)  
+    for ( int j = 0; j < _reconstructed4D.GetY(); j++)  
+      for ( int k = 0; k < _reconstructed4D.GetZ(); k++)  
+        if ( _mask(i,j,k) == 1 )
+          for ( int f = 0; f < _reconstructed4D.GetT(); f++)  
+          {
+            x = _reconstructed4D(i,j,k,f);
+            if (x>0)
+              entropy += x/x_max * log( x/x_max );
+          }
+  
+  entropy = -entropy;
+  
+  return entropy;
+  
+}
+
 
 // -----------------------------------------------------------------------------
 // SaveTransformations
