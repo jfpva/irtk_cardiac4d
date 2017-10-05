@@ -139,7 +139,6 @@ void irtkReconstructionCardiac4D::ReadSliceTransformation(char* slice_transforma
     _transformations.clear();
     for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
     { 
-        cout << "inputIndex:" << inputIndex << ", _loc_index: " << _loc_index[inputIndex] << endl;
         _transformations.push_back(loc_transformations[_loc_index[inputIndex]]);
     }
     cout << "ReadSliceTransformations complete." << endl;
