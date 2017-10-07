@@ -934,43 +934,23 @@ void irtkReconstructionCardiac4D::CoeffInitCardiac4D()
     //     _volume_weights.Write("volume_weights.nii.gz");
     
     //find average volume weight to modify alpha parameters accordingly
-    irtkRealPixel *ptr = _volume_weights.GetPointerToVoxels();
-    irtkRealPixel *pm = _mask.GetPointerToVoxels();
     double sum = 0;
     int num=0;
-    for (int i=0;i<_volume_weights.GetNumberOfVoxels();i++) {
-        if (*pm==1) {
-            sum+=*ptr;
-            num++;
-        }
-        ptr++;
-        pm++;
-    }
+    for (i=0; i<_volume_weights.GetX(); i++)
+      for (j=0; j<_volume_weights.GetY(); j++)
+        for (k=0; k<_volume_weights.GetZ(); k++)
+          if (_mask(i,j,k)==1)
+            for (int f=0; f<_volume_weights.GetT(); f++) {
+              sum += _volume_weights(i,j,k,f);
+              num++;
+            }
+    
     _average_volume_weight = sum/num;
     
     if(_debug) {
         cout<<"Average volume weight is "<<_average_volume_weight<<endl;
     }
     
-    /* TODO: remove this after done dev
-    volAttr = _reconstructed4D.GetImageAttributes();
-    cout<<"_reconstructed4D"<<endl;
-    cout<<volAttr._x<<" "<<volAttr._y<<" "<<volAttr._z<<" "<<volAttr._t<<endl;
-    cout<<volAttr._dx<<" "<<volAttr._dy<<" "<<volAttr._dz<<" "<<volAttr._dt<<endl;
-    cout<<volAttr._xorigin<<" "<<volAttr._yorigin<<" "<<volAttr._zorigin<<" "<<volAttr._torigin<<endl;
-    cout<<volAttr._xaxis[0]<<" "<<volAttr._xaxis[1]<<" "<<volAttr._xaxis[2]<<endl;
-    cout<<volAttr._yaxis[0]<<" "<<volAttr._yaxis[1]<<" "<<volAttr._yaxis[2]<<endl;
-    cout<<volAttr._zaxis[0]<<" "<<volAttr._zaxis[1]<<" "<<volAttr._zaxis[2]<<endl;
-    
-    volAttr = _volume_weights.GetImageAttributes();
-    cout<<"_volume_weights"<<endl;
-    cout<<volAttr._x<<" "<<volAttr._y<<" "<<volAttr._z<<" "<<volAttr._t<<endl;
-    cout<<volAttr._dx<<" "<<volAttr._dy<<" "<<volAttr._dz<<" "<<volAttr._dt<<endl;
-    cout<<volAttr._xorigin<<" "<<volAttr._yorigin<<" "<<volAttr._zorigin<<" "<<volAttr._torigin<<endl;
-    cout<<volAttr._xaxis[0]<<" "<<volAttr._xaxis[1]<<" "<<volAttr._xaxis[2]<<endl;
-    cout<<volAttr._yaxis[0]<<" "<<volAttr._yaxis[1]<<" "<<volAttr._yaxis[2]<<endl;
-    cout<<volAttr._zaxis[0]<<" "<<volAttr._zaxis[1]<<" "<<volAttr._zaxis[2]<<endl;
-    */
 } 
 
 
