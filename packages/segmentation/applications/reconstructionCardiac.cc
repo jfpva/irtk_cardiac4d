@@ -70,6 +70,7 @@ void usage()
   cerr << "\t-remove_black_background  Create mask from black background."<<endl;
   cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
   cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
+  cerr << "\t-no_stack_intensity_matching Switch off stack intensity matching."<<endl;
   cerr << "\t-no_intensity_matching    Switch off intensity matching."<<endl;
   cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl;
   cerr << "\t-exclude_slices_only      Do not exclude individual voxels."<<endl;
@@ -148,6 +149,7 @@ int main(int argc, char **argv)
   //flag to remove black background, e.g. when neonatal motion correction is performed
   bool remove_black_background = false;
   //flag to swich the intensity matching on and off
+  bool stack_intensity_matching = true;
   bool intensity_matching = true;
   bool rescale_stacks = false;
   bool stack_registration = false;
@@ -495,6 +497,15 @@ int main(int argc, char **argv)
       argc--;
       argv++;
       ok = true;
+    }
+
+    //Match stack intensities
+    if ((ok == false) && (strcmp(argv[1], "-no_stack_intensity_matching") == 0)){
+      argc--;
+      argv++;
+      stack_intensity_matching=false;
+      ok = true;
+      cout << "No stack intensity matching."<<endl;
     }
 
     //Switch off intensity matching
@@ -857,7 +868,7 @@ int main(int argc, char **argv)
   }
 
   //Rescale intensities of the stacks to have the same average
-  if (intensity_matching)
+  if (stack_intensity_matching)
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue);
   else
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue,true);
