@@ -35,6 +35,10 @@ protected:
   vector<int> _loc_index;        // running index of all 2D slice locations
   vector<int> _stack_loc_index;  // index of 2D slice location in M2D stack
   vector<int> _stack_dyn_index;  // index of dynamic in M2D stack
+  
+  // Images
+  vector<irtkRealImage> _error;
+  vector<irtkRealImage> _corrected_slices;
 
    // PI
    const double PI = 3.14159265358979323846;
@@ -162,6 +166,9 @@ protected:
    ///Scale volume to match the slice intensities
    void ScaleVolumeCardiac4D();
    
+   // Calculate Corrected Slices
+   void CalculateCorrectedSlices();
+   
    // Simulate Slices
    void SimulateSlicesCardiac4D();
    
@@ -177,6 +184,9 @@ protected:
    
    // Apply Static Mask 4D Volume
    irtkRealImage StaticMaskVolume4D(irtkRealImage volume, double padding);
+   
+   // Calculate Error
+   void CalculateError();
    
    // Superresolution 
    void SuperresolutionCardiac4D( int iter );
@@ -204,9 +214,24 @@ protected:
    void SaveSimulatedSlices(vector<irtkRealImage>& stacks);
    void SaveSimulatedSlices(vector<irtkRealImage>& stacks, int iter, int rec_iter);
    
+   // Save Simulated Weights
+   void SaveSimulatedWeights();
+   void SaveSimulatedWeights(vector<irtkRealImage>& stacks);
+   void SaveSimulatedWeights(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+   
    // Save Slices
    void SaveSlices();
    void SaveSlices(vector<irtkRealImage>& stacks);
+   
+   // Save Corrected Slices
+   void SaveCorrectedSlices();
+   void SaveCorrectedSlices(vector<irtkRealImage>& stacks);
+   void SaveCorrectedSlices(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+   
+   // Save Error
+   void SaveError();
+   void SaveError(vector<irtkRealImage>& stacks);
+   void SaveError(vector<irtkRealImage>& stacks, int iter, int rec_iter);
    
    // Save Weights
    void SaveWeights();
@@ -224,6 +249,8 @@ protected:
    friend class ParallelSuperresolutionCardiac4D;   
    friend class ParallelAdaptiveRegularization1Cardiac4D;
    friend class ParallelAdaptiveRegularization2Cardiac4D;
+   friend class ParallelCalculateError;
+   friend class ParallelCalculateCorrectedSlices;
    
 };  // end of irtReconstructionCardiac4D class definition
 

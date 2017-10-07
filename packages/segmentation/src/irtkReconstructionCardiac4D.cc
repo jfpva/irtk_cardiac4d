@@ -388,9 +388,11 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                 _slice_dt.push_back(attr._dt);
                 //remember the slice
                 _slices.push_back(slice);
+                _corrected_slices.push_back(slice);
                 _simulated_slices.push_back(slice);
                 _simulated_weights.push_back(slice);
                 _simulated_inside.push_back(slice);
+                _error.push_back(slice);
                 //remeber stack indices for this slice
                 _stack_index.push_back(i);
                 _loc_index.push_back(loc_index);
@@ -1115,6 +1117,68 @@ void irtkReconstructionCardiac4D::ScaleVolumeCardiac4D()
 
 
 // -----------------------------------------------------------------------------
+// Parallel Class to Calculate Corrected Slices
+// -----------------------------------------------------------------------------
+class ParallelCalculateCorrectedSlices {
+    irtkReconstructionCardiac4D *reconstructor;
+        
+public:
+    ParallelCalculateCorrectedSlices( irtkReconstructionCardiac4D *_reconstructor ) : 
+    reconstructor(_reconstructor) { }
+
+    void operator() (const blocked_range<size_t> &r) const {
+        for ( size_t inputIndex = r.begin(); inputIndex != r.end(); ++inputIndex ) {
+            
+            //read the current slice
+            irtkRealImage slice = reconstructor->_slices[inputIndex];
+            
+            //alias the current bias image
+            irtkRealImage& b = reconstructor->_bias[inputIndex];
+            
+            //identify scale factor
+            double scale = reconstructor->_scale[inputIndex];
+            
+            //calculate corrected voxels
+            for (int i = 0; i < slice.GetX(); i++)
+              for (int j = 0; j < slice.GetY(); j++)
+                if (slice(i,j,0) != -1) {
+                    //bias correct and scale the voxel
+                    slice(i,j,0) *= exp(-b(i, j, 0)) * scale;
+                }
+            
+            reconstructor->_corrected_slices[inputIndex] = slice;
+            
+        } //end of loop for a slice inputIndex    
+    }
+    
+    // execute
+    void operator() () const {
+        task_scheduler_init init(tbb_no_threads);
+        parallel_for( blocked_range<size_t>(0, reconstructor->_slices.size() ),
+                      *this );
+        init.terminate();
+    }
+
+};
+
+
+// -----------------------------------------------------------------------------
+// Calculate Corrected Slices
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::CalculateCorrectedSlices()
+{
+  if (_debug)
+      cout<<"Calculating corrected slices..."<<endl;
+
+  ParallelCalculateCorrectedSlices parallelCalculateCorrectedSlices( this );
+  parallelCalculateCorrectedSlices();
+
+  if (_debug)
+      cout<<"\t...calculating corrected slices done."<<endl;   
+}
+
+
+// -----------------------------------------------------------------------------
 // Parallel Simulate Slices
 // -----------------------------------------------------------------------------
 class ParallelSimulateSlicesCardiac4D {
@@ -1188,6 +1252,73 @@ void irtkReconstructionCardiac4D::SimulateSlicesCardiac4D()
 
   if (_debug)
       cout<<"\t...Simulating Slices done."<<endl;   
+}
+
+
+// -----------------------------------------------------------------------------
+// Parallel Class to Calculate Error
+// -----------------------------------------------------------------------------
+class ParallelCalculateError {
+    irtkReconstructionCardiac4D *reconstructor;
+        
+public:
+    ParallelCalculateError( irtkReconstructionCardiac4D *_reconstructor ) : 
+    reconstructor(_reconstructor) { }
+
+    void operator() (const blocked_range<size_t> &r) const {
+        for ( size_t inputIndex = r.begin(); inputIndex != r.end(); ++inputIndex ) {
+            //initalize
+            reconstructor->_error[inputIndex].Initialize( reconstructor->_slices[inputIndex].GetImageAttributes() );
+            reconstructor->_error[inputIndex] = 0;
+            
+            //read the current slice
+            irtkRealImage slice = reconstructor->_slices[inputIndex];
+            
+            //alias the current bias image
+            irtkRealImage& b = reconstructor->_bias[inputIndex];
+            
+            //identify scale factor
+            double scale = reconstructor->_scale[inputIndex];
+            
+            //calculate error
+            for (int i = 0; i < slice.GetX(); i++)
+              for (int j = 0; j < slice.GetY(); j++)
+                if (slice(i,j,0) != -1)
+                  if ( reconstructor->_simulated_weights[inputIndex](i,j,0) > 0 ) {
+                    //bias correct and scale the voxel
+                    slice(i,j,0) *= exp(-b(i, j, 0)) * scale;
+                    //subtract simulated voxel
+                    slice(i,j,0) -= reconstructor->_simulated_slices[inputIndex](i,j,0);
+                    //assign as error
+                    reconstructor->_error[inputIndex](i,j,0) = slice(i,j,0);
+                  }                
+        } //end of loop for a slice inputIndex    
+    }
+    
+    // execute
+    void operator() () const {
+        task_scheduler_init init(tbb_no_threads);
+        parallel_for( blocked_range<size_t>(0, reconstructor->_slices.size() ),
+                      *this );
+        init.terminate();
+    }
+
+};
+
+
+// -----------------------------------------------------------------------------
+// Calculate Error
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::CalculateError()
+{
+  if (_debug)
+      cout<<"Calculating error..."<<endl;
+
+  ParallelCalculateError parallelCalculateError( this );
+  parallelCalculateError();
+
+  if (_debug)
+      cout<<"\t...calculating error done."<<endl;   
 }
 
 
@@ -2000,6 +2131,91 @@ void irtkReconstructionCardiac4D::SaveBiasFields( vector<irtkRealImage> &stacks,
 
 
 // -----------------------------------------------------------------------------
+// Save Corrected Slices
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveCorrectedSlices()
+{
+    if (_debug)
+        cout<<"Saving corrected images ...";
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _corrected_slices.size(); inputIndex++)
+        {
+            sprintf(buffer, "correctedimage%05i.nii.gz", inputIndex);
+            _corrected_slices[inputIndex].Write(buffer);
+        }
+        cout<<"done."<<endl;
+}
+
+void irtkReconstructionCardiac4D::SaveCorrectedSlices( vector<irtkRealImage> &stacks )
+{      
+  
+    if (_debug)
+        cout << "Saving corrected images as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> imagestacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          imagestacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _corrected_slices.size(); ++inputIndex) { 
+      for (int i = 0; i < _corrected_slices[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _corrected_slices[inputIndex].GetY(); j++) {
+              imagestacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _corrected_slices[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+      sprintf(buffer, "correctedstack%03i.nii.gz", i);
+      imagestacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveCorrectedSlices( vector<irtkRealImage> &stacks, int iter, int rec_iter )
+{      
+  
+    if (_debug)
+        cout << "Saving error images as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> imagestacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          imagestacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _corrected_slices.size(); ++inputIndex) { 
+      for (int i = 0; i < _corrected_slices[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _corrected_slices[inputIndex].GetY(); j++) {
+              imagestacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _corrected_slices[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+      sprintf(buffer, "correctedstack%03i_mc%02isr%02i.nii.gz", i, iter, rec_iter);
+      imagestacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+
+// -----------------------------------------------------------------------------
 // SaveSimulatedSlices
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::SaveSimulatedSlices()
@@ -2085,6 +2301,91 @@ void irtkReconstructionCardiac4D::SaveSimulatedSlices( vector<irtkRealImage> &st
 
 
 // -----------------------------------------------------------------------------
+// SaveSimulatedWeights
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveSimulatedWeights()
+{
+    if (_debug)
+        cout<<"Saving simulated weights ...";
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _simulated_weights.size(); inputIndex++)
+        {
+            sprintf(buffer, "simweight%05i.nii.gz", inputIndex);
+            _simulated_weights[inputIndex].Write(buffer);
+        }
+        cout<<"done."<<endl;
+}
+
+void irtkReconstructionCardiac4D::SaveSimulatedWeights( vector<irtkRealImage> &stacks )
+{      
+  
+    if (_debug)
+        cout << "Saving simulated weights as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> simstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          simstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _simulated_weights.size(); ++inputIndex) { 
+      for (int i = 0; i < _simulated_weights[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _simulated_weights[inputIndex].GetY(); j++) {
+              simstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _simulated_weights[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < simstacks.size(); i++) {
+      sprintf(buffer, "simweightstack%03i.nii.gz", i);
+      simstacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveSimulatedWeights( vector<irtkRealImage> &stacks, int iter, int rec_iter )
+{      
+  
+    if (_debug)
+        cout << "Saving simulated weights as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> simstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          simstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _simulated_weights.size(); ++inputIndex) { 
+      for (int i = 0; i < _simulated_weights[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _simulated_weights[inputIndex].GetY(); j++) {
+              simstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _simulated_weights[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < simstacks.size(); i++) {
+      sprintf(buffer, "simweightstack%03i_mc%02isr%02i.nii.gz", i, iter, rec_iter);
+      simstacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+
+// -----------------------------------------------------------------------------
 // SaveSlices
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::SaveSlices()
@@ -2132,6 +2433,91 @@ void irtkReconstructionCardiac4D::SaveSlices( vector<irtkRealImage> &stacks )
     
     if (_debug)
         cout << " done." << endl;
+
+}
+
+
+// -----------------------------------------------------------------------------
+// Save Error
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SaveError()
+{
+    if (_debug)
+        cout<<"Saving error images ...";
+    char buffer[256];
+    for (unsigned int inputIndex = 0; inputIndex < _error.size(); inputIndex++)
+        {
+            sprintf(buffer, "errorimage%05i.nii.gz", inputIndex);
+            _error[inputIndex].Write(buffer);
+        }
+        cout<<"done."<<endl;
+}
+
+void irtkReconstructionCardiac4D::SaveError( vector<irtkRealImage> &stacks )
+{      
+  
+    if (_debug)
+        cout << "Saving error images as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> errorstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          errorstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _error.size(); ++inputIndex) { 
+      for (int i = 0; i < _error[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _error[inputIndex].GetY(); j++) {
+              errorstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _error[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+      sprintf(buffer, "errorstack%03i.nii.gz", i);
+      errorstacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveError( vector<irtkRealImage> &stacks, int iter, int rec_iter )
+{      
+  
+    if (_debug)
+        cout << "Saving error images as stacks ...";
+
+    char buffer[256];
+    irtkRealImage stack;
+    vector<irtkRealImage> errorstacks;
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+          irtkImageAttributes attr = stacks[i].GetImageAttributes();
+          stack.Initialize( attr );
+          errorstacks.push_back( stack );
+    }
+
+    for (unsigned int inputIndex = 0; inputIndex < _error.size(); ++inputIndex) { 
+      for (int i = 0; i < _error[inputIndex].GetX(); i++) {
+          for (int j = 0; j < _error[inputIndex].GetY(); j++) {
+              errorstacks[_stack_index[inputIndex]](i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _error[inputIndex](i,j,0);
+          }
+      }
+    }
+
+    for (unsigned int i = 0; i < stacks.size(); i++) {
+      sprintf(buffer, "errorstack%03i_mc%02isr%02i.nii.gz", i, iter, rec_iter);
+      errorstacks[i].Write(buffer);
+    }
+
+    if (_debug)
+      cout << " done." << endl;
 
 }
 

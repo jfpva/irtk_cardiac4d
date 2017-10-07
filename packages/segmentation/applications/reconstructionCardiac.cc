@@ -1051,7 +1051,12 @@ int main(int argc, char **argv)
       
     //Save intermediate simulated slices
     if(debug)
+    {
         reconstruction.SaveSimulatedSlices(stacks,iter,0);
+        reconstruction.SaveSimulatedWeights(stacks,iter,0);
+        reconstruction.CalculateError();
+        reconstruction.SaveError(stacks,iter,0);
+    }
 
     //Initialize robust statistics parameters
     reconstruction.InitializeRobustStatistics();
@@ -1123,8 +1128,18 @@ int main(int argc, char **argv)
       { 
           //Save intermediate simulated slices
           if(debug)
+          {
+              if (intensity_matching) {
+                  reconstruction.CalculateCorrectedSlices();
+                  reconstruction.SaveCorrectedSlices(stacks,iter,i+1);
+                  if (sigma>0)
+                    reconstruction.SaveBiasFields(stacks,iter,i+1);
+              }
               reconstruction.SaveSimulatedSlices(stacks,iter,i+1);
-
+              reconstruction.CalculateError();
+              reconstruction.SaveError(stacks,iter,i+1);
+          }
+          
           if(robust_statistics)
             reconstruction.MStep(i+1);
           
