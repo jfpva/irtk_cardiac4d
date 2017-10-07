@@ -53,7 +53,7 @@ void usage()
   cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
   cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
   cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
-  cerr << "\t-numcardphase             Number of cardiac phases to reconstruct. [Default: 10]."<<endl;
+  cerr << "\t-numcardphase             Number of cardiac phases to reconstruct. [Default: 15]."<<endl;
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: 1 s]."<<endl;
   cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
-  int numCardPhase = 10;
+  int numCardPhase = 15;
   double rrDefault = 1;
   double rrInterval = rrDefault;
   double lambda = 0.02;
