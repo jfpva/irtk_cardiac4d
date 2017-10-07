@@ -371,18 +371,15 @@ int main(int argc, char **argv)
     argc--;
     argv++;
     int nSlices = atoi(argv[1]);
-    cout<<"Reading cardiac phase for "<<nSlices<<" slices/frames"<<endl;
+    cout<<"Reading cardiac phase for "<<nSlices<<" images."<<endl;
     argc--;
     argv++;
-    cout<< "Cardiac phase values are ";
     for (i=0;i<nSlices;i++)
     {
       cardPhase.push_back(atof(argv[1]));
-      cout<<i<<":"<<cardPhase[i]<<", ";
       argc--;
       argv++;
     }
-    cout<<"\b\b."<<endl;
     ok = true;
   }
 
@@ -393,7 +390,6 @@ int main(int argc, char **argv)
 	  numCardPhase=atof(argv[1]);
 	  argc--;
 	  argv++;
-    cout<<"Reconstructing "<<numCardPhase<<" cardiac phases."<<endl;
     ok = true;
 	}
 
@@ -920,24 +916,20 @@ int main(int argc, char **argv)
   reconstruction.InitializeEM();
   
   // Calculate Cardiac Phase of Each Slice
-  if ( cardPhase.size() == 0 )
-  {
-    irtkImageAttributes attr = stacks[templateNumber].GetImageAttributes();
-    if (attr._t > 1)
-    {
-      cerr<<"Cardiac 4D reconstruction requires cardiac phase for each slice."<<endl;
-      exit(1);
+  if ( cardPhase.size() == 0 ) {  // no cardiac phases specified
+    if ( numCardPhase != 1 ) {    // reconstructing cine volume
+      irtkImageAttributes attr = stacks[templateNumber].GetImageAttributes();
+      if (attr._t > 1) {
+        cerr<<"Cardiac 4D reconstruction requires cardiac phase for each slice."<<endl;
+        exit(1);
+      }
     }
-    else
-    {
-      reconstruction.SetSliceCardiacPhase();
+    else {                        // reconstructing single cardiac phase volume
+      reconstruction.SetSliceCardiacPhase();    // set all cardiac phases to zero
     }
   }
-  else
-  {
-    if(debug)
-      cout<<"SetSliceCardiacPhase"<<endl;
-      reconstruction.SetSliceCardiacPhase( cardPhase );
+  else {
+    reconstruction.SetSliceCardiacPhase( cardPhase );   // set all cardiac phases to given values
   }
   // Calculate Target Cardiac Phase in Reconstructed Volume for Slice-To-Volume Registration
   reconstruction.CalculateSliceToVolumeTargetCardiacPhase();
