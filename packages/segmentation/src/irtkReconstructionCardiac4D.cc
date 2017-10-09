@@ -400,6 +400,8 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                 _stack_dyn_index.push_back(k);
                 //initialize slice transformation with the stack transformation
                 _transformations.push_back(stack_transformations[i]);
+                //initialise slice exclusion flags
+                _slice_excluded.push_back(0);
                 if ( probability_maps.size() > 0 ) {
                     irtkRealImage proba = probability_maps[i].GetRegion(0, 0, j, k, attr._x, attr._y, j + 1, k + 1);
                     proba.PutPixelSize(attr._dx, attr._dy, thickness[i], attr._dt);
@@ -410,6 +412,9 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
         }
     }
     cout << "Number of images: " << _slices.size() << endl;
+    //set excluded slices
+    for (unsigned int i = 0; i < _force_excluded.size(); i++)
+        _slice_excluded[_force_excluded[i]] = 1;
 }
 
 
@@ -722,6 +727,7 @@ public:
             for (i = 0; i < slice.GetX(); i++)
                 for (j = 0; j < slice.GetY(); j++)
                     if (slice(i, j, 0) != -1) {
+                      if (reconstructor->_slice_excluded[inputIndex] == 0) {
                         //calculate centrepoint of slice voxel in volume space (tx,ty,tz)
                         x = i;
                         y = j;
@@ -863,6 +869,8 @@ public:
                                         p.value = tPSF(ii, jj, kk);
                                         slicecoeffs[i][j].push_back(p);
                                     }
+                                    
+                      }  // if(_slice_excluded[inputIndex]==0)
                     } //end of loop for slice voxels
 
             reconstructor->_volcoeffs[inputIndex] = slicecoeffs;
@@ -980,6 +988,8 @@ void irtkReconstructionCardiac4D::GaussianReconstructionCardiac4D()
 
     for (inputIndex = 0; inputIndex < _slices.size(); ++inputIndex) {
         
+      if (_slice_excluded[inputIndex]==0) {
+      
         if(_debug)
         {
           cout << inputIndex << ", ";
@@ -1025,8 +1035,8 @@ void irtkReconstructionCardiac4D::GaussianReconstructionCardiac4D()
                     }
                 }
         voxel_num.push_back(slice_vox_num);
-        //end of loop for a slice inputIndex
-    }
+      } //end of if (_slice_excluded[inputIndex]==0)
+    } //end of loop for a slice inputIndex
 
     //normalize the volume by proportion of contributing slice voxels
     //for each volume voxe
@@ -1506,6 +1516,8 @@ public:
         irtkImageAttributes attr = reconstructor->_reconstructed4D.GetImageAttributes();
         
         for ( size_t inputIndex = r.begin(); inputIndex != r.end(); ++inputIndex ) {
+          
+          if (reconstructor->_slice_excluded[inputIndex] == 0) {
 
             irtkImageRigidRegistrationWithPadding registration;
             irtkGreyPixel smin, smax;
@@ -1548,6 +1560,7 @@ public:
                 m=m*mo;
                 reconstructor->_transformations[inputIndex].PutMatrix(m);
             }      
+          }   
         }
     }
 

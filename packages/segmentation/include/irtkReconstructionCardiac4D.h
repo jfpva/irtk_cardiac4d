@@ -73,6 +73,9 @@ protected:
    
    // Slice SVR Target Cardiac Phase
    vector<int> _slice_svr_card_index;
+   
+   // Slice Excluded
+   vector<bool> _slice_excluded;
   
    // Initialise Slice Temporal Weights
    void InitSliceTemporalWeights();
