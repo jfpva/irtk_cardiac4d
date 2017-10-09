@@ -875,8 +875,6 @@ int main(int argc, char **argv)
   //Create slices and slice-dependent transformations
   reconstruction.CreateSlicesAndTransformationsCardiac4D(stacks,stack_transformations,thickness);
   
-  //Mask all the slices
-  reconstruction.MaskSlices();
   //if given, read transformations
   if (folder!=NULL)
     reconstruction.ReadTransformation(folder);  // image-frame to volume registrations
@@ -884,6 +882,9 @@ int main(int argc, char **argv)
     if (slice_transformations_folder!=NULL)     // slice-location to volume registrations
       reconstruction.ReadSliceTransformation(slice_transformations_folder);
   }
+
+  //Mask all the slices
+  reconstruction.MaskSlices();
   
   // Set R-R for each image
   if (rr_loc.empty()) 
