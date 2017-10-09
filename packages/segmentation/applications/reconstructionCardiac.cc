@@ -868,6 +868,12 @@ int main(int argc, char **argv)
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue);
   else
     reconstruction.MatchStackIntensitiesWithMasking(stacks,stack_transformations,averageValue,true);
+  if (debug) {
+    for (i=0; i<nStacks; i++) {
+      sprintf(buffer,"rescaledstack%03i.nii.gz",i);
+      stacks[i].Write(buffer);
+    }
+  }
   average = reconstruction.CreateAverage(stacks,stack_transformations);
   if (debug)
     average.Write("average2.nii.gz");
