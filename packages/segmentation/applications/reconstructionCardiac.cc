@@ -877,6 +877,13 @@ int main(int argc, char **argv)
   
   //Mask all the slices
   reconstruction.MaskSlices();
+  //if given, read transformations
+  if (folder!=NULL)
+    reconstruction.ReadTransformation(folder);  // image-frame to volume registrations
+  else {
+    if (slice_transformations_folder!=NULL)     // slice-location to volume registrations
+      reconstruction.ReadSliceTransformation(slice_transformations_folder);
+  }
   
   // Set R-R for each image
   if (rr_loc.empty()) 
@@ -903,14 +910,6 @@ int main(int argc, char **argv)
     reconstruction.GlobalBiasCorrectionOn();
   else 
     reconstruction.GlobalBiasCorrectionOff();
-  
-  //if given read slice-location to volume registrations
-  if (slice_transformations_folder!=NULL)
-    reconstruction.ReadSliceTransformation(slice_transformations_folder);
-    
-  //if given read image-frame to volume registrations
-  if (folder!=NULL)
-    reconstruction.ReadTransformation(folder);
   
   //Initialise data structures for EM
   reconstruction.InitializeEM();
