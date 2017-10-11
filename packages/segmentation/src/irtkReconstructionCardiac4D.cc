@@ -232,6 +232,8 @@ void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRe
     if (_debug)
         cout << "Matching intensities of stacks. ";
 
+    cout<<setprecision(6);
+    
     //Calculate the averages of intensities for all stacks
     double sum, num;
     char buffer[256];
@@ -285,7 +287,7 @@ void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRe
                 }
          if(_debug)
 	 {
-           sprintf(buffer,"mask-for-matching%i.nii.gz",ind);   
+           sprintf(buffer,"maskformatching%03i.nii.gz",ind);   
 	   m.Write(buffer);
 	 }
         //calculate average for the stack
@@ -337,7 +339,7 @@ void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRe
 
     if (_debug) {
         for (ind = 0; ind < stacks.size(); ind++) {
-            sprintf(buffer, "rescaled-stack%i.nii.gz", ind);
+            sprintf(buffer, "rescaledstack%03i.nii.gz", ind);
             stacks[ind].Write(buffer);
         }
 
@@ -347,6 +349,8 @@ void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRe
         cout << endl;
         cout << "The new average value is " << averageValue << endl;
     }
+
+    cout<<setprecision(3);
 
 }
 
