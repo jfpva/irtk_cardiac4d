@@ -74,6 +74,9 @@ protected:
    // Slice SVR Target Cardiac Phase
    vector<int> _slice_svr_card_index;
    
+   // Force exclusion of stacks
+   vector<int> _force_excluded_stacks;
+   
    // Slice Excluded
    vector<bool> _slice_excluded;
   
@@ -112,6 +115,9 @@ protected:
 
    // Get Slice-Location transformations
    void ReadSliceTransformation(char* slice_transformations_folder);
+
+   ///Set stacks to be excluded
+   inline void SetForceExcludedStacks( vector<int>& force_excluded_stacks );
 
    // Set Slice R-R Intervals
    void SetSliceRRInterval( vector<double> rr );
@@ -280,6 +286,15 @@ inline void irtkReconstructionCardiac4D::SetReconstructedCardiac4D(irtkRealImage
 inline irtkRealImage irtkReconstructionCardiac4D::GetVolumeWeights()
 {
     return _volume_weights;
+}
+
+
+// -----------------------------------------------------------------------------
+// Force Exclusion of Stacks
+// -----------------------------------------------------------------------------
+inline void irtkReconstructionCardiac4D::SetForceExcludedStacks(vector<int>& force_excluded_stacks)
+{
+    _force_excluded_stacks = force_excluded_stacks;  
 }
 
 
