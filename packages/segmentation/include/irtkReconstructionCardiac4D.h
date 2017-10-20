@@ -103,8 +103,9 @@ protected:
    // Destructor
    ~irtkReconstructionCardiac4D();
    
-   // Get Reconstructed 4D Volume
+   // Get/Set Reconstructed 4D Volume
    inline irtkRealImage GetReconstructedCardiac4D();
+   inline void SetReconstructedCardiac4D(irtkRealImage &reconstructed4D);
 
    // Get Volume Weights
    inline irtkRealImage GetVolumeWeights();
@@ -259,11 +260,17 @@ protected:
 
 
 // -----------------------------------------------------------------------------
-// Get Reconstructed 4D Volume
+// Get/Set Reconstructed 4D Volume
 // -----------------------------------------------------------------------------
 inline irtkRealImage irtkReconstructionCardiac4D::GetReconstructedCardiac4D()
 {
     return _reconstructed4D;
+}
+
+inline void irtkReconstructionCardiac4D::SetReconstructedCardiac4D(irtkRealImage &reconstructed4D)
+{
+    _reconstructed4D = reconstructed4D;
+    _template_created = true;
 }
 
 
