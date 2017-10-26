@@ -423,6 +423,27 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                 _slice_excluded[inputIndex] = 1;
 }
 
+// -----------------------------------------------------------------------------
+// Reset Slices and Associated Transformations
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::ResetSlicesAndTransformationsCardiac4D()
+{
+    _slice_time.clear();
+    _slice_dt.clear();
+    _slices.clear();
+    _simulated_slices.clear();
+    _simulated_weights.clear();
+    _simulated_inside.clear();
+    _stack_index.clear();
+    _loc_index.clear();
+    _stack_loc_index.clear();
+    _stack_dyn_index.clear();
+    _transformations.clear();
+    _slice_excluded.clear();
+    _probability_maps.clear();
+
+}
+
 
 // -----------------------------------------------------------------------------
 // InitCorrectedSlices
@@ -2339,6 +2360,30 @@ void irtkReconstructionCardiac4D::SaveSimulatedSlices( vector<irtkRealImage> &st
 
     if (_debug)
       cout << " done." << endl;
+
+}
+
+void irtkReconstructionCardiac4D::SaveSimulatedSlices(vector<irtkRealImage>& stacks, int stack_no)
+{      
+  
+    char buffer[256];
+    irtkRealImage simstack;
+
+    irtkImageAttributes attr = stacks[stack_no].GetImageAttributes();
+    simstack.Initialize( attr );
+
+    for (unsigned int inputIndex = 0; inputIndex < _simulated_slices.size(); ++inputIndex) { 
+      for (int i = 0; i < _simulated_slices[inputIndex].GetX(); i++) {
+        for (int j = 0; j < _simulated_slices[inputIndex].GetY(); j++) {
+          if (stack_no==_stack_index[inputIndex]) {
+            simstack(i,j,_stack_loc_index[inputIndex],_stack_dyn_index[inputIndex]) = _simulated_slices[inputIndex](i,j,0);
+          }
+        }
+      }
+    }
+
+    sprintf(buffer, "simstack%03i.nii.gz", stack_no);
+    simstack.Write(buffer);
 
 }
 

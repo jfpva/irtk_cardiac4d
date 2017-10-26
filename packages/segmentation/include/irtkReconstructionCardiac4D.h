@@ -157,6 +157,8 @@ protected:
                                         vector<irtkRigidTransformation>& stack_transformations,
                                         vector<double>& thickness,
                                         const vector<irtkRealImage> &probability_maps=vector<irtkRealImage>() );
+  void ResetSlicesAndTransformationsCardiac4D();
+  
    /// Init Corrected Slices
    void InitCorrectedSlices();
   
@@ -228,6 +230,7 @@ protected:
    void SaveSimulatedSlices();
    void SaveSimulatedSlices(vector<irtkRealImage>& stacks);
    void SaveSimulatedSlices(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+   void SaveSimulatedSlices(vector<irtkRealImage>& stacks, int stack_no);
    
    // Save Simulated Weights
    void SaveSimulatedWeights();
