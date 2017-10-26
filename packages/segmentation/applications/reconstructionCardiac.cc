@@ -70,6 +70,7 @@ void usage()
   cerr << "\t-remove_black_background  Create mask from black background."<<endl;
   cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
   cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
+  cerr << "\t-force_exclude_stack [number of stacks] [ind1] ... [indN]  Force exclusion of stacks with these indices."<<endl;
   cerr << "\t-no_stack_intensity_matching Switch off stack intensity matching."<<endl;
   cerr << "\t-no_intensity_matching    Switch off intensity matching."<<endl;
   cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl;
@@ -171,6 +172,8 @@ int main(int argc, char **argv)
   //forced exclusion of slices
   int number_of_force_excluded_slices = 0;
   vector<int> force_excluded;
+  int number_of_force_excluded_stacks = 0;
+  vector<int> force_excluded_stacks;
 
   //Create reconstruction object
   irtkReconstructionCardiac4D reconstruction;
@@ -647,6 +650,26 @@ int main(int argc, char **argv)
        ok = true;
     }
 
+    //Force removal of certain stacks
+    if ((ok == false) && (strcmp(argv[1], "-force_exclude_stack") == 0)){
+      argc--;
+      argv++;
+      number_of_force_excluded_stacks = atoi(argv[1]);
+      argc--;
+      argv++;
+
+      cout<< number_of_force_excluded_stacks<< " force excluded stacks: ";
+      for (i=0;i<number_of_force_excluded_stacks;i++)
+      {
+        force_excluded_stacks.push_back(atoi(argv[1]));
+        cout<<force_excluded_stacks[i]<<" ";
+        argc--;
+        argv++;
+       }
+       cout<<"."<<endl;
+       ok = true;
+    }
+    
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
       usage();
@@ -736,6 +759,9 @@ int main(int argc, char **argv)
   
   //Set force excluded slices
   reconstruction.SetForceExcludedSlices(force_excluded);
+  
+  //Set force excluded stacks
+  reconstruction.SetForceExcludedStacks(force_excluded_stacks);
   
   //Set low intensity cutoff for bias estimation
   //reconstruction.SetLowIntensityCutoff(low_intensity_cutoff)  ;
