@@ -65,6 +65,7 @@ ELSE(BUILD_CONDOR_EXE)
     ADD_EXECUTABLE(correlation correlation.cc)
     
     ADD_EXECUTABLE(reconstructionCardiac reconstructionCardiac.cc)
+    ADD_EXECUTABLE(simulateStacksCardiac simulateStacksCardiac.cc)
     ADD_EXECUTABLE(profile profile.cc)
     ADD_EXECUTABLE(write-transformations-to-file write-transformations-to-file.cc)
     
