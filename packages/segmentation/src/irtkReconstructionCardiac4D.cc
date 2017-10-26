@@ -584,10 +584,6 @@ public:
             reconstructor->_reconstructed4D.GetPixelSize(&vx, &vy, &vz);
             //volume is always isotropic
             double res = vx;
-        
-            //start of a loop for a slice inputIndex
-            cout << inputIndex << " ";
-            cout.flush();
             //read the slice
             irtkRealImage& slice = reconstructor->_slices[inputIndex];
 
@@ -598,14 +594,20 @@ public:
 
             //to check whether the slice has an overlap with mask ROI
             slice_inside = false;
+                        
+                if (reconstructor->_slice_excluded[inputIndex] == 0) {
+        
+                    //start of a loop for a slice inputIndex
+                    cout << inputIndex << " ";
+                    cout.flush();
 
-            //PSF will be calculated in slice space in higher resolution
+                    //PSF will be calculated in slice space in higher resolution
 
-            //get slice voxel size to define PSF
-            double dx, dy, dz;
-            slice.GetPixelSize(&dx, &dy, &dz);
+                    //get slice voxel size to define PSF
+                    double dx, dy, dz;
+                    slice.GetPixelSize(&dx, &dy, &dz);
 
-            //sigma of 3D Gaussian (sinc with FWHM=dx or dy in-plane, Gaussian with FWHM = dz through-plane)
+                    //sigma of 3D Gaussian (sinc with FWHM=dx or dy in-plane, Gaussian with FWHM = dz through-plane)
 	    
 			double sigmax, sigmay, sigmaz;
 			if(reconstructor->_recon_type == _3D)
@@ -735,7 +737,6 @@ public:
             for (i = 0; i < slice.GetX(); i++)
                 for (j = 0; j < slice.GetY(); j++)
                     if (slice(i, j, 0) != -1) {
-                      if (reconstructor->_slice_excluded[inputIndex] == 0) {
                         //calculate centrepoint of slice voxel in volume space (tx,ty,tz)
                         x = i;
                         y = j;
@@ -878,9 +879,10 @@ public:
                                         slicecoeffs[i][j].push_back(p);
                                     }
                                     
-                      }  // if(_slice_excluded[inputIndex]==0)
                     } //end of loop for slice voxels
 
+                }  // if(_slice_excluded[inputIndex]==0)
+                
             reconstructor->_volcoeffs[inputIndex] = slicecoeffs;
             reconstructor->_slice_inside[inputIndex] = slice_inside;
 
