@@ -275,8 +275,21 @@ inline irtkRealImage irtkReconstructionCardiac4D::GetReconstructedCardiac4D()
 
 inline void irtkReconstructionCardiac4D::SetReconstructedCardiac4D(irtkRealImage &reconstructed4D)
 {
-    _reconstructed4D = reconstructed4D;
-    _template_created = true;
+  
+    _reconstructed4D = reconstructed4D; 
+    
+    irtkImageAttributes attr = reconstructed4D.GetImageAttributes(); 
+    attr._t = 1; 
+    irtkRealImage volume3D(attr); 
+    
+    _reconstructed = volume3D; 
+    _reconstructed = 0; 
+    
+    _mask = volume3D; 
+    _mask = 1; 
+    
+    _template_created = true; 
+
 }
 
 
