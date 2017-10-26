@@ -906,7 +906,11 @@ int main(int argc, char **argv)
 
   //Create slices and slice-dependent transformations
   reconstruction.CreateSlicesAndTransformationsCardiac4D(stacks,stack_transformations,thickness);
-  
+  if(debug){
+    reconstruction.InitCorrectedSlices();
+    reconstruction.InitError();
+  }
+
   //if given, read transformations
   if (folder!=NULL)
     reconstruction.ReadTransformation(folder);  // image-frame to volume registrations

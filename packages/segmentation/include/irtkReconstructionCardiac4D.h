@@ -156,7 +156,12 @@ protected:
                                         vector<irtkRigidTransformation>& stack_transformations,
                                         vector<double>& thickness,
                                         const vector<irtkRealImage> &probability_maps=vector<irtkRealImage>() );
+   /// Init Corrected Slices
+   void InitCorrectedSlices();
   
+   /// Init Error
+   void InitError();
+
    // TODO: Calculate Cardiac Phase from Trigger Times
    // void CalculateSliceCardiacPhases( vector<double>& trigger_times );
    

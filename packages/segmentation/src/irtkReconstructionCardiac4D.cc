@@ -392,11 +392,9 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                 _slice_dt.push_back(attr._dt);
                 //remember the slice
                 _slices.push_back(slice);
-                _corrected_slices.push_back(slice);
                 _simulated_slices.push_back(slice);
                 _simulated_weights.push_back(slice);
                 _simulated_inside.push_back(slice);
-                _error.push_back(slice);
                 //remeber stack indices for this slice
                 _stack_index.push_back(i);
                 _loc_index.push_back(loc_index);
@@ -423,6 +421,28 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
         for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++)
             if (_force_excluded_stacks[i]==_stack_index[inputIndex])
                 _slice_excluded[inputIndex] = 1;
+}
+
+
+// -----------------------------------------------------------------------------
+// InitCorrectedSlices
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::InitCorrectedSlices()
+{
+  _corrected_slices.clear();
+  for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
+      _corrected_slices.push_back(_slices[inputIndex]);
+}
+
+
+// -----------------------------------------------------------------------------
+// InitError
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::InitError()
+{
+  _error.clear();
+  for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) 
+      _error.push_back(_slices[inputIndex]);
 }
 
 
