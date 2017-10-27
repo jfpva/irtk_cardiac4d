@@ -189,6 +189,9 @@ protected:
    // Simulate Slices
    void SimulateSlicesCardiac4D();
    
+   // Simulate stacks
+   void SimulateStacksCardiac4D(vector<bool> stack_excluded);
+   
    // Normalise Bias
    void NormaliseBiasCardiac4D(int iter, int rec_inter);
   
@@ -263,6 +266,7 @@ protected:
    friend class ParallelCoeffInitCardiac4D;
    friend class ParallelSliceToVolumeRegistrationCardiac4D;
    friend class ParallelSimulateSlicesCardiac4D;
+   friend class ParallelSimulateStacksCardiac4D;
    friend class ParallelNormaliseBiasCardiac4D;
    friend class ParallelSuperresolutionCardiac4D;   
    friend class ParallelAdaptiveRegularization1Cardiac4D;

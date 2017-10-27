@@ -436,6 +436,7 @@ int main(int argc, char **argv)
   if (debug)
     cout<<"SetForceExcludedStacks()" << endl;
   reconstruction.SetForceExcludedStacks(force_excluded_stacks);
+  // Identify excluded stacks
   bool isStackExcluded;
   for (unsigned int stackIndex = 0; stackIndex<stacks.size(); stackIndex++){
     isStackExcluded=false;
@@ -458,12 +459,42 @@ int main(int argc, char **argv)
   cout<<setprecision(3);
   cerr<<setprecision(3);
   
-  //INITIALISE
+  //Resize stacks
+  if (simulated_resolution.size()!=0) {
+    for (unsigned int stackIndex = 0; stackIndex < stacks.size(); stackIndex++) {
+      if (!stack_excluded[stackIndex]) {
+          if(debug)
+            cout<<"Resizing stack "<<stackIndex<<" with in-plane resolution "<<simulated_resolution[stackIndex]<<" mm."<<endl;
+          stack = stacks[stackIndex];
+          irtkImageAttributes attr = stack.GetImageAttributes();
+          irtkResampling<irtkRealPixel> resampling(simulated_resolution[stackIndex],simulated_resolution[stackIndex],attr._dz);
+          irtkNearestNeighborInterpolateImageFunction interpolator;
+          resampling.SetInput(&stacks[stackIndex]);
+          resampling.SetOutput(&stack);
+          resampling.SetInterpolator(&interpolator);
+          resampling.Run();
+      }
+    stacks[stackIndex] = stack;
+    }    
+  }
   
   //Create slices, required before initialising timing values
-  cout<<"CreateSlicesAndTransformationsCardiac4D()"<<endl;
   reconstruction.CreateSlicesAndTransformationsCardiac4D(stacks,stack_transformations,thickness);
-    
+  
+  //Read transformations
+  if (folder!=NULL) {
+    if (debug)
+      cout<<"ReadTransformation()"<<endl;
+    reconstruction.ReadTransformation(folder);  // image-frame to volume registrations
+  }
+  else { 
+    if (slice_transformations_folder!=NULL) {    // slice-location to volume registrations
+      if (debug)
+        cout<<"ReadSliceTransformation()"<<endl;
+      reconstruction.ReadSliceTransformation(slice_transformations_folder);
+    }
+  }
+  
   // Set R-R for each image
   if (rr_loc.empty()) 
   {
@@ -499,68 +530,23 @@ int main(int argc, char **argv)
   // Calculate Temporal Weight for Each Slice
   reconstruction.CalculateSliceTemporalWeights();  
     
-  // SIMULATION
-  // Process one stack at a time
-  for (unsigned int stackIndex = 0; stackIndex < stacks.size(); stackIndex++) {
+  //Initialise data structures for EM
+  reconstruction.InitializeEM();
+  
+  //Initialise values of weights, scales and bias fields
+  reconstruction.InitializeEMValues();
     
-    if (!stack_excluded[stackIndex]) {
-      
-      if(debug)
-        cout<<"Simulating stack "<<stackIndex<<"."<<endl;
-      
-      // setup stacks  
-      current_stacks.clear();
-      current_force_excluded_stacks.clear();
-      for (unsigned int i = 0; i < stacks.size(); i++) {
-        stack = stacks[stackIndex];
-        if (i==stackIndex) {
-          // TODO:Resample current stack
-        }
-        else{
-          current_force_excluded_stacks.push_back(i);
-        }
-        current_stacks.push_back(stack);
-      }
-      
-      //Exclude all stacks except for current stack
-      reconstruction.SetForceExcludedStacks(current_force_excluded_stacks);
-      
-      //Create slices and slice-dependent transformations
-      cout<<"CreateSlicesAndTransformationsCardiac4D()"<<endl;
-      reconstruction.ResetSlicesAndTransformationsCardiac4D();
-      reconstruction.CreateSlicesAndTransformationsCardiac4D(current_stacks,stack_transformations,thickness);
-      
-      //Read transformations, again, as they get wiped during CreateSlicesAndTransformationsCardiac4D
-      if (folder!=NULL) {
-        if (debug)
-          cout<<"ReadTransformation()"<<endl;
-        reconstruction.ReadTransformation(folder);  // image-frame to volume registrations
-      }
-      else { 
-        if (slice_transformations_folder!=NULL) {    // slice-location to volume registrations
-          if (debug)
-            cout<<"ReadSliceTransformation()"<<endl;
-          reconstruction.ReadSliceTransformation(slice_transformations_folder);
-        }
-      }
-      
-      //Initialise data structures for EM
-      reconstruction.InitializeEM();
-      
-      //Initialise values of weights, scales and bias fields
-      reconstruction.InitializeEMValues();
-      
-      //Calculate matrix of transformation between voxels of slices and volume
-      reconstruction.CoeffInitCardiac4D();
+  // Simulate stacks
+  reconstruction.SimulateStacksCardiac4D(stack_excluded);
 
-      //Simulate slices
-      reconstruction.SimulateSlicesCardiac4D();
+  // Save simulated stacks
+  for (unsigned int stackIndex = 0; stackIndex < stacks.size(); stackIndex++) {
+    if (!stack_excluded[stackIndex]) {
       if(debug)
-          cout<<"Saving simulated stack";
+        cout<<"Saving simulated stack "<<stackIndex<<"."<<endl;
       reconstruction.SaveSimulatedSlices(stacks,stackIndex);
-      
-    }
-  }  // end of loop over stacks
+    }  
+  }  
   
   //Save cine volume
   if(debug)
