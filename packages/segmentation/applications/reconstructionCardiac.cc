@@ -120,6 +120,9 @@ int main(int argc, char **argv)
   vector<double> rr;
   // Slice cardiac phases
   vector<double> cardPhase;
+  // Mean Displacement
+  vector<double> mean_displacement;
+  vector<double> mean_weighted_displacement;
   
   int step = 1;
   int rewinder = 1;
@@ -972,6 +975,10 @@ int main(int argc, char **argv)
   // Calculate Temporal Weight for Each Slice
   reconstruction.CalculateSliceTemporalWeights();  
   
+  // Initialise Displacements
+  // reconstruction.CalculateDisplacement();
+  if (debug)
+    cout<<"Mean Displacement (init.) = "<<reconstruction.CalculateDisplacement()<<" mm."<<endl;
     
   //interleaved registration-reconstruction iterations
   
@@ -1211,6 +1218,14 @@ int main(int argc, char **argv)
     if ( ! no_log )
       cout.rdbuf (strm_buffer);
 
+    // Calculate Displacement
+    mean_displacement.push_back(reconstruction.CalculateDisplacement());
+    if (debug)
+      cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
+    mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement());
+      if (debug)
+        cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
+
     if(debug)
     {
       cout<<"SlicesInfoCardiac4D"<<endl;
@@ -1235,6 +1250,20 @@ int main(int argc, char **argv)
       cout << endl;
     }
     cout<<setprecision(3);
+  }
+
+  //Display Mean Displacements
+  if (debug) {
+    cout<<"Mean Displacement:";
+    for(unsigned int iter_mc=0; iter_mc<mean_displacement.size(); iter_mc++) {
+      cout<<" "<<mean_displacement[iter_mc];
+    }
+    cout<<" mm."<<endl;
+    cout<<"Mean Weighted Displacement:";
+    for(unsigned int iter_mc=0; iter_mc<mean_weighted_displacement.size(); iter_mc++) {
+      cout<<" "<<mean_weighted_displacement[iter_mc];
+    }
+    cout<<" mm."<<endl;
   }
 
   //save final result

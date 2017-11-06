@@ -1618,6 +1618,146 @@ void irtkReconstructionCardiac4D::SliceToVolumeRegistrationCardiac4D()
 
 
 // -----------------------------------------------------------------------------
+// Calculate Displacement
+// -----------------------------------------------------------------------------
+double irtkReconstructionCardiac4D::CalculateDisplacement()
+{
+  
+  if (_debug)
+    cout << "CalculateDisplacment" << endl;
+  
+  _slice_displacement.clear();
+  _slice_tx.clear();
+  _slice_ty.clear();
+  _slice_tz.clear();
+  
+	double x,y,z,tx,ty,tz;
+	double disp_sum_slice, disp_sum_total = 0;
+  double tx_sum_slice, ty_sum_slice, tz_sum_slice = 0;
+	int num_voxel_slice, num_voxel_total = 0;
+	int k = 0;
+	double slice_disp, mean_disp;
+  double tx_slice, ty_slice, tz_slice;
+
+	for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+    
+    disp_sum_slice = 0;
+    num_voxel_slice = 0;
+    slice_disp = 0;
+    tx_slice = 0;
+    ty_slice = 0;
+    tz_slice = 0;
+    tx_sum_slice = 0;
+    ty_sum_slice = 0;
+    tz_sum_slice = 0;
+    
+    if (_slice_excluded[inputIndex]==0) {    
+  		for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+  			for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+  			  if (_slices[inputIndex](i,j,k)!=-1) {
+  				  x = i;
+  				  y = j;
+    				z = k;
+    				_slices[inputIndex].ImageToWorld(x,y,z);
+    				tx = x; ty = y; tz = z;
+    				_transformations[inputIndex].Transform(tx,ty,tz);
+    				disp_sum_slice += sqrt((tx-x)*(tx-x)+(ty-y)*(ty-y)+(tz-z)*(tz-z));
+            tx_sum_slice += tx-x;
+            ty_sum_slice += ty-y;
+            tz_sum_slice += tz-z;
+    				num_voxel_slice += 1;
+    			}
+    		}
+    	}
+      if ( num_voxel_slice>0 ) {
+    	  slice_disp = disp_sum_slice / num_voxel_slice;
+        tx_slice = tx_sum_slice / num_voxel_slice;
+        ty_slice = ty_sum_slice / num_voxel_slice;
+        tz_slice = tz_sum_slice / num_voxel_slice;
+        cout<<"slice "<<inputIndex<<" displacement: "<<slice_disp<<" mm (tx,ty,yz)=("<<tx_slice<<","<<ty_slice<<","<<tz_slice<<")."<<endl;
+        disp_sum_total += disp_sum_slice;
+        num_voxel_total += num_voxel_slice;
+      }
+    }
+    
+    _slice_displacement.push_back(slice_disp);
+    _slice_tx.push_back(tx_slice);
+    _slice_ty.push_back(ty_slice);
+    _slice_tz.push_back(tz_slice);
+    
+  }
+  
+  if (num_voxel_total>0)
+    mean_disp = disp_sum_total / num_voxel_total;
+  else
+    mean_disp = 0;
+    
+	return mean_disp;
+
+}
+
+
+// -----------------------------------------------------------------------------
+// Calculate Weighted Displacement
+// -----------------------------------------------------------------------------
+double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
+{
+  
+  if (_debug)
+    cout << "CalculateWeightedDisplacement" << endl;
+  
+  _slice_weighted_displacement.clear();
+  
+	double x,y,z,tx,ty,tz;
+	double disp_sum_slice, disp_sum_total = 0;
+	double weight_slice, weight_total = 0;
+	int k = 0;
+	double slice_disp, mean_disp = 0;
+
+	for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+    
+    disp_sum_slice = 0;
+    weight_slice = 0;
+    slice_disp = 0;
+    
+    if (_slice_excluded[inputIndex]==0) {    
+  		for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+  			for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
+  			  if (_slices[inputIndex](i,j,k)!=-1) {
+  				  x = i;
+  				  y = j;
+    				z = k;
+    				_slices[inputIndex].ImageToWorld(x,y,z);
+    				tx = x; ty = y; tz = z;
+    				_transformations[inputIndex].Transform(tx,ty,tz);
+    				disp_sum_slice += _slice_weight[inputIndex]*_weights[inputIndex](i,j,k)*sqrt((tx-x)*(tx-x)+(ty-y)*(ty-y)+(tz-z)*(tz-z));
+    				weight_slice += _slice_weight[inputIndex]*_weights[inputIndex](i,j,k);
+    			}
+    		}
+    	}  
+      if (weight_slice>0) {
+    	  slice_disp = disp_sum_slice / weight_slice;
+        cout<<"slice "<<inputIndex<<" weighted displacement: "<<slice_disp<<" mm."<<endl;
+        disp_sum_total += disp_sum_slice;
+        weight_total += weight_slice;
+      }
+    }
+    
+    _slice_weighted_displacement.push_back(slice_disp);
+    
+  }
+  
+  if (weight_total>0)
+    mean_disp = disp_sum_total / weight_total;
+  else
+    mean_disp = 0;
+  
+	return mean_disp;
+
+}
+
+
+// -----------------------------------------------------------------------------
 // Mask Reconstructed Volume
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::StaticMaskReconstructedVolume4D()
@@ -2017,7 +2157,7 @@ void irtkReconstructionCardiac4D::ReadTransformation(char* folder)
         cerr << "Please create slices before reading transformations!" << endl;
         exit(1);
     }
-    cout << "Reading transformations:" << endl;
+    cout << "Reading transformations from: " << folder << endl;
 
     _transformations.clear();
     for (int i = 0; i < n; i++) {
@@ -2674,6 +2814,11 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
          << "Excluded" << "\t"  // Excluded slices
          << "Outside" << "\t"  // Outside slices
          << "Weight" << "\t"
+         << "MeanDisplacement" << "\t"
+         << "MeanDisplacementX" << "\t"
+         << "MeanDisplacementY" << "\t"
+         << "MeanDisplacementZ" << "\t"
+         << "WeightedMeanDisplacement" << "\t"
          << "TranslationX" << "\t"
          << "TranslationY" << "\t"
          << "TranslationZ" << "\t"
@@ -2702,6 +2847,11 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
              << (((_slice_weight[i] < 0.5) && (_slice_inside[i]))?1:0) << "\t"  // Excluded slices
              << ((!(_slice_inside[i]))?1:0) << "\t"  // Outside slices
              << _slice_weight[i] << "\t"
+             << _slice_displacement[i] << "\t"
+             << _slice_tx[i] << "\t"
+             << _slice_ty[i] << "\t"
+             << _slice_tz[i] << "\t"
+             << _slice_weighted_displacement[i] << "\t"
              << t.GetTranslationX() << "\t"
              << t.GetTranslationY() << "\t"
              << t.GetTranslationZ() << "\t"

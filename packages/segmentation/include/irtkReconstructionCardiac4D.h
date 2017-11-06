@@ -74,6 +74,13 @@ protected:
    // Slice SVR Target Cardiac Phase
    vector<int> _slice_svr_card_index;
    
+   // Displacement
+   vector<double> _slice_displacement;
+   vector<double> _slice_tx;
+   vector<double> _slice_ty;
+   vector<double> _slice_tz;
+   vector<double> _slice_weighted_displacement;
+   
    // Force exclusion of stacks
    vector<int> _force_excluded_stacks;
    
@@ -193,6 +200,10 @@ protected:
    void CalculateSliceToVolumeTargetCardiacPhase();
    void SliceToVolumeRegistrationCardiac4D();
   
+   // Calculate Displacement
+   double CalculateDisplacement();
+   double CalculateWeightedDisplacement();
+   
    // Apply Static Mask to Reconstructed 4D Volume
    void StaticMaskReconstructedVolume4D();
    
