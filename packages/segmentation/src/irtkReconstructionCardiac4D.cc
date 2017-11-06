@@ -1674,7 +1674,6 @@ double irtkReconstructionCardiac4D::CalculateDisplacement()
         tx_slice = tx_sum_slice / num_voxel_slice;
         ty_slice = ty_sum_slice / num_voxel_slice;
         tz_slice = tz_sum_slice / num_voxel_slice;
-        cout<<"slice "<<inputIndex<<" displacement: "<<slice_disp<<" mm (tx,ty,yz)=("<<tx_slice<<","<<ty_slice<<","<<tz_slice<<")."<<endl;
         disp_sum_total += disp_sum_slice;
         num_voxel_total += num_voxel_slice;
       }
@@ -1737,7 +1736,6 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
     	}  
       if (weight_slice>0) {
     	  slice_disp = disp_sum_slice / weight_slice;
-        cout<<"slice "<<inputIndex<<" weighted displacement: "<<slice_disp<<" mm."<<endl;
         disp_sum_total += disp_sum_slice;
         weight_total += weight_slice;
       }
