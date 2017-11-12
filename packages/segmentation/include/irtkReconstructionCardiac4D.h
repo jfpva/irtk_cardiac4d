@@ -118,8 +118,9 @@ protected:
    // Destructor
    ~irtkReconstructionCardiac4D();
    
-   // Get Reconstructed 4D Volume
+   // Get/Set Reconstructed 4D Volume
    inline irtkRealImage GetReconstructedCardiac4D();
+   inline void SetReconstructedCardiac4D(irtkRealImage &reconstructed4D);
 
    // Get Volume Weights
    inline irtkRealImage GetVolumeWeights();
@@ -168,6 +169,8 @@ protected:
                                         vector<irtkRigidTransformation>& stack_transformations,
                                         vector<double>& thickness,
                                         const vector<irtkRealImage> &probability_maps=vector<irtkRealImage>() );
+  void ResetSlicesAndTransformationsCardiac4D();
+  
    /// Init Corrected Slices
    void InitCorrectedSlices();
   
@@ -196,6 +199,9 @@ protected:
    
    // Simulate Slices
    void SimulateSlicesCardiac4D();
+   
+   // Simulate stacks
+   void SimulateStacksCardiac4D(vector<bool> stack_excluded);
    
    // Normalise Bias
    void NormaliseBiasCardiac4D(int iter, int rec_inter);
@@ -242,6 +248,7 @@ protected:
    void SaveSimulatedSlices();
    void SaveSimulatedSlices(vector<irtkRealImage>& stacks);
    void SaveSimulatedSlices(vector<irtkRealImage>& stacks, int iter, int rec_iter);
+   void SaveSimulatedSlices(vector<irtkRealImage>& stacks, int stack_no);
    
    // Save Simulated Weights
    void SaveSimulatedWeights();
@@ -274,6 +281,7 @@ protected:
    friend class ParallelCoeffInitCardiac4D;
    friend class ParallelSliceToVolumeRegistrationCardiac4D;
    friend class ParallelSimulateSlicesCardiac4D;
+   friend class ParallelSimulateStacksCardiac4D;
    friend class ParallelNormaliseBiasCardiac4D;
    friend class ParallelSuperresolutionCardiac4D;   
    friend class ParallelAdaptiveRegularization1Cardiac4D;
@@ -300,11 +308,30 @@ inline void irtkReconstructionCardiac4D::SetTemporalWeightSinc()
 }
 
 // -----------------------------------------------------------------------------
-// Get Reconstructed 4D Volume
+// Get/Set Reconstructed 4D Volume
 // -----------------------------------------------------------------------------
 inline irtkRealImage irtkReconstructionCardiac4D::GetReconstructedCardiac4D()
 {
     return _reconstructed4D;
+}
+
+inline void irtkReconstructionCardiac4D::SetReconstructedCardiac4D(irtkRealImage &reconstructed4D)
+{
+  
+    _reconstructed4D = reconstructed4D; 
+    
+    irtkImageAttributes attr = reconstructed4D.GetImageAttributes(); 
+    attr._t = 1; 
+    irtkRealImage volume3D(attr); 
+    
+    _reconstructed = volume3D; 
+    _reconstructed = 0; 
+    
+    _mask = volume3D; 
+    _mask = 1; 
+    
+    _template_created = true; 
+
 }
 
 
