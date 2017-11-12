@@ -289,13 +289,13 @@ protected:
 // -----------------------------------------------------------------------------
 inline void irtkReconstructionCardiac4D::SetTemporalWeightGaussian()
 {
-    _is_temporalpsf_gauss = false;
+    _is_temporalpsf_gauss = true;
     cout << "Temporal PSF = Gaussian()" << endl;
 }
 
 inline void irtkReconstructionCardiac4D::SetTemporalWeightSinc()
 {
-    _is_temporalpsf_gauss = true;
+    _is_temporalpsf_gauss = false;
     cout << "Temporal PSF = sinc() * Tukey_window()" << endl;
 }
 
