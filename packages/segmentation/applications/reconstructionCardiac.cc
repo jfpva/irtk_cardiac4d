@@ -24,8 +24,6 @@ void usage()
   cerr << "Usage: reconstructionCardiac [reconstructed] [N] [stack_1] .. [stack_N] <options>\n" << endl;
   cerr << endl;
 
-  cerr << "NOTE: using temporal PSF = sinc(PI*angdiff/dtrad)*win_Tukey(angdiff,0.3)\n" << endl;
-
   cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
   cerr << "\t[N]                     Number of stacks." << endl;
   cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format." << endl;
@@ -56,6 +54,7 @@ void usage()
   cerr << "\t-numcardphase             Number of cardiac phases to reconstruct. [Default: 15]."<<endl;
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: 1 s]."<<endl;
   cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
+  cerr << "\t-temporalpsfgauss         Use Gaussian temporal point spread function. [Default: temporal PSF = sinc()*Tukey_window()]" << endl;
   cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
@@ -137,6 +136,7 @@ int main(int argc, char **argv)
   int numCardPhase = 15;
   double rrDefault = 1;
   double rrInterval = rrDefault;
+  bool is_temporalpsf_gauss = false;
   double lambda = 0.02;
   double delta = 150;
   int levels = 3;
@@ -410,6 +410,15 @@ int main(int argc, char **argv)
     ok = true;
     reconstruction.SetReconstructedRRInterval(rrInterval);
 	}
+  
+  // Use Gaussian Temporal Point Spread Function
+  if ((ok == false) && (strcmp(argv[1], "-temporalpsfgauss") == 0)){
+    argc--;
+    argv++;
+    is_temporalpsf_gauss=true;
+    ok = true;
+  }
+
 
     //Read binary mask for final volume
     if ((ok == false) && (strcmp(argv[1], "-mask") == 0)){
@@ -737,6 +746,12 @@ int main(int argc, char **argv)
     }
     cout<<"."<<endl;
   }
+
+  //Set temporal point spread function
+  if (is_temporalpsf_gauss)
+    reconstruction.SetTemporalWeightGaussian();
+  else
+    reconstruction.SetTemporalWeightSinc();
 
   //Output volume
   irtkRealImage reconstructed;

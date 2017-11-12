@@ -94,7 +94,12 @@ protected:
    double CalculateAngularDifference( double cardphase0, double cardphase );
 
    // Temporal Weighting Tukey Window Edge Percent
+   // NOTE: applies to sinc temporal weighting only
    double _wintukeypct = 0.3;
+   
+   // Flag for Sinc Temporal Weighting
+   // use Gaussian weighting if false
+   bool _is_temporalpsf_gauss;
    
    // Sinc Function
    double sinc( double x );
@@ -174,9 +179,8 @@ protected:
    
    // Calculate Slice Temporal Weights
    void CalculateSliceTemporalWeights();
-
-   void TestTemporalWeightCalculation();
-
+   inline void SetTemporalWeightGaussian();
+   inline void SetTemporalWeightSinc();
    
    // Calculate Transformation Matrix Between Slices and Voxels
    void CoeffInitCardiac4D();
@@ -279,6 +283,21 @@ protected:
    
 };  // end of irtReconstructionCardiac4D class definition
 
+
+// -----------------------------------------------------------------------------
+// Set Temporal Weighting
+// -----------------------------------------------------------------------------
+inline void irtkReconstructionCardiac4D::SetTemporalWeightGaussian()
+{
+    _is_temporalpsf_gauss = false;
+    cout << "Temporal PSF = Gaussian()" << endl;
+}
+
+inline void irtkReconstructionCardiac4D::SetTemporalWeightSinc()
+{
+    _is_temporalpsf_gauss = true;
+    cout << "Temporal PSF = sinc() * Tukey_window()" << endl;
+}
 
 // -----------------------------------------------------------------------------
 // Get Reconstructed 4D Volume
