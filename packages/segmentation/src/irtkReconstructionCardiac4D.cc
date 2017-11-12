@@ -421,6 +421,10 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
         for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++)
             if (_force_excluded_stacks[i]==_stack_index[inputIndex])
                 _slice_excluded[inputIndex] = 1;
+    for (unsigned int i = 0; i < _force_excluded_locs.size(); i++)
+        for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++)
+            if (_force_excluded_locs[i]==_loc_index[inputIndex])
+                _slice_excluded[inputIndex] = 1;
 }
 
 // -----------------------------------------------------------------------------

@@ -84,6 +84,9 @@ protected:
    // Force exclusion of stacks
    vector<int> _force_excluded_stacks;
    
+   // Force exclusion of slice-locations
+   vector<int> _force_excluded_locs;
+   
    // Slice Excluded
    vector<bool> _slice_excluded;
   
@@ -130,6 +133,9 @@ protected:
 
    ///Set stacks to be excluded
    inline void SetForceExcludedStacks( vector<int>& force_excluded_stacks );
+   
+   ///Set slice-locations to be excluded
+   inline void SetForceExcludedLocs( vector<int>& force_excluded_locs );
 
    // Set Slice R-R Intervals
    void SetSliceRRInterval( vector<double> rr );
@@ -350,6 +356,15 @@ inline irtkRealImage irtkReconstructionCardiac4D::GetVolumeWeights()
 inline void irtkReconstructionCardiac4D::SetForceExcludedStacks(vector<int>& force_excluded_stacks)
 {
     _force_excluded_stacks = force_excluded_stacks;  
+}
+
+
+// -----------------------------------------------------------------------------
+// Force Exclusion of Stacks
+// -----------------------------------------------------------------------------
+inline void irtkReconstructionCardiac4D::SetForceExcludedLocs(vector<int>& force_excluded_locs)
+{
+    _force_excluded_locs = force_excluded_locs;  
 }
 
 
