@@ -55,7 +55,9 @@ void usage()
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: 1 s]."<<endl;
   cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
   cerr << "\t-temporalpsfgauss         Use Gaussian temporal point spread function. [Default: temporal PSF = sinc()*Tukey_window()]" << endl;
-  cerr << "\t-iterations [iter]        Number of registration-reconstruction iterations. [Default: calc. internally]"<<endl;
+  cerr << "\t-iterations [n]           Number of registration-reconstruction iterations. [Default: 4]"<<endl;
+  cerr << "\t-rec_iterations [n]       Number of super-resolution reconstruction iterations. [Default: 10]"<<endl;
+  cerr << "\t-rec_iterations_last [n]  Number of super-resolution reconstruction iterations for last iteration. [Default: 3 x rec_iterations]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
@@ -130,7 +132,7 @@ int main(int argc, char **argv)
   // Default values.
   int templateNumber = 0;
   irtkRealImage *mask=NULL;
-  int iterations = 0;
+  int iterations = 4;
   bool debug = false;
   double sigma=20;
   double resolution = 0.75;
@@ -143,6 +145,8 @@ int main(int argc, char **argv)
   int levels = 3;
   double lastIterLambda = 0.01;
   int rec_iterations;
+  int rec_iterations_first = 10;
+  int rec_iterations_last = -1;
   double averageValue = 700;
   double smooth_mask = 4;
   bool global_bias_correction = false;
@@ -443,6 +447,26 @@ int main(int argc, char **argv)
       argv++;
     }
 
+    //Read number of reconstruction iterations
+    if ((ok == false) && (strcmp(argv[1], "-rec_iterations") == 0)){
+      argc--;
+      argv++;
+      rec_iterations_first=atoi(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    }
+    
+    //Read number of reconstruction iterations for last registration-reconstruction iteration
+    if ((ok == false) && (strcmp(argv[1], "-rec_iterations_last") == 0)){
+      argc--;
+      argv++;
+      rec_iterations_last=atoi(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    }
+    
     //Variance of Gaussian kernel to smooth the bias field.
     if ((ok == false) && (strcmp(argv[1], "-sigma") == 0)){
       argc--;
@@ -1023,9 +1047,6 @@ int main(int argc, char **argv)
     cout<<"Mean Displacement (init.) = "<<reconstruction.CalculateDisplacement()<<" mm."<<endl;
     
   //interleaved registration-reconstruction iterations
-  
-  if (iterations == 0)	
-      iterations = 3;
   if(debug)
       cout<<"Number of iterations is :"<<iterations<<endl;
 
@@ -1156,20 +1177,20 @@ int main(int argc, char **argv)
     //number of reconstruction iterations
     if ( iter==(iterations-1) ) 
     {
-      // rec_iterations = 30;
-      rec_iterations = 30;  // TBD: optimise number of reconstruction iterations    
-      if (debug)
-          cout << "NOTE: last iteration, rec_iterations = " << rec_iterations << endl;
+      if (rec_iterations_last<0)
+          rec_iterations_last = 3 * rec_iterations_first;
+      rec_iterations = rec_iterations_last;
     }
-    else 
-      // rec_iterations = 10;  
-      rec_iterations = 10;  // TBD: optimise number of reconstruction iterations    
+    else {
+      rec_iterations = rec_iterations_first;
+    }
+    if (debug)
+        cout << "rec_iterations = " << rec_iterations << endl;
     
     if ((bspline)&&(!robust_statistics)&&(!intensity_matching))
       rec_iterations=0;
     
     //reconstruction iterations
-    i=0;
     for (i=0;i<rec_iterations;i++)
     {
       cout<<endl<<"  Reconstruction iteration "<<i<<". "<<endl;
