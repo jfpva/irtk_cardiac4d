@@ -1044,9 +1044,9 @@ void irtkReconstructionCardiac4D::GaussianReconstructionCardiac4D()
                     //add contribution of current slice voxel to all voxel volumes
                     //to which it contributes
                     for (k = 0; k < n; k++) {
+                        p = _volcoeffs[inputIndex][i][j][k];
                         for (outputIndex=0; outputIndex<_reconstructed_cardiac_phases.size(); outputIndex++)
                         {
-                            p = _volcoeffs[inputIndex][i][j][k];
                             _reconstructed4D(p.x, p.y, p.z, outputIndex) += _slice_temporal_weight[outputIndex][inputIndex] * p.value * slice(i, j, 0);
                         }
                     }
