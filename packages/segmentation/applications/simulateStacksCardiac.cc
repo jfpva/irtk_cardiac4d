@@ -38,6 +38,7 @@ void usage()
   cerr << "\t-mask [mask]              Binary mask to define the region of interest. [Default: whole image]"<<endl;
   cerr << "\t-slice_transformations [folder] Use existing slice-location transformations to initialize the reconstruction."<<endl;
   cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
+  cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
   cerr << "\t-1d                       Perform simulation in through-plane direction only." << endl;
   cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: read from cine_volume]."<<endl;
@@ -95,6 +96,7 @@ int main(int argc, char **argv)
   int numCardPhase = 0;
   double rrDefault = 0;
   double rrInterval = rrDefault;
+  double motion_sigma = 0;
   double smooth_mask = 4;
 
   //folder for slice-location registrations, if given
@@ -289,6 +291,16 @@ int main(int argc, char **argv)
       argc--;
       argv++;
     }
+
+    //Variance of Gaussian kernel to smooth the motion
+    if ((ok == false) && (strcmp(argv[1], "-motion_sigma") == 0)){
+      argc--;
+      argv++;
+      motion_sigma=atof(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    } 
 
     //Force removal of certain slices
     if ((ok == false) && (strcmp(argv[1], "-force_exclude") == 0)){
@@ -530,6 +542,10 @@ int main(int argc, char **argv)
   // Calculate Temporal Weight for Each Slice
   reconstruction.CalculateSliceTemporalWeights();  
     
+  //Smooth transformations
+  if(motion_sigma>0)
+    reconstruction.SmoothTransformations(motion_sigma);
+ 
   //Initialise data structures for EM
   reconstruction.InitializeEM();
   
