@@ -2104,14 +2104,16 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
 // -----------------------------------------------------------------------------
 // Smooth Transformations
 // -----------------------------------------------------------------------------
-void irtkReconstructionCardiac4D::SmoothTransformations(double sigma, bool use_slice_inside)
+void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bool use_slice_inside)
 {
   
   if (_debug)
-    cout<<"Smoothing transformations."<<endl<<"sigma = "<<sigma<<" image-frames."<<endl;
+    cout<<"Smoothing transformations."<<endl<<"sigma = "<<sigma_seconds<<" s."<<endl;
+  
+  unsigned int i;
+  int j,iter,par;
   
   //Reset origin for transformations
-  int i;
   irtkGreyImage t = _reconstructed4D;
   irtkRigidTransformation offset;
   ResetOrigin(t,offset);
@@ -2126,14 +2128,6 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma, bool use_s
     m = _transformations[i].GetMatrix();
     m=imo*m*mo;
     _transformations[i].PutMatrix(m);
-  }
-  
-  //standard deviation for gaussian kernel in number of slices
-  int j,iter,par;
-  vector<double> kernel;
-  for(i=-3*sigma; i<=3*sigma; i++)
-  {
-    kernel.push_back(exp(-(i/sigma)*(i/sigma)));
   }
   
   //initial weights
@@ -2187,8 +2181,9 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma, bool use_s
   irtkMatrix den(6,_transformations.size());
   irtkMatrix num(6,_transformations.size());
   irtkMatrix kr(6,_transformations.size());
-  vector<double> error,tmp;
+  vector<double> error,tmp,kernel;
   double median;
+  double sigma;
   int nloc = 0;
   for(i=0;i<_transformations.size();i++)
     if ((_loc_index[i]+1)>nloc)
@@ -2199,15 +2194,27 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma, bool use_s
   int loc;
   
   //kernel regression
-  if (_debug)
-    cout<<"Iteration:MedianError(mm)... ";
   for(iter = 0; iter<50;iter++)
   {
     
-    //kernel-weighted summation
     for(loc=0;loc<nloc;loc++)
     { 
-      //NOTE: shoudl re-init kernel here with slice-loc specific timing 
+      
+      //gaussian kernel for current slice-location
+      kernel.clear();
+      sigma = ceil( sigma_seconds / _slice_dt[loc*dim] );
+        // if ((_debug)&(iter==0))
+        //   cout<<"loc "<<loc<<"\tdt "<<_slice_dt[loc*dim]<<"\tsigma "<<sigma<<" image-frames\tkernel ";
+      for(j=-3*sigma; j<=3*sigma; j++)
+      {
+        kernel.push_back(exp(-(j*_slice_dt[loc*dim]/sigma_seconds)*(j*_slice_dt[loc*dim]/sigma_seconds)));
+        if ((_debug)&(iter==0))
+          cout<<kernel[j+3*sigma]<<" ";
+      }
+      if ((_debug)&(iter==0))
+        cout<<endl;
+      
+      //kernel-weighted summation
       for(par=0;par<6;par++)
       {
         for(i=loc*dim;i<(loc+1)*dim;i++)
@@ -2295,6 +2302,8 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma, bool use_s
     sort(tmp.begin(),tmp.end());
     median = tmp[round(tmp.size()*0.5)];
 
+    if ((_debug)&(iter==0))
+      cout<<"Iteration:MedianError(mm)... ";
     if (_debug) {
       cout<<iter<<":"<<median<<", ";
       cout.flush();

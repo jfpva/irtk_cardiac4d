@@ -59,7 +59,7 @@ void usage()
   cerr << "\t-rec_iterations [n]       Number of super-resolution reconstruction iterations. [Default: 10]"<<endl;
   cerr << "\t-rec_iterations_last [n]  Number of super-resolution reconstruction iterations for last iteration. [Default: 3 x rec_iterations]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
-  cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0, no smoothing]"<<endl;
+  cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
   cerr << "\t-average [average]        Average intensity value for stacks [Default: 700]"<<endl;
