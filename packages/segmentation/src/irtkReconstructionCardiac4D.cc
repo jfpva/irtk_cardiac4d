@@ -3462,8 +3462,6 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
          << "RotationX" << "\t"
          << "RotationY" << "\t"
          << "RotationZ" << "\t";
-         for (int j = 0; j < _reconstructed4D.GetT(); j++)
-            info << "TemporalWeightReconCardPhaseIndex" << j << "\t";
          info << "\b" << endl;       
     
     for (unsigned int i = 0; i < _slices.size(); i++) {
@@ -3495,8 +3493,6 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
              << t.GetRotationX() << "\t"
              << t.GetRotationY() << "\t"
              << t.GetRotationZ() << "\t";
-             for (int j = 0; j < _reconstructed4D.GetT(); j++)
-                info << _slice_temporal_weight[j][i] << "\t";
              info << "\b" << endl;
     }
  
