@@ -2786,7 +2786,7 @@ void irtkReconstructionCardiac4D::ReadTransformation(char* folder)
         rigidTransf = dynamic_cast<irtkRigidTransformation*>(transformation);
         _transformations.push_back(*rigidTransf);
         delete transformation;
-        cout << path << endl;
+        //cout << path << endl;
     }
 }
 
