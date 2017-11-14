@@ -2102,6 +2102,266 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
 
 
 // -----------------------------------------------------------------------------
+// Smooth Transformations
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SmoothTransformations(double sigma, bool use_slice_inside)
+{
+  
+  if (_debug)
+    cout<<"Smoothing transformations."<<endl<<"sigma = "<<sigma<<" image-frames."<<endl;
+  
+  //Reset origin for transformations
+  int i;
+  irtkGreyImage t = _reconstructed4D;
+  irtkRigidTransformation offset;
+  ResetOrigin(t,offset);
+  irtkMatrix m;
+  irtkMatrix mo = offset.GetMatrix();
+  irtkMatrix imo = mo;
+  imo.Invert();
+  if (_debug)
+    offset.irtkTransformation::Write("reset_origin.dof");
+  for(i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m=imo*m*mo;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //standard deviation for gaussian kernel in number of slices
+  int j,iter,par;
+  vector<double> kernel;
+  for(i=-3*sigma; i<=3*sigma; i++)
+  {
+    kernel.push_back(exp(-(i/sigma)*(i/sigma)));
+  }
+  
+  //initial weights
+  irtkMatrix parameters(6,_transformations.size());
+  irtkMatrix weights(6,_transformations.size());
+  ofstream fileOut("motion.txt", ofstream::out | ofstream::app);
+  for(i=0;i<_transformations.size();i++)
+  {
+      parameters(0,i)=_transformations[i].GetTranslationX();
+      parameters(1,i)=_transformations[i].GetTranslationY();
+      parameters(2,i)=_transformations[i].GetTranslationZ();
+      parameters(3,i)=_transformations[i].GetRotationX();
+      parameters(4,i)=_transformations[i].GetRotationY();
+      parameters(5,i)=_transformations[i].GetRotationZ();
+      
+      //write unprocessed parameters to file
+      for(j=0;j<6;j++)
+      {
+	      fileOut<<parameters(j,i);
+	      if(j<5)
+	        fileOut<<",";
+	      else
+          fileOut<<endl;
+      }
+      
+      for(j=0;j<6;j++)
+        weights(j,i)=0;             //initialise as zero
+      if (!_slice_excluded[i])
+      {
+        if (!use_slice_inside)      //set weights based on image intensities
+        {
+  	      irtkRealPixel smin, smax;
+          _slices[i].GetMinMax(&smin,&smax);
+          if(smax>-1)
+  	        for(j=0;j<6;j++)
+  	          weights(j,i)=1; 
+        }
+        else                        //set weights based on _slice_inside
+        {	
+          if(_slice_inside.size()>0)
+          {
+            if(_slice_inside[i])
+  	          for(j=0;j<6;j++)
+  	            weights(j,i)=1;
+  	      }
+        }
+      }
+  }
+  
+  //initialise
+  irtkMatrix den(6,_transformations.size());
+  irtkMatrix num(6,_transformations.size());
+  irtkMatrix kr(6,_transformations.size());
+  vector<double> error,tmp;
+  double median;
+  int nloc = 0;
+  for(i=0;i<_transformations.size();i++)
+    if ((_loc_index[i]+1)>nloc)
+      nloc = _loc_index[i] + 1;
+  if (_debug)
+    cout << "number of slice-locations: " << nloc << endl;
+  int dim = _transformations.size()/nloc; // assuming equal number of dynamic images for every slice-location
+  int loc;
+  
+  //kernel regression
+  if (_debug)
+    cout<<"Iteration:MedianError(mm)... ";
+  for(iter = 0; iter<50;iter++)
+  {
+    
+    //kernel-weighted summation
+    for(loc=0;loc<nloc;loc++)
+    { 
+      //NOTE: shoudl re-init kernel here with slice-loc specific timing 
+      for(par=0;par<6;par++)
+      {
+        for(i=loc*dim;i<(loc+1)*dim;i++)
+	      {
+          if(!_slice_excluded[i])
+          {
+  	        for(j=-3*sigma;j<=3*sigma;j++)
+  	          if(((i+j)>=loc*dim) && ((i+j)<(loc+1)*dim))
+  	          {
+  	            num(par,i)+=parameters(par,i+j)*kernel[j+3*sigma]*weights(par,i+j);
+  	            den(par,i)+=kernel[j+3*sigma]*weights(par,i+j);
+  	          }
+          }
+          else
+          {
+            num(par,i)=parameters(par,i);
+            den(par,i)=1;
+          }
+	      }
+      }
+    }  
+    
+    //kernel-weighted normalisation
+    for(par=0;par<6;par++)
+      for(i=0;i<_transformations.size();i++)
+        kr(par,i)=num(par,i)/den(par,i);
+      
+    //recalculate weights using target registration error with original transformations as targets
+    error.clear();
+    tmp.clear();
+   
+    for(i=0;i<_transformations.size();i++)
+    {
+
+	    irtkRigidTransformation processed;
+      processed.PutTranslationX(kr(0,i));
+      processed.PutTranslationY(kr(1,i));
+      processed.PutTranslationZ(kr(2,i));
+      processed.PutRotationX(kr(3,i));
+      processed.PutRotationY(kr(4,i));
+      processed.PutRotationZ(kr(5,i));  
+
+      irtkRigidTransformation orig = _transformations[i];
+      
+      //need to convert the transformations back to the original coordinate system
+      m = orig.GetMatrix();
+      m=mo*m*imo;
+      orig.PutMatrix(m);
+      
+      m = processed.GetMatrix();
+      m=mo*m*imo;
+      processed.PutMatrix(m);
+      
+      irtkRealImage slice = _slices[i];
+      
+      int n=0;
+      double x,y,z,xx,yy,zz,e;
+      if(!_slice_excluded[i])
+        for(int ii=0;ii<_reconstructed.GetX();ii=ii+3)
+          for(int jj=0;jj<_reconstructed.GetY();jj=jj+3)
+            for(int kk=0;kk<_reconstructed.GetZ();kk=kk+3)
+              if(_reconstructed(ii,jj,kk)>-1)
+              {
+                x=ii; y=jj; z=kk;
+                _reconstructed.ImageToWorld(x,y,z);
+  	            xx=x;yy=y;zz=z;
+                orig.Transform(x,y,z);
+                processed.Transform(xx,yy,zz);
+                x-=xx;
+                y-=yy;
+                z-=zz;
+                e += sqrt(x*x+y*y+z*z);
+                n++;      
+              }
+      if(n>0)
+      {
+        e/=n;      
+        error.push_back(e);
+        tmp.push_back(e);
+      }
+      else
+        error.push_back(-1);
+    }
+    
+    sort(tmp.begin(),tmp.end());
+    median = tmp[round(tmp.size()*0.5)];
+
+    if (_debug) {
+      cout<<iter<<":"<<median<<", ";
+      cout.flush();
+    }
+
+    for(i=0;i<_transformations.size();i++)
+    {
+	    if((error[i]>=0)&(!_slice_excluded[i]))
+      {
+        if(error[i]<=median*1.35)
+	        for(par=0;par<6;par++)
+	          weights(par,i)=1;
+        else
+	        for(par=0;par<6;par++)
+	          weights(par,i)=median*1.35/error[i];
+      }
+      else
+	      for(par=0;par<6;par++)
+	        weights(par,i)=0;
+    }
+    
+  }
+  
+  if (_debug)
+    cout<<"\b\b."<<endl;
+  
+  ofstream fileOut2("motion-processed.txt", ofstream::out | ofstream::app);
+  ofstream fileOut3("weights.txt", ofstream::out | ofstream::app);
+  ofstream fileOut4("outliers.txt", ofstream::out | ofstream::app);
+  ofstream fileOut5("empty.txt", ofstream::out | ofstream::app);  
+
+  for(i=0;i<_transformations.size();i++)
+  {
+      fileOut3<<weights(j,i)<<" ";
+    
+      if(weights(0,i)<=0)
+        fileOut5<<i<<" ";
+
+      _transformations[i].PutTranslationX(kr(0,i));
+      _transformations[i].PutTranslationY(kr(1,i));
+      _transformations[i].PutTranslationZ(kr(2,i));
+      _transformations[i].PutRotationX(kr(3,i));
+      _transformations[i].PutRotationY(kr(4,i));
+      _transformations[i].PutRotationZ(kr(5,i));  
+
+      for(j=0;j<6;j++)
+      {
+	      fileOut2<<kr(j,i);
+	        if(j<5)
+	          fileOut2<<",";
+	        else
+	          fileOut2<<endl;
+      }
+  }
+
+  //Put origin back
+  for(i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m=mo*m*imo;
+    _transformations[i].PutMatrix(m);
+  }
+  
+}
+
+
+// -----------------------------------------------------------------------------
 // Mask Reconstructed Volume
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::StaticMaskReconstructedVolume4D()

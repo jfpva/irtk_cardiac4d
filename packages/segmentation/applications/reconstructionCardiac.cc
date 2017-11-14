@@ -59,6 +59,7 @@ void usage()
   cerr << "\t-rec_iterations [n]       Number of super-resolution reconstruction iterations. [Default: 10]"<<endl;
   cerr << "\t-rec_iterations_last [n]  Number of super-resolution reconstruction iterations for last iteration. [Default: 3 x rec_iterations]"<<endl;
   cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
+  cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0, no smoothing]"<<endl;
   cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
   cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
   cerr << "\t-average [average]        Average intensity value for stacks [Default: 700]"<<endl;
@@ -135,6 +136,7 @@ int main(int argc, char **argv)
   int iterations = 4;
   bool debug = false;
   double sigma=20;
+  double motion_sigma = 0;
   double resolution = 0.75;
   int numCardPhase = 15;
   double rrDefault = 1;
@@ -472,6 +474,16 @@ int main(int argc, char **argv)
       argc--;
       argv++;
       sigma=atof(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    } 
+    
+    //Variance of Gaussian kernel to smooth the motion
+    if ((ok == false) && (strcmp(argv[1], "-motion_sigma") == 0)){
+      argc--;
+      argv++;
+      motion_sigma=atof(argv[1]);
       ok = true;
       argc--;
       argv++;
@@ -1079,6 +1091,10 @@ int main(int argc, char **argv)
       if ( ! no_log ) {
   			cerr.rdbuf (strm_buffer_e);
   		}
+      
+      // process transformations
+      if(motion_sigma>0)
+  	    reconstruction.SmoothTransformations(motion_sigma);
 
     }  // if ( iter > 0 ) 
     

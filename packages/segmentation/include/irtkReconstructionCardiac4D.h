@@ -220,6 +220,9 @@ protected:
    double CalculateDisplacement();
    double CalculateWeightedDisplacement();
    
+   // Smooth Transformationss
+   void SmoothTransformations(double sigma, bool use_slice_inside=false);
+
    // Apply Static Mask to Reconstructed 4D Volume
    void StaticMaskReconstructedVolume4D();
    
