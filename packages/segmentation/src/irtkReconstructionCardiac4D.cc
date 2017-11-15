@@ -2104,11 +2104,11 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
 // -----------------------------------------------------------------------------
 // Smooth Transformations
 // -----------------------------------------------------------------------------
-void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bool use_slice_inside)
+void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, int niter, bool use_slice_inside)
 {
   
   if (_debug)
-    cout<<"Smoothing transformations."<<endl<<"sigma = "<<sigma_seconds<<" s."<<endl;
+    cout<<"SmoothTransformations"<<endl<<"\tsigma = "<<sigma_seconds<<" s"<<endl;
   
   unsigned int i;
   int j,iter,par;
@@ -2189,12 +2189,21 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bo
     if ((_loc_index[i]+1)>nloc)
       nloc = _loc_index[i] + 1;
   if (_debug)
-    cout << "number of slice-locations: " << nloc << endl;
+    cout << "\tnumber of slice-locations = " << nloc << endl;
   int dim = _transformations.size()/nloc; // assuming equal number of dynamic images for every slice-location
   int loc;
   
+  //step size for sampling volume in error calculation in kernel regression
+  int step;
+  double nstep=15;
+  step = ceil(_reconstructed4D.GetX()/nstep);   
+  if(step>ceil(_reconstructed4D.GetY()/nstep))
+    step = ceil(_reconstructed4D.GetY()/nstep);
+  if(step>ceil(_reconstructed4D.GetZ()/nstep))
+    step = ceil(_reconstructed4D.GetZ()/nstep);
+  
   //kernel regression
-  for(iter = 0; iter<50;iter++)
+  for(iter = 0; iter<niter;iter++)
   {
     
     for(loc=0;loc<nloc;loc++)
@@ -2203,16 +2212,10 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bo
       //gaussian kernel for current slice-location
       kernel.clear();
       sigma = ceil( sigma_seconds / _slice_dt[loc*dim] );
-        // if ((_debug)&(iter==0))
-        //   cout<<"loc "<<loc<<"\tdt "<<_slice_dt[loc*dim]<<"\tsigma "<<sigma<<" image-frames\tkernel ";
       for(j=-3*sigma; j<=3*sigma; j++)
       {
         kernel.push_back(exp(-(j*_slice_dt[loc*dim]/sigma_seconds)*(j*_slice_dt[loc*dim]/sigma_seconds)));
-        if ((_debug)&(iter==0))
-          cout<<kernel[j+3*sigma]<<" ";
       }
-      if ((_debug)&(iter==0))
-        cout<<endl;
       
       //kernel-weighted summation
       for(par=0;par<6;par++)
@@ -2245,7 +2248,6 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bo
     //recalculate weights using target registration error with original transformations as targets
     error.clear();
     tmp.clear();
-   
     for(i=0;i<_transformations.size();i++)
     {
 
@@ -2272,14 +2274,15 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bo
       
       int n=0;
       double x,y,z,xx,yy,zz,e;
-      if(!_slice_excluded[i])
-        for(int ii=0;ii<_reconstructed.GetX();ii=ii+3)
-          for(int jj=0;jj<_reconstructed.GetY();jj=jj+3)
-            for(int kk=0;kk<_reconstructed.GetZ();kk=kk+3)
-              if(_reconstructed(ii,jj,kk)>-1)
+
+      if(!_slice_excluded[i]) {
+        for(int ii=0;ii<_reconstructed4D.GetX();ii=ii+step)
+          for(int jj=0;jj<_reconstructed4D.GetY();jj=jj+step)
+            for(int kk=0;kk<_reconstructed4D.GetZ();kk=kk+step)
+              if(_reconstructed4D(ii,jj,kk,0)>-1)
               {
                 x=ii; y=jj; z=kk;
-                _reconstructed.ImageToWorld(x,y,z);
+                _reconstructed4D.ImageToWorld(x,y,z);
   	            xx=x;yy=y;zz=z;
                 orig.Transform(x,y,z);
                 processed.Transform(xx,yy,zz);
@@ -2289,6 +2292,8 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bo
                 e += sqrt(x*x+y*y+z*z);
                 n++;      
               }
+      }
+      
       if(n>0)
       {
         e/=n;      
@@ -2303,7 +2308,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, bo
     median = tmp[round(tmp.size()*0.5)];
 
     if ((_debug)&(iter==0))
-      cout<<"Iteration:MedianError(mm)... ";
+      cout<<"\titeration:median_error(mm)...";
     if (_debug) {
       cout<<iter<<":"<<median<<", ";
       cout.flush();
