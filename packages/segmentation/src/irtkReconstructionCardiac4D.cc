@@ -1981,6 +1981,31 @@ void irtkReconstructionCardiac4D::SliceToVolumeRegistrationCardiac4D()
 
 
 // -----------------------------------------------------------------------------
+// Volume-to-Volume Registration 
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::VolumeToVolumeRegistration(irtkGreyImage target, irtkGreyImage source, irtkRigidTransformation& rigidTransf)
+{
+  
+  // Initialise registration
+  irtkImageRigidRegistrationWithPadding registration;
+  
+  // Get target min and max values
+  irtkGreyPixel smin, smax;
+  target.GetMinMax(&smin, &smax);
+
+  // Register source volume to target volume
+  if (smax > -1) {
+      registration.SetInput(&target,&source);
+      registration.SetOutput(&rigidTransf);
+      registration.GuessParameter();
+      registration.SetTargetPadding(-1);
+      registration.Run();
+  }
+
+}
+
+
+// -----------------------------------------------------------------------------
 // Calculate Displacement
 // -----------------------------------------------------------------------------
 double irtkReconstructionCardiac4D::CalculateDisplacement()
@@ -2059,6 +2084,38 @@ double irtkReconstructionCardiac4D::CalculateDisplacement()
 }
 
 
+double irtkReconstructionCardiac4D::CalculateDisplacement(irtkRigidTransformation drift)
+{
+  //Initialise
+  double mean_disp;
+  irtkMatrix d = drift.GetMatrix();
+  irtkMatrix m;
+  
+  //Remove drift
+  for(unsigned int i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = d*m;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Calculate displacements
+  mean_disp = CalculateDisplacement();
+  
+  //Return drift
+  d.Invert();
+  for(unsigned int i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = d*m;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Output
+  return mean_disp;
+}
+
+
 // -----------------------------------------------------------------------------
 // Calculate Weighted Displacement
 // -----------------------------------------------------------------------------
@@ -2115,6 +2172,38 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
   
 	return mean_disp;
 
+}
+
+
+double irtkReconstructionCardiac4D::CalculateWeightedDisplacement(irtkRigidTransformation drift)
+{
+  //Initialise
+  double mean_disp;
+  irtkMatrix d = drift.GetMatrix();
+  irtkMatrix m;
+  
+  //Remove drift
+  for(unsigned int i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = d*m;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Calculate displacements
+  mean_disp = CalculateWeightedDisplacement();
+  
+  //Return drift
+  d.Invert();
+  for(unsigned int i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = d*m;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Output
+  return mean_disp;
 }
 
 

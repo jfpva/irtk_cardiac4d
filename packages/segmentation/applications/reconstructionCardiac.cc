@@ -79,6 +79,7 @@ void usage()
   cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl;
   cerr << "\t-exclude_slices_only      Do not exclude individual voxels."<<endl;
   cerr << "\t-bspline                  Use multi-level bspline interpolation instead of super-resolution."<<endl;
+  cerr << "\t-ref_vol                  Reference volume for adjustment of spatial position of reconstructed volume."<<endl;
   cerr << "\t-log_prefix [prefix]      Prefix for the log file."<<endl;
   cerr << "\t-info [filename]          Filename for slice information in\
                                        tab-sparated columns."<<endl;
@@ -103,6 +104,10 @@ int main(int argc, char **argv)
   //declare variables for input
   /// Name for output volume
   char * output_name = NULL;
+  /// Reference volume
+  char * ref_vol_name = NULL;
+  bool have_ref_vol = false;
+  irtkRigidTransformation transformation_recon_to_ref; 
   /// Slice stacks
   vector<irtkRealImage> stacks;
   vector<string> stack_files;
@@ -741,6 +746,16 @@ int main(int argc, char **argv)
        ok = true;
     }
     
+    //Get name of reference volume for adjustment of spatial position of reconstructed volume
+    if ((ok == false) && (strcmp(argv[1], "-ref_vol") == 0)){
+      argc--;
+      argv++;
+      ref_vol_name = argv[1];
+      argc--;
+      argv++;
+      have_ref_vol = true;
+      ok = true;
+    }
     
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
@@ -827,6 +842,13 @@ int main(int argc, char **argv)
   cout<<"\b x PI."<<endl;
   reconstruction.SetReconstructedCardiacPhase( reconstructedCardPhase );
   reconstruction.SetReconstructedTemporalResolution( rrInterval/numCardPhase );
+  
+  //Reference volume for adjustment of spatial position of reconstructed volume
+  irtkRealImage ref_vol;
+  if(have_ref_vol){
+    cout<<"Reading reference volume: "<<ref_vol_name<<endl;
+    ref_vol.Read(ref_vol_name);    
+  } 
   
   //Set debug mode
   if (debug) reconstruction.DebugOn();
@@ -1052,11 +1074,6 @@ int main(int argc, char **argv)
   reconstruction.CalculateSliceToVolumeTargetCardiacPhase();
   // Calculate Temporal Weight for Each Slice
   reconstruction.CalculateSliceTemporalWeights();  
-  
-  // Initialise Displacements
-  // reconstruction.CalculateDisplacement();
-  if (debug)
-    cout<<"Mean Displacement (init.) = "<<reconstruction.CalculateDisplacement()<<" mm."<<endl;
     
   //interleaved registration-reconstruction iterations
   if(debug)
@@ -1296,14 +1313,45 @@ int main(int argc, char **argv)
     cout<<endl;
     if ( ! no_log )
       cout.rdbuf (strm_buffer);
-
-    // Calculate Displacement
-    mean_displacement.push_back(reconstruction.CalculateDisplacement());
-    if (debug)
-      cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
-    mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement());
+  
+    // Calculate Displacements
+    if(have_ref_vol){
+      
+      // Estimate Transformation to Align Reconsctructed Volume with Reference Volume
+      if ( ! no_log ) {
+        cerr.rdbuf(file_e.rdbuf());
+        cout.rdbuf (file.rdbuf());
+      }
+      reconstruction.VolumeToVolumeRegistration(ref_vol,reconstructed,transformation_recon_to_ref);
+      if ( ! no_log ) {
+        cout.rdbuf (strm_buffer);
+        cerr.rdbuf (strm_buffer_e);
+      }
+      
+      // Save Transformation
+      sprintf(buffer, "recon_to_ref_mc%02i.dof",iter);
+      transformation_recon_to_ref.irtkTransformation::Write(buffer);
+      
+      // Calculate Displacements Relative to Alignment
+      mean_displacement.push_back(reconstruction.CalculateDisplacement(transformation_recon_to_ref));
+      if (debug)
+        cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
+      mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement(transformation_recon_to_ref));
       if (debug)
         cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
+        
+    } 
+    else {
+      
+      // Calculate Displacement
+      mean_displacement.push_back(reconstruction.CalculateDisplacement());
+      if (debug)
+        cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
+      mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement());
+      if (debug)
+        cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
+      
+    }
 
     if(debug)
     {
@@ -1362,6 +1410,12 @@ int main(int argc, char **argv)
   if(debug)
       cout<<"SaveTransformations"<<endl;
 	reconstruction.SaveTransformations();
+
+  //save final transformation to reference volume
+  if(have_ref_vol) {
+      sprintf(buffer, "recon_to_ref.dof");
+      transformation_recon_to_ref.irtkTransformation::Write(buffer);
+  }
 
 	if ( info_filename.length() > 0 ) 
   {

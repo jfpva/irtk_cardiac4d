@@ -218,10 +218,15 @@ protected:
    // Slice-to-Volume Registration
    void CalculateSliceToVolumeTargetCardiacPhase();
    void SliceToVolumeRegistrationCardiac4D();
+   
+   // Volume-to-Volume Registration
+   void VolumeToVolumeRegistration(irtkGreyImage target, irtkGreyImage source, irtkRigidTransformation& rigidTransf);
   
    // Calculate Displacement
    double CalculateDisplacement();
+   double CalculateDisplacement(irtkRigidTransformation drift);
    double CalculateWeightedDisplacement();
+   double CalculateWeightedDisplacement(irtkRigidTransformation drift);
    
    // Smooth Transformationss
    void SmoothTransformations(double sigma, int niter=10, bool use_slice_inside=false);
