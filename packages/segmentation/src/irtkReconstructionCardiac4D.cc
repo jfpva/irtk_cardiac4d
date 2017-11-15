@@ -354,6 +354,16 @@ void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRe
 
 }
 
+// -----------------------------------------------------------------------------
+// Initialise Stack Factor
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::InitStackFactor(vector<irtkRealImage> &stacks)
+{
+  _stack_factor.clear();
+  for(unsigned int stackIndex=0; stackIndex<stacks.size(); stackIndex++)
+    _stack_factor.push_back(1);
+}
+
 
 // -----------------------------------------------------------------------------
 // Create Slices and Associated Transformations
@@ -409,6 +419,8 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                     proba.PutPixelSize(attr._dx, attr._dy, thickness[i], attr._dt);
                     _probability_maps.push_back(proba);
                 }
+                //initialise cardiac phase to use for 2D-3D registration
+                _slice_svr_card_index.push_back(0);
             }
             loc_index++;
         }
@@ -1630,6 +1642,11 @@ void irtkReconstructionCardiac4D::SimulateStacksCardiac4D(vector<bool> stack_exc
     
     //Initialise simlated images
     for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex)    _simulated_slices[inputIndex] = 0;
+    
+    //Initialise indicator of images having overlap with volume
+    _slice_inside.clear();
+    for (unsigned int inputIndex = 0; inputIndex < _slices.size(); ++inputIndex)  
+      _slice_inside.push_back(true);
     
     //Simulate images
     cout << "Simulating...";

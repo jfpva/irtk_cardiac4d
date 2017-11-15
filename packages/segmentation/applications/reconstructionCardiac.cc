@@ -175,7 +175,7 @@ int main(int argc, char **argv)
   
   irtkRealImage average;
 
-  string info_filename = "slice_info.tsv";
+  string info_filename = "info.tsv";
   string log_id;
   bool no_log = false;
 
@@ -1308,7 +1308,7 @@ int main(int argc, char **argv)
     if(debug)
     {
       cout<<"SlicesInfoCardiac4D"<<endl;
-      sprintf(buffer,"slice_info_mc%02i.tsv",iter);
+      sprintf(buffer,"info_mc%02i.tsv",iter);
       reconstruction.SlicesInfoCardiac4D( buffer, stack_files );
     }
 

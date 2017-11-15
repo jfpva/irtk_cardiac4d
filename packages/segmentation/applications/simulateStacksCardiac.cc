@@ -445,6 +445,9 @@ int main(int argc, char **argv)
   reconstruction.SetReconstructedCardiacPhase( reconstructedCardPhase );
   reconstruction.SetReconstructedTemporalResolution( rrInterval/numCardPhase );
   
+  //initialise stack factors
+  reconstruction.InitStackFactor(stacks);
+  
   //type of recon - default 3D PSF
   if(recon_1d) {
     cout<<"Set1DRecon()" << endl;
@@ -579,6 +582,24 @@ int main(int argc, char **argv)
       reconstruction.SaveSimulatedSlices(stacks,stackIndex);
     }  
   }  
+  
+  //Calculate displacements
+  double mean_displacement = reconstruction.CalculateDisplacement();
+  if (debug)
+    cout<<"\tmean displacement = "<<mean_displacement<<" mm."<<endl;
+  double mean__weighted_displacement = reconstruction.CalculateWeightedDisplacement();
+    if (debug)
+      cout<<"\tmean weighted displacement = "<<mean__weighted_displacement<<" mm."<<endl;
+  
+  //Save info
+  if (debug)
+    cout<<"Saving Info"<<endl;
+  reconstruction.SlicesInfoCardiac4D( "info.tsv", stack_files );
+  
+  //Save transformations
+  if(debug)
+      cout<<"SaveTransformations"<<endl;
+  reconstruction.SaveTransformations();
   
   //Save cine volume
   if(debug)

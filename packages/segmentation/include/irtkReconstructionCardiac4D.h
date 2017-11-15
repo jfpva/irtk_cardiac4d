@@ -169,6 +169,9 @@ protected:
                                double averageValue,
                                bool together=false);
                                
+   //Set stack factors
+   void InitStackFactor(vector<irtkRealImage>& stacks);
+   
    // Create slices from the stacks and 
    // slice-dependent transformations from stack transformations
    void CreateSlicesAndTransformationsCardiac4D( vector<irtkRealImage>& stacks,
