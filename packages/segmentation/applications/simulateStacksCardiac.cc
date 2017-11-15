@@ -44,7 +44,6 @@ void usage()
   cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: read from cine_volume]."<<endl;
   cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
-  cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
   cerr << "\t-simulated_resolution [res_1] .. [res_N]    In-plane resolution of simulated stacks. [Default: save voxel size as input stacks.]"<<endl;
   cerr << "\t-smooth_mask [sigma]      Smooth the mask to reduce artefacts of manual segmentation. [Default: 4mm]"<<endl;
   cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
