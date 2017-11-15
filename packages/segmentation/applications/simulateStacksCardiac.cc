@@ -39,6 +39,7 @@ void usage()
   cerr << "\t-slice_transformations [folder] Use existing slice-location transformations to initialize the reconstruction."<<endl;
   cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
   cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
+  cerr << "\t-motion_scale [scale]     Scale existing transformations. [Default: 1, no scaling]"<<endl;
   cerr << "\t-1d                       Perform simulation in through-plane direction only." << endl;
   cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
   cerr << "\t-rrinterval [rr]          R-R interval. [Default: read from cine_volume]."<<endl;
@@ -97,6 +98,7 @@ int main(int argc, char **argv)
   double rrDefault = 0;
   double rrInterval = rrDefault;
   double motion_sigma = 0;
+  double motion_scale = 1;
   double smooth_mask = 4;
 
   //folder for slice-location registrations, if given
@@ -297,6 +299,16 @@ int main(int argc, char **argv)
       argc--;
       argv++;
       motion_sigma=atof(argv[1]);
+      ok = true;
+      argc--;
+      argv++;
+    } 
+    
+    //Factor to scale the motion
+    if ((ok == false) && (strcmp(argv[1], "-motion_scale") == 0)){
+      argc--;
+      argv++;
+      motion_scale=atof(argv[1]);
       ok = true;
       argc--;
       argv++;
@@ -545,6 +557,10 @@ int main(int argc, char **argv)
   //Smooth transformations
   if(motion_sigma>0)
     reconstruction.SmoothTransformations(motion_sigma);
+  
+  //Scale transformations
+  if(motion_scale!=1)
+    reconstruction.ScaleTransformations(motion_scale);
  
   //Initialise data structures for EM
   reconstruction.InitializeEM();

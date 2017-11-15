@@ -222,6 +222,9 @@ protected:
    
    // Smooth Transformationss
    void SmoothTransformations(double sigma, int niter=10, bool use_slice_inside=false);
+   
+   // Scale Transformationss
+   void ScaleTransformations(double scale);
 
    // Apply Static Mask to Reconstructed 4D Volume
    void StaticMaskReconstructedVolume4D();

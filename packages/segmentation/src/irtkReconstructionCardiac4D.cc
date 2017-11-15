@@ -2376,6 +2376,66 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
 
 
 // -----------------------------------------------------------------------------
+// Scale Transformations
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::ScaleTransformations(double scale)
+{
+  
+  if (_debug)
+    cout<<"Scaling transformations."<<endl<<"scale = "<<scale<<"."<<endl;
+
+  if (scale==1)
+      return;
+  
+  if (scale<0) {
+    cerr<<"Scaling of transformations undefined for scale < 0.";
+    exit(1);
+  }
+
+  unsigned int i;
+  
+  //Reset origin for transformations
+  irtkGreyImage t = _reconstructed4D;
+  irtkRigidTransformation offset;
+  ResetOrigin(t,offset);
+  irtkMatrix m;
+  irtkMatrix mo = offset.GetMatrix();
+  irtkMatrix imo = mo;
+  imo.Invert();
+  if (_debug)
+    offset.irtkTransformation::Write("reset_origin.dof");
+  for(i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = imo * m * mo;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Scale transformations
+  irtkMatrix orig, scaled;
+  int row, col;
+  for(i=0;i<_transformations.size();i++)
+  {
+    orig = logm( _transformations[i].GetMatrix() );
+    scaled = orig;
+    for(row=0;row<4;row++)
+      for(col=0;col<4;col++) 
+        scaled(row,col) = scale * orig(row,col);
+    _transformations[i].PutMatrix( expm( scaled ) );
+  }
+
+  //Put origin back
+  for(i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m=mo*m*imo;
+    _transformations[i].PutMatrix(m);
+  }
+  
+}
+
+
+// -----------------------------------------------------------------------------
 // Mask Reconstructed Volume
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::StaticMaskReconstructedVolume4D()
