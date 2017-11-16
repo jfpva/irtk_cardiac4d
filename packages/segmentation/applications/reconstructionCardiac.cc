@@ -1334,25 +1334,24 @@ int main(int argc, char **argv)
       
       // Calculate Displacements Relative to Alignment
       mean_displacement.push_back(reconstruction.CalculateDisplacement(transformation_recon_to_ref));
-      if (debug)
-        cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
       mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement(transformation_recon_to_ref));
-      if (debug)
-        cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
         
     } 
     else {
       
       // Calculate Displacement
       mean_displacement.push_back(reconstruction.CalculateDisplacement());
-      if (debug)
-        cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
       mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement());
-      if (debug)
-        cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
       
     }
 
+    // Display Displacements and TRE
+    if (debug) {
+      cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
+      cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
+    }
+    
+    // Save Info for Iteration
     if(debug)
     {
       cout<<"SlicesInfoCardiac4D"<<endl;

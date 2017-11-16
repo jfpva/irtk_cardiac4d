@@ -2031,7 +2031,7 @@ double irtkReconstructionCardiac4D::CalculateDisplacement()
     
     disp_sum_slice = 0;
     num_voxel_slice = 0;
-    slice_disp = 0;
+    slice_disp = -1;
     tx_slice = 0;
     ty_slice = 0;
     tz_slice = 0;
@@ -2077,7 +2077,7 @@ double irtkReconstructionCardiac4D::CalculateDisplacement()
   if (num_voxel_total>0)
     mean_disp = disp_sum_total / num_voxel_total;
   else
-    mean_disp = 0;
+    mean_disp = -1;
     
 	return mean_disp;
 
@@ -2137,7 +2137,7 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
     
     disp_sum_slice = 0;
     weight_slice = 0;
-    slice_disp = 0;
+    slice_disp = -1;
     
     if (_slice_excluded[inputIndex]==0) {    
   		for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
@@ -2168,7 +2168,7 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement()
   if (weight_total>0)
     mean_disp = disp_sum_total / weight_total;
   else
-    mean_disp = 0;
+    mean_disp = -1;
   
 	return mean_disp;
 
