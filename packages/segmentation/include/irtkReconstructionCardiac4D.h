@@ -101,7 +101,7 @@ protected:
    double CalculateAngularDifference( double cardphase0, double cardphase );
 
    // Temporal Weighting Tukey Window Edge Percent
-   // NOTE: applies to sinc temporal weighting only
+   // applies to sinc temporal weighting only
    double _wintukeypct = 0.3;
    
    // Flag for Sinc Temporal Weighting
@@ -189,10 +189,7 @@ protected:
   
    /// Init Error
    void InitError();
-
-   // TODO: Calculate Cardiac Phase from Trigger Times
-   // void CalculateSliceCardiacPhases( vector<double>& trigger_times );
-   
+ 
    // Calculate Slice Temporal Weights
    void CalculateSliceTemporalWeights();
    inline void SetTemporalWeightGaussian();

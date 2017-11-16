@@ -29,27 +29,27 @@ void usage()
 
   cerr << "NOTE: using temporal PSF = sinc(PI*angdiff/dtrad)*win_Tukey(angdiff,0.3)\n" << endl;
 
-  cerr << "\t[cine_volume]             Name for the cine volume. Nifti or Analyze format." << endl;
-  cerr << "\t[N]                       Number of stacks." << endl;
-  cerr << "\t[stack_1] .. [stack_N]    The input stacks. Nifti or Analyze format." << endl;
+  cerr << "\t[cine_volume]              Name for the cine volume. Nifti or Analyze format." << endl;
+  cerr << "\t[N]                        Number of stacks." << endl;
+  cerr << "\t[stack_1] .. [stack_N]     The input stacks. Nifti or Analyze format." << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
-  cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
-  cerr << "\t-mask [mask]              Binary mask to define the region of interest. [Default: whole image]"<<endl;
-  cerr << "\t-slice_transformations [folder] Use existing slice-location transformations to initialize the reconstruction."<<endl;
-  cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
-  cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
-  cerr << "\t-motion_scale [scale]     Scale existing transformations. [Default: 1, no scaling]"<<endl;
-  cerr << "\t-1d                       Perform simulation in through-plane direction only." << endl;
-  cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
-  cerr << "\t-rrinterval [rr]          R-R interval. [Default: read from cine_volume]."<<endl;
-  cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
-  cerr << "\t-simulated_resolution [res_1] .. [res_N]    In-plane resolution of simulated stacks. [Default: save voxel size as input stacks.]"<<endl;
-  cerr << "\t-smooth_mask [sigma]      Smooth the mask to reduce artefacts of manual segmentation. [Default: 4mm]"<<endl;
-  cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
-  cerr << "\t-force_exclude_stack [number of stacks] [ind1] ... [indN]  Force exclusion of stacks with these indices."<<endl;
-  cerr << "\t-speedup                  Use faster, but lower quality reconstruction."<<endl;
-  cerr << "\t-debug                    Debug mode - save intermediate results."<<endl;
+  cerr << "\t-thickness [th_1]..[th_N]  Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
+  cerr << "\t-mask [mask]               Binary mask to define the region of interest. [Default: whole image]"<<endl;
+  cerr << "\t-slice_transformations [folder]  Use existing slice-location transformations to initialize the reconstruction."<<endl;
+  cerr << "\t-transformations [folder]  Use existing image-frame to volume transformations to initialize the reconstruction."<<endl;
+  cerr << "\t-motion_sigma [sigma]      Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
+  cerr << "\t-motion_scale [scale]      Scale existing transformations. [Default: 1, no scaling]"<<endl;
+  cerr << "\t-1d                        Perform simulation in through-plane direction only." << endl;
+  cerr << "\t-cardphase [K] [num_1]..[num_K]  Cardiac phase (0-2PI) for each image-frames 1-K. [Default: 0]."<<endl;
+  cerr << "\t-rrinterval [rr]           R-R interval. [Default: read from cine_volume]."<<endl;
+  cerr << "\t-rrintervals [L] [rr_1]..[rr_L]  R-R interval for slice-locations 1-L in input stacks. [Default: 1 s]."<<endl;
+  cerr << "\t-simulated_resolution [res_1]..[res_N]  In-plane resolution of simulated stacks. [Default: save voxel size as input stacks.]"<<endl;
+  cerr << "\t-smooth_mask [sigma]       Smooth the mask to reduce artefacts of manual segmentation. [Default: 4mm]"<<endl;
+  cerr << "\t-force_exclude [n] [ind1]..[indN]  Force exclusion of image-frames with these indices."<<endl;
+  cerr << "\t-force_exclude_stack [n] [ind1]..[indN]  Force exclusion of stacks with these indices."<<endl;
+  cerr << "\t-speedup                   Use faster, but lower quality reconstruction."<<endl;
+  cerr << "\t-debug                     Debug mode - save intermediate results."<<endl;
   cerr << "\t" << endl;
 
   cerr << "\t" << endl;
@@ -467,7 +467,7 @@ int main(int argc, char **argv)
   for (unsigned int stackIndex = 0; stackIndex<stacks.size(); stackIndex++){
     isStackExcluded=false;
     for (unsigned int excludedStackIndex = 0; excludedStackIndex<force_excluded_stacks.size(); excludedStackIndex++) {
-      if (stackIndex==force_excluded_stacks[excludedStackIndex]) {
+      if (int(stackIndex)==force_excluded_stacks[excludedStackIndex]) {
         isStackExcluded=true;
       }
     }

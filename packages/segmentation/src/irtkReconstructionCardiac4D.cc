@@ -302,8 +302,8 @@ void irtkReconstructionCardiac4D::MatchStackIntensitiesWithMasking(vector<irtkRe
     double global_average;
     if (together) {
         global_average = 0;
-        for(i=0;i<stack_average.size();i++)
-            global_average += stack_average[i];
+        for(ind=0;ind<stack_average.size();ind++)
+            global_average += stack_average[ind];
         global_average/=stack_average.size();
     }
 
@@ -396,7 +396,7 @@ void irtkReconstructionCardiac4D::CreateSlicesAndTransformationsCardiac4D( vecto
                 //set correct voxel size in the stack. Z size is equal to slice thickness.
                 slice.PutPixelSize(attr._dx, attr._dy, thickness[i], attr._dt);
                 //set slice acquisition time
-                sliceAcqTime = attr._torigin + k * attr._dt; // TODO: check calculation of _slice_time from input stack
+                sliceAcqTime = attr._torigin + k * attr._dt; 
                 _slice_time.push_back(sliceAcqTime);  
                 //set slice temporal resolution
                 _slice_dt.push_back(attr._dt);
@@ -1313,8 +1313,6 @@ public:
             cout << inputIndex << " ";
             cout.flush();
 
-            bool slice_inside;
-
             //get resolution of the volume
             double vx, vy, vz;
             reconstructor->_reconstructed4D.GetPixelSize(&vx, &vy, &vz);
@@ -1327,10 +1325,7 @@ public:
             POINT3D p;
             VOXELCOEFFS empty;
             SLICECOEFFS slicecoeffs(slice.GetX(), vector < VOXELCOEFFS > (slice.GetY(), empty));
-
-            //to check whether the slice has an overlap with mask ROI
-            slice_inside = false;
-              
+            
             //PSF will be calculated in slice space in higher resolution
 
             //get slice voxel size to define PSF
@@ -1533,7 +1528,6 @@ public:
                                                             sum += weight;
                                                             if (reconstructor->_mask(l, m, n) == 1) {
                                                                 inside = true;
-                                                                slice_inside = true;
                                                             }
                                                         }
                                     //if there were no voxels do nothing
@@ -2240,8 +2234,8 @@ double irtkReconstructionCardiac4D::CalculateTRE()
     slice_tre = -1;
     
     if (_slice_excluded[inputIndex]==0) {    
-  		for (unsigned int i = 0; i < _slices[inputIndex].GetX(); i++) {
-  			for (unsigned int j = 0; j < _slices[inputIndex].GetY(); j++) {
+  		for (int i = 0; i < _slices[inputIndex].GetX(); i++) {
+  			for (int j = 0; j < _slices[inputIndex].GetY(); j++) {
   			  if (_slices[inputIndex](i,j,k)!=-1) {
   				  x = i; y = j; z = k;
     				_slices[inputIndex].ImageToWorld(x,y,z);
@@ -2316,8 +2310,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
   if (_debug)
     cout<<"SmoothTransformations"<<endl<<"\tsigma = "<<sigma_seconds<<" s"<<endl;
   
-  unsigned int i;
-  int j,iter,par;
+  int i,j,iter,par;
   
   //Reset origin for transformations
   irtkGreyImage t = _reconstructed4D;
@@ -2329,7 +2322,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
   imo.Invert();
   if (_debug)
     offset.irtkTransformation::Write("reset_origin.dof");
-  for(i=0;i<_transformations.size();i++)
+  for(i=0;i<int(_transformations.size());i++)
   {
     m = _transformations[i].GetMatrix();
     m=imo*m*mo;
@@ -2340,7 +2333,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
   irtkMatrix parameters(6,_transformations.size());
   irtkMatrix weights(6,_transformations.size());
   ofstream fileOut("motion.txt", ofstream::out | ofstream::app);
-  for(i=0;i<_transformations.size();i++)
+  for(i=0;i<int(_transformations.size());i++)
   {
       parameters(0,i)=_transformations[i].GetTranslationX();
       parameters(1,i)=_transformations[i].GetTranslationY();
@@ -2391,7 +2384,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
   double median;
   double sigma;
   int nloc = 0;
-  for(i=0;i<_transformations.size();i++)
+  for(i=0;i<int(_transformations.size());i++)
     if ((_loc_index[i]+1)>nloc)
       nloc = _loc_index[i] + 1;
   if (_debug)
@@ -2448,13 +2441,13 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
     
     //kernel-weighted normalisation
     for(par=0;par<6;par++)
-      for(i=0;i<_transformations.size();i++)
+      for(i=0;i<int(_transformations.size());i++)
         kr(par,i)=num(par,i)/den(par,i);
       
     //recalculate weights using target registration error with original transformations as targets
     error.clear();
     tmp.clear();
-    for(i=0;i<_transformations.size();i++)
+    for(i=0;i<int(_transformations.size());i++)
     {
 
 	    irtkRigidTransformation processed;
@@ -2520,7 +2513,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
       cout.flush();
     }
 
-    for(i=0;i<_transformations.size();i++)
+    for(i=0;i<int(_transformations.size());i++)
     {
 	    if((error[i]>=0)&(!_slice_excluded[i]))
       {
@@ -2546,7 +2539,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
   ofstream fileOut4("outliers.txt", ofstream::out | ofstream::app);
   ofstream fileOut5("empty.txt", ofstream::out | ofstream::app);  
 
-  for(i=0;i<_transformations.size();i++)
+  for(i=0;i<int(_transformations.size());i++)
   {
       fileOut3<<weights(j,i)<<" ";
     
@@ -2571,7 +2564,7 @@ void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, in
   }
 
   //Put origin back
-  for(i=0;i<_transformations.size();i++)
+  for(i=0;i<int(_transformations.size());i++)
   {
     m = _transformations[i].GetMatrix();
     m=mo*m*imo;
@@ -2977,7 +2970,7 @@ public:
     // execute
     void operator() () const {
         task_scheduler_init init(tbb_no_threads);
-        parallel_for( blocked_range<size_t>(0, reconstructor->_reconstructed.GetX()),
+        parallel_for( blocked_range<size_t>(0, reconstructor->_reconstructed4D.GetX()),
                       *this );
         init.terminate();
     }
@@ -3057,7 +3050,6 @@ void irtkReconstructionCardiac4D::ReadTransformation(char* folder)
         rigidTransf = dynamic_cast<irtkRigidTransformation*>(transformation);
         _transformations.push_back(*rigidTransf);
         delete transformation;
-        //cout << path << endl;
     }
 }
 

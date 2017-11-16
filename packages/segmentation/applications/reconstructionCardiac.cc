@@ -24,71 +24,70 @@ void usage()
   cerr << "Usage: reconstructionCardiac [reconstructed] [N] [stack_1] .. [stack_N] <options>\n" << endl;
   cerr << endl;
 
-  cerr << "\t[reconstructed]         Name for the reconstructed volume. Nifti or Analyze format." << endl;
-  cerr << "\t[N]                     Number of stacks." << endl;
-  cerr << "\t[stack_1] .. [stack_N]  The input stacks. Nifti or Analyze format." << endl;
+  cerr << "\t[reconstructed]            Name for the reconstructed volume. Nifti or Analyze format." << endl;
+  cerr << "\t[N]                        Number of stacks." << endl;
+  cerr << "\t[stack_1]..[stack_N]       The input stacks. Nifti or Analyze format." << endl;
   cerr << "\t" << endl;
   cerr << "Options:" << endl;
-  cerr << "\t-stack_registration       Perform stack-stack regisrtation." << endl;
-  cerr << "\t-target_stack [stack_no]  Stack number of target for stack-stack registration." << endl;
-  cerr << "\t-dofin [dof_1]   .. [dof_N]    The transformations of the input stack to template" << endl;
-  cerr << "\t                          in \'dof\' format used in IRTK." <<endl;
-  cerr << "\t                          Only rough alignment with correct orienation and " << endl;
-  cerr << "\t                          some overlap is needed." << endl;
-  cerr << "\t                          Use \'id\' for an identity transformation." << endl;
-  cerr << "\t-thickness [th_1] .. [th_N]    Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
-  cerr << "\t-mask [mask]              Binary mask to define the region of interest. [Default: whole image]"<<endl;
-  cerr << "\t-slice_transformations [folder] Use existing slice-location transformations to initialize the reconstruction."<<endl;
-  cerr << "\t-multiband [num_1] .. [num_N]  Multiband factor for each stack for each stack. [Default: 1]"<<endl;
-  cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
-  cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
-  cerr << "\t                          and then following the specific slice ordering "<<endl;
-  cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
-  cerr << "\t                          volume (or multiband registration)."<<endl;
-  cerr << "\t-order                    Vector of slice acquisition orders used at acquisition. [Default: (1)]"<<endl;
-  cerr << "\t                          Possible values: 1 (ascending), 2 (descending), 3 (default), 4 (interleaved)"<<endl;
-  cerr << "\t                          and 5 (Customized)."<<endl;
-  cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
-  cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
-  cerr << "\t-cardphase [K] [num_1] .. [num_K]  Cardiac phase (0-2PI) for each of K slices. [Default: 0]."<<endl;
-  cerr << "\t-numcardphase             Number of cardiac phases to reconstruct. [Default: 15]."<<endl;
-  cerr << "\t-rrinterval [rr]          R-R interval. [Default: 1 s]."<<endl;
-  cerr << "\t-rrintervals [L] [rr_1] .. [rr_L]  R-R interval for slice locations 1-L in input stacks. [Default: 1 s]."<<endl;
-  cerr << "\t-temporalpsfgauss         Use Gaussian temporal point spread function. [Default: temporal PSF = sinc()*Tukey_window()]" << endl;
-  cerr << "\t-iterations [n]           Number of registration-reconstruction iterations. [Default: 4]"<<endl;
-  cerr << "\t-rec_iterations [n]       Number of super-resolution reconstruction iterations. [Default: 10]"<<endl;
-  cerr << "\t-rec_iterations_last [n]  Number of super-resolution reconstruction iterations for last iteration. [Default: 3 x rec_iterations]"<<endl;
-  cerr << "\t-sigma [sigma]            Stdev for bias field. [Default: 12mm]"<<endl;
-  cerr << "\t-motion_sigma [sigma]     Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
-  cerr << "\t-resolution [res]         Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
-  cerr << "\t-multires [levels]        Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
-  cerr << "\t-average [average]        Average intensity value for stacks [Default: 700]"<<endl;
-  cerr << "\t-delta [delta]            Parameter to define what is an edge. [Default: 150]"<<endl;
-  cerr << "\t-lambda [lambda]          Smoothing parameter. [Default: 0.02]"<<endl;
-  cerr << "\t-lastIter [lambda]        Smoothing parameter for last iteration. [Default: 0.01]"<<endl;
-  cerr << "\t-smooth_mask [sigma]      Smooth the mask to reduce artefacts of manual segmentation. [Default: 4mm]"<<endl;
-  cerr << "\t-global_bias_correction   Correct the bias in reconstructed image against previous estimation."<<endl;
-  cerr << "\t-low_intensity_cutoff     Lower intensity threshold for inclusion of voxels in global bias correction."<<endl;
-  cerr << "\t-remove_black_background  Create mask from black background."<<endl;
-  cerr << "\t-transformations [folder] Use existing slice-to-volume transformations to initialize the reconstruction."<<endl;
-  cerr << "\t-force_exclude [number of slices] [ind1] ... [indN]  Force exclusion of slices with these indices."<<endl;
-  cerr << "\t-force_exclude_stack [number of stacks] [ind1] ... [indN]  Force exclusion of stacks with these indices."<<endl;
-  cerr << "\t-force_exclude_sliceloc [number of slice-locations] [loc1] ... [locN]  Force exclusion of slice-locations with these indices."<<endl;
-  cerr << "\t-no_stack_intensity_matching Switch off stack intensity matching."<<endl;
-  cerr << "\t-no_intensity_matching    Switch off intensity matching."<<endl;
-  cerr << "\t-no_robust_statistics     Switch off robust statistics."<<endl;
-  cerr << "\t-exclude_slices_only      Do not exclude individual voxels."<<endl;
-  cerr << "\t-bspline                  Use multi-level bspline interpolation instead of super-resolution."<<endl;
-  cerr << "\t-ref_vol                  Reference volume for adjustment of spatial position of reconstructed volume."<<endl;
-  cerr << "\t-ref_transformations [folder] Reference slice-to-volume transformation folder."<<endl;
-  cerr << "\t-log_prefix [prefix]      Prefix for the log file."<<endl;
-  cerr << "\t-info [filename]          Filename for slice information in\
-                                       tab-sparated columns."<<endl;
-  cerr << "\t-debug                    Debug mode - save intermediate results."<<endl;
-  cerr << "\t-no_log                   Do not redirect cout and cerr to log files."<<endl;
-  cerr << "\t" << endl;
-  cerr << "\tNOTE: work in progress, use of following options is not recommended..." << endl;
-  cerr << "\t\tmultiband, packages, order, step, rewinder, rescale_stacks" << endl;
+  cerr << "\t-stack_registration        Perform stack-stack regisrtation." << endl;
+  cerr << "\t-target_stack [stack_no]   Stack number of target for stack-stack registration." << endl;
+  cerr << "\t-dofin [dof_1]..[dof_N]    The transformations of the input stack to template" << endl;
+  cerr << "\t                           in \'dof\' format used in IRTK." <<endl;
+  // cerr << "\t                          Only rough alignment with correct orienation and " << endl;
+  // cerr << "\t                          some overlap is needed." << endl;
+  cerr << "\t                           Use \'id\' for an identity transformation." << endl;
+  cerr << "\t-thickness [th_1]..[th_N]  Give slice thickness.[Default: twice voxel size in z direction]"<<endl;
+  cerr << "\t-mask [mask]               Binary mask to define the region of interest. [Default: whole image]"<<endl;
+  cerr << "\t-transformations [folder]  Use existing image-frame to volume transformations to initialize the reconstruction."<<endl;
+  cerr << "\t-slice_transformations [folder]  Use existing slice-location transformations to initialize the reconstruction."<<endl;
+  cerr << "\t-motion_sigma [sigma]      Stdev for smoothing transformations. [Default: 0s, no smoothing]"<<endl;
+  cerr << "\t-rrintervals [L] [rr_1]..[rr_L]  R-R interval for slice-locations 1-L in input stacks. [Default: 1 s]."<<endl;
+  cerr << "\t-cardphase [K] [num_1]..[num_K]  Cardiac phase (0-2PI) for each image-frames 1-K. [Default: 0]."<<endl;
+  cerr << "\t-temporalpsfgauss          Use Gaussian temporal point spread function. [Default: temporal PSF = sinc()*Tukey_window()]" << endl;
+  cerr << "\t-resolution [res]          Isotropic resolution of the volume. [Default: 0.75mm]"<<endl;
+  cerr << "\t-numcardphase              Number of cardiac phases to reconstruct. [Default: 15]."<<endl;
+  cerr << "\t-rrinterval [rr]           R-R interval of reconstructed cine volume. [Default: 1 s]."<<endl;
+  cerr << "\t-iterations [n]            Number of registration-reconstruction iterations. [Default: 4]"<<endl;
+  cerr << "\t-rec_iterations [n]        Number of super-resolution reconstruction iterations. [Default: 10]"<<endl;
+  cerr << "\t-rec_iterations_last [n]   Number of super-resolution reconstruction iterations for last iteration. [Default: 2 x rec_iterations]"<<endl;
+  cerr << "\t-sigma [sigma]             Stdev for bias field. [Default: 12mm]"<<endl;
+  cerr << "\t-average [average]         Average intensity value for stacks [Default: 700]"<<endl;
+  cerr << "\t-delta [delta]             Parameter to define what is an edge. [Default: 150]"<<endl;
+  cerr << "\t-lambda [lambda]           Smoothing parameter. [Default: 0.02]"<<endl;
+  cerr << "\t-lastIter [lambda]         Smoothing parameter for last iteration. [Default: 0.01]"<<endl;
+  cerr << "\t-multires [levels]         Multiresolution smooting with given number of levels. [Default: 3]"<<endl;
+  cerr << "\t-smooth_mask [sigma]       Smooth the mask to reduce artefacts of manual segmentation. [Default: 4mm]"<<endl;
+  cerr << "\t-force_exclude [n] [ind1]..[indN]  Force exclusion of image-frames with these indices."<<endl;
+  cerr << "\t-force_exclude_sliceloc [n] [ind1]..[indN]  Force exclusion of slice-locations with these indices."<<endl;
+  cerr << "\t-force_exclude_stack [n] [ind1]..[indN]  Force exclusion of stacks with these indices."<<endl;
+  cerr << "\t-no_stack_intensity_matching  Switch off stack intensity matching."<<endl;
+  cerr << "\t-no_intensity_matching     Switch off intensity matching."<<endl;
+  cerr << "\t-no_robust_statistics      Switch off robust statistics."<<endl;
+  cerr << "\t-exclude_slices_only       Do not exclude individual voxels."<<endl;
+  cerr << "\t-ref_vol                   Reference volume for adjustment of spatial position of reconstructed volume."<<endl;
+  cerr << "\t-ref_transformations [folder]  Reference slice-to-volume transformation folder."<<endl;
+  cerr << "\t-log_prefix [prefix]       Prefix for the log file."<<endl;
+  cerr << "\t-info [filename]           Filename for slice information in tab-sparated columns."<<endl;
+  cerr << "\t-debug                     Debug mode - save intermediate results."<<endl;
+  cerr << "\t-no_log                    Do not redirect cout and cerr to log files."<<endl;
+  // cerr << "\t-global_bias_correction   Correct the bias in reconstructed image against previous estimation."<<endl;
+  // cerr << "\t-low_intensity_cutoff     Lower intensity threshold for inclusion of voxels in global bias correction."<<endl;
+  // cerr << "\t-remove_black_background  Create mask from black background."<<endl;
+  //cerr << "\t-multiband [num_1] .. [num_N]  Multiband factor for each stack for each stack. [Default: 1]"<<endl;
+  //cerr << "\t-packages [num_1] .. [num_N]   Give number of packages used during acquisition for each stack. [Default: 1]"<<endl;
+  //cerr << "\t                          The stacks will be split into packages during registration iteration 1"<<endl;
+  // cerr << "\t                          and then following the specific slice ordering "<<endl;
+  // cerr << "\t                          from iteration 2. The method will then perform slice to"<<endl;
+  // cerr << "\t                          volume (or multiband registration)."<<endl;
+  // cerr << "\t-order                    Vector of slice acquisition orders used at acquisition. [Default: (1)]"<<endl;
+  // cerr << "\t                          Possible values: 1 (ascending), 2 (descending), 3 (default), 4 (interleaved)"<<endl;
+  // cerr << "\t                          and 5 (Customized)."<<endl;
+  // cerr << "\t-step       	          Forward slice jump for customized (C) slice ordering [Default: 1]"<<endl;
+  // cerr << "\t-rewinder	          Rewinder for customized slice ordering [Default: 1]"<<endl;
+  // cerr << "\t-bspline                  Use multi-level bspline interpolation instead of super-resolution."<<endl;
+  // cerr << "\t" << endl;
+  // cerr << "\tNOTE: work in progress, use of following options is not recommended..." << endl;
+  // cerr << "\t\tmultiband, packages, order, step, rewinder, rescale_stacks" << endl;
   cerr << "\t" << endl;
   cerr << "\t" << endl;
   exit(1);
@@ -135,8 +134,8 @@ int main(int argc, char **argv)
   // Mean Target Registration Error
   vector<double> mean_tre;
   
-  int step = 1;
-  int rewinder = 1;
+  // int step = 1;
+  // int rewinder = 1;
   
   // Default values.
   int templateNumber = 0;
@@ -160,7 +159,7 @@ int main(int argc, char **argv)
   double averageValue = 700;
   double smooth_mask = 4;
   bool global_bias_correction = false;
-  double low_intensity_cutoff = 0.01;
+  // double low_intensity_cutoff = 0.01;
   //folder for slice-location registrations, if given
   char *slice_transformations_folder=NULL;
   //folder for slice-to-volume registrations, if given
@@ -182,7 +181,7 @@ int main(int argc, char **argv)
   //flag to replace super-resolution reconstruction by multilevel B-spline interpolation
   bool bspline = false;
   vector<int> multiband_vector;
-  int multiband_factor=1;
+  // int multiband_factor=1;
   
   irtkRealImage average;
 
@@ -219,13 +218,11 @@ int main(int argc, char **argv)
   nStacks = atoi(argv[1]);
   argc--;
   argv++;
-  cout<<"Number 0f stacks ... "<<nStacks<<endl;
+  cout<<"Number of stacks ... "<<nStacks<<endl;
 
   // Read stacks 
   for (i=0;i<nStacks;i++)
   {
-    //if ( i == 0 )
-    //log_id = argv[1];
     stack_files.push_back(argv[1]);
     stack.Read(argv[1]);
     cout<<"Reading stack ... "<<argv[1]<<endl;
@@ -305,72 +302,72 @@ int main(int argc, char **argv)
     }
     
     //Read number of packages for each stack
-    if ((ok == false) && (strcmp(argv[1], "-packages") == 0)){
-      argc--;
-      argv++;
-      cout<< "Package number is ";
-      for (i=0;i<nStacks;i++)
-      {
-        packages.push_back(atoi(argv[1]));
-        cout<<packages[i]<<" ";
-        argc--;
-        argv++;
-       }
-       cout<<"."<<endl;
-       ok = true;
-    }
+    // if ((ok == false) && (strcmp(argv[1], "-packages") == 0)){
+    //   argc--;
+    //   argv++;
+    //   cout<< "Package number is ";
+    //   for (i=0;i<nStacks;i++)
+    //   {
+    //     packages.push_back(atoi(argv[1]));
+    //     cout<<packages[i]<<" ";
+    //     argc--;
+    //     argv++;
+    //    }
+    //    cout<<"."<<endl;
+    //    ok = true;
+    // }
 
     // Input slice ordering
-    if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
-    	argc--;
-    	argv++;
-    	cout<< "Order is ";
-	    for (i=0;i<nStacks;i++)
-	    {
-	    	order_vector.push_back(atoi(argv[1]));		
-			cout<<order_vector[i]<<" ";
-			argc--;
-			argv++;
-	    }
-	    cout<<"."<<endl;
-        ok = true;
-    }
+    // if ((ok == false) && (strcmp(argv[1], "-order") == 0)) {
+    // 	argc--;
+    // 	argv++;
+    // 	cout<< "Order is ";
+	  //   for (i=0;i<nStacks;i++)
+	  //   {
+	  //   	order_vector.push_back(atoi(argv[1]));		
+		// 	cout<<order_vector[i]<<" ";
+		// 	argc--;
+		// 	argv++;
+	  //   }
+	  //   cout<<"."<<endl;
+    //     ok = true;
+    // }
     
     //Multiband factor for each stack
-	if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
-		argc--;
-	    argv++;
-	    cout<< "Multiband number is ";
-	    for (i=0;i<nStacks;i++)
-	    {
-		  multiband_vector.push_back(atoi(argv[1]));
-		  cout<<multiband_vector[i]<<" ";
-		  argc--;
-		  argv++;
-	    }
-	    cout<<"."<<endl;
-	    ok = true;
-	}
+	// if ((ok == false) && (strcmp(argv[1], "-multiband") == 0)){
+	// 	argc--;
+	//     argv++;
+	//     cout<< "Multiband number is ";
+	//     for (i=0;i<nStacks;i++)
+	//     {
+	// 	  multiband_vector.push_back(atoi(argv[1]));
+	// 	  cout<<multiband_vector[i]<<" ";
+	// 	  argc--;
+	// 	  argv++;
+	//     }
+	//     cout<<"."<<endl;
+	//     ok = true;
+	// }
 
     // Forward slice jump for arbitrary slice ordering
-	if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
-	  argc--;
-	  argv++;
-	  step=atof(argv[1]);
-	  ok = true;
-	  argc--;
-	  argv++;
-	}
+	// if ((ok == false) && (strcmp(argv[1], "-step") == 0)){
+	//   argc--;
+	//   argv++;
+	//   step=atof(argv[1]);
+	//   ok = true;
+	//   argc--;
+	//   argv++;
+	// }
 
 	// Rewinder slice jump for arbitrary slice ordering
-	if ((ok == false) && (strcmp(argv[1], "-rewinder") == 0)){
-	  argc--;
-	  argv++;
-	  rewinder=atof(argv[1]);
-	  ok = true;
-	  argc--;
-	  argv++;
-	}
+	// if ((ok == false) && (strcmp(argv[1], "-rewinder") == 0)){
+	//   argc--;
+	//   argv++;
+	//   rewinder=atof(argv[1]);
+	//   ok = true;
+	//   argc--;
+	//   argv++;
+	// }
 
   //Read stack location R-R Intervals
   if ((ok == false) && (strcmp(argv[1], "-rrintervals") == 0)){
@@ -426,7 +423,7 @@ int main(int argc, char **argv)
 	  rrInterval=atof(argv[1]);
 	  argc--;
 	  argv++;
-    //cout<<"R-R interval of reconstructed volume is "<<rrInterval<<" s."<<endl;
+    cout<<"R-R interval of reconstructed volume is "<<rrInterval<<" s."<<endl;
     ok = true;
     reconstruction.SetReconstructedRRInterval(rrInterval);
 	}
@@ -595,29 +592,29 @@ int main(int argc, char **argv)
     }
     
     //Use multilevel B-spline interpolation instead of super-resolution
-    if ((ok == false) && (strcmp(argv[1], "-bspline") == 0)){
-      argc--;
-      argv++;
-      bspline=true;
-      ok = true;
-    }
+    // if ((ok == false) && (strcmp(argv[1], "-bspline") == 0)){
+    //   argc--;
+    //   argv++;
+    //   bspline=true;
+    //   ok = true;
+    // }
 
     //Perform bias correction of the reconstructed image agains the GW image in the same motion correction iteration
-    if ((ok == false) && (strcmp(argv[1], "-global_bias_correction") == 0)){
-      argc--;
-      argv++;
-      global_bias_correction=true;
-      ok = true;
-    }
+    // if ((ok == false) && (strcmp(argv[1], "-global_bias_correction") == 0)){
+    //   argc--;
+    //   argv++;
+    //   global_bias_correction=true;
+    //   ok = true;
+    // }
 
-    if ((ok == false) && (strcmp(argv[1], "-low_intensity_cutoff") == 0)){
-      argc--;
-      argv++;
-      low_intensity_cutoff=atof(argv[1]);
-      argc--;
-      argv++;
-      ok = true;
-    }
+    // if ((ok == false) && (strcmp(argv[1], "-low_intensity_cutoff") == 0)){
+    //   argc--;
+    //   argv++;
+    //   low_intensity_cutoff=atof(argv[1]);
+    //   argc--;
+    //   argv++;
+    //   ok = true;
+    // }
 
     //Debug mode
     if ((ok == false) && (strcmp(argv[1], "-debug") == 0)){
@@ -685,12 +682,12 @@ int main(int argc, char **argv)
     }
 
     //Remove black background
-    if ((ok == false) && (strcmp(argv[1], "-remove_black_background") == 0)){
-      argc--;
-      argv++;
-      remove_black_background=true;
-      ok = true;
-    }
+    // if ((ok == false) && (strcmp(argv[1], "-remove_black_background") == 0)){
+    //   argc--;
+    //   argv++;
+    //   remove_black_background=true;
+    //   ok = true;
+    // }
 
     //Force removal of certain slices
     if ((ok == false) && (strcmp(argv[1], "-force_exclude") == 0)){
@@ -871,9 +868,6 @@ int main(int argc, char **argv)
   if (debug) reconstruction.DebugOn();
   else reconstruction.DebugOff();
   
-  // Investigate Temporal Weight Calculation
-  // reconstruction.TestTemporalWeightCalculation();
-  
   //Set force excluded slices
   reconstruction.SetForceExcludedSlices(force_excluded);
   
@@ -900,14 +894,6 @@ int main(int argc, char **argv)
     cerr<<"Reconstruction of volumetric cardiac cine MRI from thick-slice dynamic 2D MRI requires mask to initilise reconstructed volume."<<endl;
     exit(1);
   }  
-  /* Unused if mask required
-  //If no mask was given and flag "remove_black_background" is false, try to create mask from the template image in case it was padded
-  if ((mask==NULL)&&(!remove_black_background))
-  {
-    mask = new irtkRealImage(stacks[templateNumber]);
-    *mask = reconstruction.CreateMask(*mask);
-  }
-  */
   // Crop mask
   irtkRealImage maskCropped = *mask;
   reconstruction.CropImage(maskCropped,*mask);  // TODO: TBD: use CropImage or CropImageIgnoreZ
@@ -927,7 +913,6 @@ int main(int argc, char **argv)
   reconstruction.SetMask(mask,smooth_mask);
 
   //to redirect output from screen to text files
-  
   //to remember cout and cerr buffer
   streambuf* strm_buffer = cout.rdbuf();
   streambuf* strm_buffer_e = cerr.rdbuf();
@@ -1180,7 +1165,6 @@ int main(int argc, char **argv)
     {
       cerr<<"Cannot currently initalise b-spline for cardiac 4D reconstruction."<<endl;
       exit(1);
-      // TODO: reconstruction.CoeffInitBSplineCardiac4D();
     }
     else
       reconstruction.CoeffInitCardiac4D();
@@ -1190,7 +1174,6 @@ int main(int argc, char **argv)
     {
       cerr<<"Cannot currently reconstruct b-spline for cardiac 4D reconstruction."<<endl;
       exit(1);
-      // TODO: TBD: reconstruction.BSplineReconstructionCardiac4D();
     }
     else
       reconstruction.GaussianReconstructionCardiac4D();
@@ -1236,7 +1219,7 @@ int main(int argc, char **argv)
     if ( iter==(iterations-1) ) 
     {
       if (rec_iterations_last<0)
-          rec_iterations_last = 3 * rec_iterations_first;
+          rec_iterations_last = 2 * rec_iterations_first;
       rec_iterations = rec_iterations_last;
     }
     else {
