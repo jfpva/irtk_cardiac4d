@@ -2208,6 +2208,106 @@ double irtkReconstructionCardiac4D::CalculateWeightedDisplacement(irtkRigidTrans
 
 
 // -----------------------------------------------------------------------------
+// Calculate Target Registration Error
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::InitTRE()
+{
+  _slice_tre.clear();
+  for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+    _slice_tre.push_back(-1);
+  }
+}
+
+
+double irtkReconstructionCardiac4D::CalculateTRE()
+{
+  
+  if (_debug)
+    cout << "CalculateTRE" << endl;
+  
+  _slice_tre.clear();
+  
+	double x,y,z,cx,cy,cz,px,py,pz;
+	double tre_sum_slice, tre_sum_total = 0;
+	int num_voxel_slice, num_voxel_total = 0;
+	int k = 0;
+	double slice_tre, mean_tre;
+
+	for (unsigned int inputIndex = 0; inputIndex < _slices.size(); inputIndex++) {
+    
+    tre_sum_slice = 0;
+    num_voxel_slice = 0;
+    slice_tre = -1;
+    
+    if (_slice_excluded[inputIndex]==0) {    
+  		for (unsigned int i = 0; i < _slices[inputIndex].GetX(); i++) {
+  			for (unsigned int j = 0; j < _slices[inputIndex].GetY(); j++) {
+  			  if (_slices[inputIndex](i,j,k)!=-1) {
+  				  x = i; y = j; z = k;
+    				_slices[inputIndex].ImageToWorld(x,y,z);
+    				cx = x; cy = y; cz = z;
+            px = x; py = y; pz = z;
+    				_transformations[inputIndex].Transform(cx,cy,cz);
+            _ref_transformations[inputIndex].Transform(px,py,pz);
+            tre_sum_slice += sqrt((cx-px)*(cx-px)+(cy-py)*(cy-py)+(cz-pz)*(cz-pz));
+    				num_voxel_slice += 1;
+    			}
+    		}
+    	}
+      if ( num_voxel_slice>0 ) {
+    	  slice_tre = tre_sum_slice / num_voxel_slice;
+        tre_sum_total += tre_sum_slice;
+        num_voxel_total += num_voxel_slice;
+      }
+    }
+    
+    _slice_tre.push_back(slice_tre);
+    
+  }
+  
+  if (num_voxel_total>0)
+    mean_tre = tre_sum_total / num_voxel_total;
+  else
+    mean_tre = -1;
+    
+	return mean_tre;
+
+}
+
+
+double irtkReconstructionCardiac4D::CalculateTRE(irtkRigidTransformation drift)
+{
+  //Initialise
+  double mean_tre;
+  irtkMatrix d = drift.GetMatrix();
+  irtkMatrix m;
+  
+  //Remove drift
+  for(unsigned int i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = d*m;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Calculate displacements
+  mean_tre = CalculateTRE();
+  
+  //Return drift
+  d.Invert();
+  for(unsigned int i=0;i<_transformations.size();i++)
+  {
+    m = _transformations[i].GetMatrix();
+    m = d*m;
+    _transformations[i].PutMatrix(m);
+  }
+  
+  //Output
+  return mean_tre;
+}
+
+
+// -----------------------------------------------------------------------------
 // Smooth Transformations
 // -----------------------------------------------------------------------------
 void irtkReconstructionCardiac4D::SmoothTransformations(double sigma_seconds, int niter, bool use_slice_inside)
@@ -2961,6 +3061,42 @@ void irtkReconstructionCardiac4D::ReadTransformation(char* folder)
     }
 }
 
+
+// -----------------------------------------------------------------------------
+// ReadRefTransformation
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::ReadRefTransformation(char* folder)
+{
+    int n = _slices.size();
+    char name[256];
+    char path[256];
+    irtkTransformation *transformation;
+    irtkRigidTransformation *rigidTransf;
+
+    if (n == 0) {
+        cerr << "Please create slices before reading transformations!" << endl;
+        exit(1);
+    }
+    cout << "Reading reference transformations from: " << folder << endl;
+
+    _ref_transformations.clear();
+    for (int i = 0; i < n; i++) {
+        if (folder != NULL) {
+            sprintf(name, "/transformation%05i.dof", i);
+            strcpy(path, folder);
+            strcat(path, name);
+        }
+        else {
+            sprintf(path, "transformation%05i.dof", i);
+        }
+        transformation = irtkTransformation::New(path);
+        rigidTransf = dynamic_cast<irtkRigidTransformation*>(transformation);
+        _ref_transformations.push_back(*rigidTransf);
+        delete transformation;
+    }
+}
+
+
 // -----------------------------------------------------------------------------
 // Calculate Entropy
 // -----------------------------------------------------------------------------
@@ -3627,6 +3763,7 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
          << "MeanDisplacementY" << "\t"
          << "MeanDisplacementZ" << "\t"
          << "WeightedMeanDisplacement" << "\t"
+         << "TRE" << "\t"
          << "TranslationX" << "\t"
          << "TranslationY" << "\t"
          << "TranslationZ" << "\t"
@@ -3658,6 +3795,7 @@ void irtkReconstructionCardiac4D::SlicesInfoCardiac4D( const char* filename,
              << _slice_ty[i] << "\t"
              << _slice_tz[i] << "\t"
              << _slice_weighted_displacement[i] << "\t"
+             << _slice_tre[i] << "\t"
              << t.GetTranslationX() << "\t"
              << t.GetTranslationY() << "\t"
              << t.GetTranslationZ() << "\t"

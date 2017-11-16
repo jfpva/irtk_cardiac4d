@@ -80,6 +80,7 @@ void usage()
   cerr << "\t-exclude_slices_only      Do not exclude individual voxels."<<endl;
   cerr << "\t-bspline                  Use multi-level bspline interpolation instead of super-resolution."<<endl;
   cerr << "\t-ref_vol                  Reference volume for adjustment of spatial position of reconstructed volume."<<endl;
+  cerr << "\t-ref_transformations [folder] Reference slice-to-volume transformation folder."<<endl;
   cerr << "\t-log_prefix [prefix]      Prefix for the log file."<<endl;
   cerr << "\t-info [filename]          Filename for slice information in\
                                        tab-sparated columns."<<endl;
@@ -131,6 +132,8 @@ int main(int argc, char **argv)
   // Mean Displacement
   vector<double> mean_displacement;
   vector<double> mean_weighted_displacement;
+  // Mean Target Registration Error
+  vector<double> mean_tre;
   
   int step = 1;
   int rewinder = 1;
@@ -162,6 +165,9 @@ int main(int argc, char **argv)
   char *slice_transformations_folder=NULL;
   //folder for slice-to-volume registrations, if given
   char *folder=NULL;
+  //folder for reference slice-to-volume registrations, if given
+  char *ref_transformations_folder=NULL;
+  bool have_ref_transformations = false;
   //flag to remove black background, e.g. when neonatal motion correction is performed
   bool remove_black_background = false;
   //flag to swich the intensity matching on and off
@@ -757,6 +763,17 @@ int main(int argc, char **argv)
       ok = true;
     }
     
+    //Read transformations from this folder
+    if ((ok == false) && (strcmp(argv[1], "-ref_transformations") == 0)){
+      argc--;
+      argv++;
+      ref_transformations_folder=argv[1];
+      argc--;
+      argv++;
+      have_ref_transformations = true;
+      ok = true;
+    }
+    
     if (ok == false){
       cerr << "Can not parse argument " << argv[1] << endl;
       usage();
@@ -1021,6 +1038,14 @@ int main(int argc, char **argv)
     if (slice_transformations_folder!=NULL)     // slice-location to volume registrations
       reconstruction.ReadSliceTransformation(slice_transformations_folder);
   }
+  
+  //if given, read reference transformations
+  if ((have_ref_transformations)&(ref_transformations_folder!=NULL))
+    reconstruction.ReadRefTransformation(ref_transformations_folder);
+  else
+    have_ref_transformations = false;
+  if (!have_ref_transformations)
+    reconstruction.InitTRE();
 
   //Mask all the slices
   reconstruction.MaskSlices();
@@ -1335,7 +1360,11 @@ int main(int argc, char **argv)
       // Calculate Displacements Relative to Alignment
       mean_displacement.push_back(reconstruction.CalculateDisplacement(transformation_recon_to_ref));
       mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement(transformation_recon_to_ref));
-        
+      
+      // Calculate TRE Relative to Alignment
+      if(have_ref_transformations)
+        mean_tre.push_back(reconstruction.CalculateTRE(transformation_recon_to_ref));
+      
     } 
     else {
       
@@ -1343,12 +1372,18 @@ int main(int argc, char **argv)
       mean_displacement.push_back(reconstruction.CalculateDisplacement());
       mean_weighted_displacement.push_back(reconstruction.CalculateWeightedDisplacement());
       
+      // Calculate TRE
+      if(have_ref_transformations)
+        mean_tre.push_back(reconstruction.CalculateTRE());
+      
     }
 
     // Display Displacements and TRE
     if (debug) {
       cout<<"Mean Displacement (iter "<<iter<<") = "<<mean_displacement[iter]<<" mm."<<endl;
       cout<<"Mean Weighted Displacement (iter "<<iter<<") = "<<mean_weighted_displacement[iter]<<" mm."<<endl;
+      if(have_ref_transformations)
+        cout<<"Mean TRE (iter "<<iter<<") = "<<mean_tre[iter]<<" mm."<<endl;
     }
     
     // Save Info for Iteration
@@ -1378,7 +1413,7 @@ int main(int argc, char **argv)
     cout<<setprecision(3);
   }
 
-  //Display Mean Displacements
+  //Display Mean Displacements and TRE
   if (debug) {
     cout<<"Mean Displacement:";
     for(unsigned int iter_mc=0; iter_mc<mean_displacement.size(); iter_mc++) {
@@ -1390,6 +1425,13 @@ int main(int argc, char **argv)
       cout<<" "<<mean_weighted_displacement[iter_mc];
     }
     cout<<" mm."<<endl;
+    if(have_ref_transformations) {
+      cout<<"Mean TRE:";
+      for(unsigned int iter_mc=0; iter_mc<mean_tre.size(); iter_mc++) {
+        cout<<" "<<mean_tre[iter_mc];
+      }
+      cout<<" mm."<<endl;
+    }
   }
 
   //save final result

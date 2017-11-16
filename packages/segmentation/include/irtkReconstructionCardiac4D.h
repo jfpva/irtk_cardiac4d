@@ -81,6 +81,10 @@ protected:
    vector<double> _slice_tz;
    vector<double> _slice_weighted_displacement;
    
+   // Target Registration Error
+   vector<irtkRigidTransformation> _ref_transformations;
+   vector<double> _slice_tre;
+   
    // Force exclusion of stacks
    vector<int> _force_excluded_stacks;
    
@@ -228,6 +232,11 @@ protected:
    double CalculateWeightedDisplacement();
    double CalculateWeightedDisplacement(irtkRigidTransformation drift);
    
+   // Calculate Target Registration Error (TRE)
+   void InitTRE();
+   double CalculateTRE();
+   double CalculateTRE(irtkRigidTransformation drift);
+   
    // Smooth Transformationss
    void SmoothTransformations(double sigma, int niter=10, bool use_slice_inside=false);
    
@@ -252,6 +261,9 @@ protected:
    
    /// Read Transformations
    void ReadTransformation( char* folder );
+   
+   /// Read Reference Transformations
+   void ReadRefTransformation( char* folder );
 
    /// Calculate Entropy
    double CalculateEntropy();

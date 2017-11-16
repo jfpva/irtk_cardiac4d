@@ -589,6 +589,9 @@ int main(int argc, char **argv)
   double mean__weighted_displacement = reconstruction.CalculateWeightedDisplacement();
     if (debug)
       cout<<"\tmean weighted displacement = "<<mean__weighted_displacement<<" mm."<<endl;
+      
+  // Initialise TRE (required to save info)
+  reconstruction.InitTRE();
   
   //Save info
   if (debug)
