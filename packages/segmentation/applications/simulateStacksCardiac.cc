@@ -515,8 +515,8 @@ int main(int argc, char **argv)
           resampling.SetOutput(&stack);
           resampling.SetInterpolator(&interpolator);
           resampling.Run();
+          stacks[stackIndex] = stack;
       }
-    stacks[stackIndex] = stack;
     }    
   }
   
