@@ -48,6 +48,7 @@ void usage()
   cerr << "\t-smooth_mask [sigma]       Smooth the mask to reduce artefacts of manual segmentation. [Default: 4mm]"<<endl;
   cerr << "\t-force_exclude [n] [ind1]..[indN]  Force exclusion of image-frames with these indices."<<endl;
   cerr << "\t-force_exclude_stack [n] [ind1]..[indN]  Force exclusion of stacks with these indices."<<endl;
+  cerr << "\t-temporalpsfgauss          Use Gaussian temporal point spread function. [Default: temporal PSF = sinc()*Tukey_window()]" << endl;
   cerr << "\t-speedup                   Use faster, but lower quality reconstruction."<<endl;
   cerr << "\t-debug                     Debug mode - save intermediate results."<<endl;
   cerr << "\t" << endl;
@@ -96,6 +97,7 @@ int main(int argc, char **argv)
   int numCardPhase = 0;
   double rrDefault = 0;
   double rrInterval = rrDefault;
+  bool is_temporalpsf_gauss = false;
   double motion_sigma = 0;
   double motion_scale = 1;
   double smooth_mask = 4;
@@ -237,6 +239,14 @@ int main(int argc, char **argv)
     reconstruction.SetReconstructedRRInterval(rrInterval);
 	}
 
+  // Use Gaussian Temporal Point Spread Function
+  if ((ok == false) && (strcmp(argv[1], "-temporalpsfgauss") == 0)){
+    argc--;
+    argv++;
+    is_temporalpsf_gauss=true;
+    ok = true;
+  }
+  
     //Read binary mask for final volume
     if ((ok == false) && (strcmp(argv[1], "-mask") == 0)){
       argc--;
@@ -410,6 +420,12 @@ int main(int argc, char **argv)
     }
     cout<<"."<<endl;
   }
+
+  //Set temporal point spread function
+  if (is_temporalpsf_gauss)
+    reconstruction.SetTemporalWeightGaussian();
+  else
+    reconstruction.SetTemporalWeightSinc();
 
   //Set debug mode
   if (debug) reconstruction.DebugOn();
