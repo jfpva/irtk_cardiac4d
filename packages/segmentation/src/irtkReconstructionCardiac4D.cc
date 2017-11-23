@@ -1982,20 +1982,14 @@ void irtkReconstructionCardiac4D::VolumeToVolumeRegistration(irtkGreyImage targe
   
   // Initialise registration
   irtkImageRigidRegistrationWithPadding registration;
-  
-  // Get target min and max values
-  irtkGreyPixel smin, smax;
-  target.GetMinMax(&smin, &smax);
 
   // Register source volume to target volume
-  if (smax > -1) {
-      registration.SetInput(&target,&source);
-      registration.SetOutput(&rigidTransf);
-      registration.GuessParameter();
-      registration.SetTargetPadding(-1);
-      registration.Run();
-  }
-
+  registration.SetInput(&target,&source);
+  registration.SetOutput(&rigidTransf);
+  registration.GuessParameter();
+  registration.SetTargetPadding(-1);
+  registration.Run();
+  
 }
 
 

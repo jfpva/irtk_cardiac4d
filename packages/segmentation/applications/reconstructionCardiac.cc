@@ -65,6 +65,7 @@ void usage()
   cerr << "\t-no_robust_statistics      Switch off robust statistics."<<endl;
   cerr << "\t-exclude_slices_only       Do not exclude individual voxels."<<endl;
   cerr << "\t-ref_vol                   Reference volume for adjustment of spatial position of reconstructed volume."<<endl;
+  cerr << "\t-rreg_recon_to_ref         Register reconstructed volume to reference volume [Default: recon to ref]"<<endl;
   cerr << "\t-ref_transformations [folder]  Reference slice-to-volume transformation folder."<<endl;
   cerr << "\t-log_prefix [prefix]       Prefix for the log file."<<endl;
   cerr << "\t-info [filename]           Filename for slice information in tab-sparated columns."<<endl;
@@ -108,6 +109,7 @@ int main(int argc, char **argv)
   char * ref_vol_name = NULL;
   bool have_ref_vol = false;
   irtkRigidTransformation transformation_recon_to_ref; 
+  bool rreg_recon_to_ref = false;
   /// Slice stacks
   vector<irtkRealImage> stacks;
   vector<string> stack_files;
@@ -760,6 +762,14 @@ int main(int argc, char **argv)
       ok = true;
     }
     
+    //Register reconstructed volume to reference volume
+    if ((ok == false) && (strcmp(argv[1], "-rreg_recon_to_ref") == 0)){
+      argc--;
+      argv++;
+      rreg_recon_to_ref = true;
+      ok = true;
+    }
+    
     //Read transformations from this folder
     if ((ok == false) && (strcmp(argv[1], "-ref_transformations") == 0)){
       argc--;
@@ -1325,12 +1335,28 @@ int main(int argc, char **argv)
     // Calculate Displacements
     if(have_ref_vol){
       
-      // Estimate Transformation to Align Reconsctructed Volume with Reference Volume
+      // Change logging 
       if ( ! no_log ) {
         cerr.rdbuf(file_e.rdbuf());
         cout.rdbuf (file.rdbuf());
       }
-      reconstruction.VolumeToVolumeRegistration(ref_vol,reconstructed,transformation_recon_to_ref);
+      
+      // Get Current Reconstructed Volume
+      reconstructed=reconstruction.GetReconstructedCardiac4D();
+      reconstructed=reconstruction.StaticMaskVolume4D(reconstructed,-1);
+      
+      // Invert to get recon to ref transformation
+      if(rreg_recon_to_ref) {
+        reconstruction.VolumeToVolumeRegistration(ref_vol,reconstructed,transformation_recon_to_ref);
+      }
+      else {
+        reconstruction.VolumeToVolumeRegistration(reconstructed,ref_vol,transformation_recon_to_ref);
+        irtkMatrix m = transformation_recon_to_ref.GetMatrix();
+        m.Invert();  // Invert to get recon to ref transformation
+        transformation_recon_to_ref.PutMatrix(m);
+      }
+      
+      // Change logging 
       if ( ! no_log ) {
         cout.rdbuf (strm_buffer);
         cerr.rdbuf (strm_buffer_e);
