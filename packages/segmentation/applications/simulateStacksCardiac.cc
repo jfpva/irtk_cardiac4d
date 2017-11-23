@@ -27,8 +27,6 @@ void usage()
   cerr << "Usage: simulateStacksCardiac [cine_volume] [N] [stack_1] .. [stack_N] <options>\n" << endl;
   cerr << endl;
 
-  cerr << "NOTE: using temporal PSF = sinc(PI*angdiff/dtrad)*win_Tukey(angdiff,0.3)\n" << endl;
-
   cerr << "\t[cine_volume]              Name for the cine volume. Nifti or Analyze format." << endl;
   cerr << "\t[N]                        Number of stacks." << endl;
   cerr << "\t[stack_1] .. [stack_N]     The input stacks. Nifti or Analyze format." << endl;
