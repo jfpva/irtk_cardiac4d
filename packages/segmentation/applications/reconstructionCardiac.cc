@@ -1348,12 +1348,12 @@ int main(int argc, char **argv)
       // Invert to get recon to ref transformation
       if(rreg_recon_to_ref) {
         reconstruction.VolumeToVolumeRegistration(ref_vol,reconstructed,transformation_recon_to_ref);
-      }
-      else {
-        reconstruction.VolumeToVolumeRegistration(reconstructed,ref_vol,transformation_recon_to_ref);
         irtkMatrix m = transformation_recon_to_ref.GetMatrix();
         m.Invert();  // Invert to get recon to ref transformation
         transformation_recon_to_ref.PutMatrix(m);
+      }
+      else {
+        reconstruction.VolumeToVolumeRegistration(reconstructed,ref_vol,transformation_recon_to_ref);
       }
       
       // Change logging 
