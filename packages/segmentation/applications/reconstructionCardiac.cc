@@ -62,6 +62,7 @@ void usage()
   cerr << "\t-force_exclude_stack [n] [ind1]..[indN]  Force exclusion of stacks with these indices."<<endl;
   cerr << "\t-no_stack_intensity_matching  Switch off stack intensity matching."<<endl;
   cerr << "\t-no_intensity_matching     Switch off intensity matching."<<endl;
+  cerr << "\t-slice_weight [K] [p_1]..[p_K]   Use specified slice weights (image frame posterior probabilities)." << endl;
   cerr << "\t-no_robust_statistics      Switch off robust statistics."<<endl;
   cerr << "\t-exclude_slices_only       Do not exclude individual voxels."<<endl;
   cerr << "\t-ref_vol                   Reference volume for adjustment of spatial position of reconstructed volume."<<endl;
@@ -135,6 +136,8 @@ int main(int argc, char **argv)
   vector<double> mean_weighted_displacement;
   // Mean Target Registration Error
   vector<double> mean_tre;
+  // Slice weights
+  vector<double> slice_weight;
   
   // int step = 1;
   // int rewinder = 1;
@@ -577,6 +580,23 @@ int main(int argc, char **argv)
       cout << "No intensity matching."<<endl;
     }
     
+    //Read slice weights
+    if ((ok == false) && (strcmp(argv[1], "-slice_weight") == 0)){
+      argc--;
+      argv++;
+      int nSlices = atoi(argv[1]);
+      cout<<"Reading weights (posterior probabilities) for "<<nSlices<<" image frames."<<endl;
+      argc--;
+      argv++;
+      for (i=0;i<nSlices;i++)
+      {
+        slice_weight.push_back(atof(argv[1]));
+        argc--;
+        argv++;
+      }
+      ok = true;
+    }
+    
     //Switch off robust statistics
     if ((ok == false) && (strcmp(argv[1], "-no_robust_statistics") == 0)){
       argc--;
@@ -792,6 +812,14 @@ int main(int argc, char **argv)
   {
       cerr << "Can not use both -transformations and -slice_transformations arguments." << endl;
       exit(1);
+  }
+
+  // 
+  if ((folder!=NULL)&(slice_transformations_folder!=NULL))
+  {
+      cout << "Robust statistics disabled; using specified slice weights " << endl;
+      robust_statistics=false;
+      robust_slices_only=true;
   }
 
   if (rescale_stacks)
@@ -1169,6 +1197,11 @@ int main(int argc, char **argv)
   	
 	  //Initialise values of weights, scales and bias fields
 	  reconstruction.InitializeEMValues();
+    
+    //Set slice weights, if specified
+    if ( slice_weight.size() != 0 ) {
+      reconstruction.SetSliceWeights(slice_weight);
+    } 
     
     //Calculate matrix of transformation between voxels of slices and volume
     if (bspline)

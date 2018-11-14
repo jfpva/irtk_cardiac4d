@@ -178,6 +178,17 @@ void irtkReconstructionCardiac4D::SetReconstructedTemporalResolution( double tem
 
 
 // -----------------------------------------------------------------------------
+// Set Slice Weights
+// -----------------------------------------------------------------------------
+void irtkReconstructionCardiac4D::SetSliceWeights( vector<double> sliceweights )
+{
+    _slice_weight = sliceweights;
+    if (_debug)
+      cout<<"Set slice weights (image frame posterior probabilities) based to user-specified values."<<endl;
+}
+
+
+// -----------------------------------------------------------------------------
 // Initialise Reconstructed Volume from Static Mask
 // -----------------------------------------------------------------------------
 // Create zero image as a template for reconstructed volume

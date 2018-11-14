@@ -160,6 +160,9 @@ protected:
    
    // Set Reconstructed Cardiac Phases
    void SetReconstructedCardiacPhase( vector<double> cardiacphases );
+   
+   /// Set Slice Weights
+   void SetSliceWeights( vector<double> sliceweights );
 
    // Set Reconstructed Volume Spatial Resolution
    double GetReconstructedResolutionFromTemplateStack( irtkRealImage stack );
